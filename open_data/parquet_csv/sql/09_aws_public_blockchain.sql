@@ -23,6 +23,10 @@
 -- listing command above before an event -- very recent dates can lag behind
 -- real time by a day or more.
 --
+-- PREREQUISITE: AWS_BLOCKCHAIN_S3 must be registered as a logical database
+-- before the tables below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE AWS_BLOCKCHAIN_S3 DESCRIBE BY "AWS Public Blockchain Data S3 filestore source";
+
 CREATE LIGHTNING FILESTORE TABLE btc_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://aws-public-blockchain/v1.0/btc/transactions/date=2026-09-01/",
   inferSchema "true",

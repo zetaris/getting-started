@@ -21,6 +21,10 @@
 -- new monthly snapshot on its own cadence. Confirm the current one with the
 -- listing command above before an event.
 --
+-- PREREQUISITE: GBIF_S3 must be registered as a logical database before
+-- the table below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE GBIF_S3 DESCRIBE BY "GBIF species occurrences S3 filestore source";
+
 CREATE LIGHTNING FILESTORE TABLE gbif_occurrences FROM GBIF_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://gbif-open-data-us-east-1/occurrence/2026-09-01/occurrence.parquet/",
   inferSchema "true",

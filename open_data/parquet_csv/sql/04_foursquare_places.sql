@@ -29,6 +29,10 @@
 -- folder name, not a wildcard -- confirm the current one with the listing
 -- command above, since Foursquare ships new releases periodically.
 --
+-- PREREQUISITE: FSQ_SOURCE_COOP must be registered as a logical database
+-- before the table below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE FSQ_SOURCE_COOP DESCRIBE BY "Foursquare Open Source Places, via Source Cooperative";
+
 CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT PARQUET OPTIONS (
   PATH "s3a://fused/fsq-os-places/2024-11-19/places/",
   s3Endpoint "https://data.source.coop",

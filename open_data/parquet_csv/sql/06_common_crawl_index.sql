@@ -20,6 +20,10 @@
 -- The crawl ID (CC-MAIN-2025-33 below) is a MOVING TARGET -- confirm the
 -- current one with the listing command above before an event.
 --
+-- PREREQUISITE: CC_INDEX_S3 must be registered as a logical database before
+-- the table below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE CC_INDEX_S3 DESCRIBE BY "Common Crawl columnar index S3 filestore source";
+
 CREATE LIGHTNING FILESTORE TABLE common_crawl_index FROM CC_INDEX_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://commoncrawl/cc-index/table/cc-main/warc/crawl=CC-MAIN-2025-33/subset=warc/",
   inferSchema "true",

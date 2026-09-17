@@ -14,9 +14,21 @@ Every script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for register
 - **`FORMAT PARQUET`**: the MinIO and Amazon S3 how-to pages both show working `FORMAT PARQUET` examples, alongside CSV/JSON.
 - **Quick-start walkthrough / UI equivalent**: [data-fabric.readthedocs.io Cloud Data Fabric Quick-Start Guide](https://data-fabric.readthedocs.io/en/latest/clouddatafabric/cloud-data-fabric-quick-start-guide.html)
 
-The general shape:
+### Prerequisite: `CREATE LIGHTNING DATABASE` — CORRECTED, this package had this wrong
+
+**Earlier revisions of this doc claimed the `FROM <logical_datasource_name>` value was just a label needing no prior setup. That's wrong, caught by live testing against a real Zetaris instance.** `<logical_datasource_name>` must be registered first with its own DDL statement, or `CREATE LIGHTNING FILESTORE TABLE ... FROM <name>` fails because `<name>` doesn't exist yet:
 
 ```sql
+CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
+```
+
+Run this once per logical datasource name **before** the first `CREATE LIGHTNING FILESTORE TABLE` statement that references it (a name used by multiple tables in the same script, e.g. `PUDL_S3`, only needs one `CREATE LIGHTNING DATABASE` call, not one per table). Every script in `sql/` has been updated with this statement. Source: the quick-start guide's own worked example (`CREATE LIGHTNING DATABASE TEST_DATABASE DESCRIBE BY " TEST_DATABASE";`), confirmed against kbase's description of the equivalent UI flow ("Virtual File Sources" — a database must be created before any tables can be assigned to it).
+
+The general shape, now with the prerequisite included:
+
+```sql
+CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
+
 CREATE LIGHTNING FILESTORE TABLE <table_name>
 FROM <logical_datasource_name>
 FORMAT <CSV | JSON | PARQUET>
@@ -32,7 +44,7 @@ OPTIONS (
 );
 ```
 
-`<logical_datasource_name>` (the `FROM ...` value) is just a label — it doesn't need a separate `CREATE DATASOURCE` statement first for filestore tables. The scripts in this package use descriptive all-caps names (`NOAA_GHCN_S3`, `PUDL_S3`, etc.).
+The scripts in this package use descriptive all-caps names for `<logical_datasource_name>` (`NOAA_GHCN_S3`, `PUDL_S3`, etc.) — same name in both the `CREATE LIGHTNING DATABASE` statement and the table's `FROM` clause.
 
 ---
 
@@ -52,14 +64,17 @@ All nine sources in this package live in publicly readable S3 (or S3-compatible)
 
 **Confirmed path forward:** provision a free-tier AWS account with a minimal IAM user (`s3:GetObject`/`s3:ListBucket` on the relevant buckets is enough) and use that real key pair in `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` — even though the bucket itself doesn't require one, Zetaris does. This applies to all nine AWS-native S3 sources in this package (everything except Foursquare's Source Cooperative/MinIO-style endpoint, which hasn't been tested this way yet and may behave differently — see `sql/04_foursquare_places.sql`).
 
-### Plain HTTPS URLs (CloudFront, Source Cooperative's proxy) as a `PATH`
+### Plain HTTPS URLs as a `PATH` — CONFIRMED: not supported
 
-Every documented `PATH` example uses `s3a://`, `s3n://`, or `wasb://` — not a generic `https://` file URL. Two sources here are more naturally reached over HTTPS:
+**Live-tested (2026-09):** a plain `https://` `PATH` (the CloudFront URL, `https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2025-01.parquet`) fails with a hard validation error — `Invalid file path to access` — not a fetch/network failure. Only `s3a://`/`wasb://`-style paths are accepted; HTTPS is rejected outright regardless of whether the file itself is reachable.
 
-- **NYC TLC**'s primary distribution channel is a CloudFront URL (`https://d37ci6vzurychx.cloudfront.net/...`), not the S3 mirror (which has a history of intermittent availability — see `sql/01_nyc_tlc.sql`).
-- **Foursquare Places** is reachable both via Source Cooperative's S3-compatible endpoint (what `sql/04_foursquare_places.sql` uses) and via plain HTTPS at `https://data.source.coop/...`.
+**This closes off NYC TLC's easy path entirely:** its S3 mirror (`s3://nyc-tlc`) is now also confirmed dead — `AccessDenied` on both an unsigned/anonymous request *and* a real, working IAM user's signed request (verified via `aws sts get-caller-identity` succeeding, then `aws s3 ls`/`head-object` against the bucket both failing). This isn't a credentials problem; the bucket itself no longer grants read access to anyone. See `sql/01_nyc_tlc.sql`'s updated Option B, now the only viable route: download the file from CloudFront, upload it into an S3 bucket you control, point Zetaris's `PATH` at that instead.
 
-Both affected scripts default to the S3-protocol route. If your Zetaris SQL Editor gives a clear error when you try an `https://` `PATH`, that will tell you directly whether it's supported.
+**This also settles the local-cache-to-Zetaris question for the pulled-forward sources (§3):** `tmp/cache/datagovsg/` and `tmp/cache/openfoodfacts/` files can't be read by Zetaris in place, and there's no HTTPS shortcut either — they need the same "upload to a bucket you control" treatment before a `CREATE LIGHTNING FILESTORE TABLE` statement can point at them.
+
+**Practical note:** doing this requires `s3:PutObject`/`s3:CreateBucket` permissions, which a read-only IAM user (e.g. one using the `AmazonS3ReadOnlyAccess` managed policy) doesn't have — you'll need write permissions on whatever bucket you stage files in, separate from the read-only credentials used for the original public buckets.
+
+Foursquare Places (Source Cooperative) hasn't been tested against this specific HTTPS finding yet, but given NYC TLC's result, assume its plain-HTTPS alternative (`https://data.source.coop/...`) is equally unsupported — `sql/04_foursquare_places.sql` already defaults to the S3-compatible-endpoint route, which is now confirmed as the only kind of `PATH` Zetaris accepts at all.
 
 ---
 

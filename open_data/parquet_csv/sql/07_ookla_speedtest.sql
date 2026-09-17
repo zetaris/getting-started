@@ -18,6 +18,10 @@
 -- required below (a free-tier account with s3:GetObject/s3:ListBucket is
 -- enough), even though the bucket itself doesn't require one.
 --
+-- PREREQUISITE: OOKLA_S3 must be registered as a logical database before
+-- the tables below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE OOKLA_S3 DESCRIBE BY "Ookla Speedtest Global Performance S3 filestore source";
+
 CREATE LIGHTNING FILESTORE TABLE ookla_speedtest_fixed FROM OOKLA_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://ookla-open-data/parquet/performance/type=fixed/year=2026/quarter=2/2026-04-01_performance_fixed_tiles.parquet",
   inferSchema "true",
