@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local data cache (fetch_*.py scripts download here — large files, never commit)
+tmp/
