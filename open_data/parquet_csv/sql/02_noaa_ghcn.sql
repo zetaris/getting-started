@@ -11,8 +11,10 @@
 -- =============================================================================
 --
 -- CAVEAT: this bucket is public/anonymous (no AWS account required for the
--- `--no-sign-request` CLI access above). AWSACCESSKEYID/AWSSECRETACCESSKEY
--- below are placeholders -- see HOWTO.md, "Credentials on a public bucket".
+-- `--no-sign-request` CLI access above), but Zetaris always signs S3
+-- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
+-- required below (a free-tier account with s3:GetObject/s3:ListBucket is
+-- enough), even though the bucket itself doesn't require one.
 --
 CREATE LIGHTNING FILESTORE TABLE noaa_ghcn_daily_2025 FROM NOAA_GHCN_S3 FORMAT CSV OPTIONS (
   PATH "s3a://noaa-ghcn-pds/csv/by_year/2025.csv",

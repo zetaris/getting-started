@@ -13,8 +13,10 @@
 --   (also available in af-south-1, ap-southeast-2, eu-central-1, sa-east-1)
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous. AWSACCESSKEYID/AWSSECRETACCESSKEY
--- below are placeholders -- see HOWTO.md, "Credentials on a public bucket".
+-- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
+-- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
+-- required below (a free-tier account with s3:GetObject/s3:ListBucket is
+-- enough), even though the bucket itself doesn't require one.
 -- The snapshot date (2026-09-01 below) is a MOVING TARGET -- GBIF publishes a
 -- new monthly snapshot on its own cadence. Confirm the current one with the
 -- listing command above before an event.

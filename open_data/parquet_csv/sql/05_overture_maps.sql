@@ -13,8 +13,10 @@
 --   aws s3 ls --no-sign-request s3://overturemaps-us-west-2/release/
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous. AWSACCESSKEYID/AWSSECRETACCESSKEY
--- below are placeholders -- see HOWTO.md, "Credentials on a public bucket".
+-- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
+-- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
+-- required below (a free-tier account with s3:GetObject/s3:ListBucket is
+-- enough), even though the bucket itself doesn't require one.
 -- The release folder (2026-08-19.0 below) is a MOVING TARGET -- Overture
 -- ships a new one roughly monthly. Confirm the current one with the listing
 -- command above before an event.

@@ -9,8 +9,10 @@
 --   aws s3 ls --no-sign-request s3://pudl.catalyst.coop/vYYYY.MM.PATCH/
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous. AWSACCESSKEYID/AWSSECRETACCESSKEY
--- below are placeholders -- see HOWTO.md, "Credentials on a public bucket".
+-- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
+-- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
+-- required below (a free-tier account with s3:GetObject/s3:ListBucket is
+-- enough), even though the bucket itself doesn't require one.
 -- The version tag (v2024.11.0 below) changes as Catalyst Cooperative ships
 -- new releases -- confirm the current one with the listing command above
 -- before an event, or use `stable` as a rolling alias if your event doesn't

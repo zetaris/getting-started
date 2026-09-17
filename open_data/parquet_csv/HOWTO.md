@@ -36,17 +36,21 @@ OPTIONS (
 
 ---
 
-## 2. Two things worth testing yourself before you assume they don't work
+## 2. Two things worth knowing about credentials and `PATH` before you run these
 
-### Credentials on a public bucket
+### Credentials on a public bucket — CONFIRMED: you need a real AWS key pair
 
-All nine sources in this package live in publicly readable S3 (or S3-compatible) buckets — you can `aws s3 ls --no-sign-request` every one of them with no AWS account. The Zetaris filestore syntax, as documented, always includes `AWSACCESSKEYID` and `AWSSECRETACCESSKEY` in `OPTIONS`, with no separately documented "skip auth" flag.
+All nine sources in this package live in publicly readable S3 (or S3-compatible) buckets — you can `aws s3 ls --no-sign-request` every one of them with no AWS account. That made it tempting to assume Zetaris could read them without real credentials too. **Live-tested against `sql/01_nyc_tlc.sql` (2026-09) and confirmed otherwise:**
 
-Three things worth trying, in order, before provisioning AWS credentials for buckets you don't own:
+| Tried | Result |
+|---|---|
+| Omit `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` entirely | `403 Forbidden` from S3 (Zetaris still sends a *signed* request — it fills in something non-empty behind the scenes, just not anything this bucket accepts) |
+| Empty strings (`""`, `""`) | `NoAwsCredentialsException: SimpleAWSCredentialsProvider: No AWS credentials in the Hadoop configuration` — fails Zetaris's own config validation before a request is even sent |
+| Literal `"anonymous"` / `"anonymous"` | `403 Forbidden` — treated as a real (bogus) key pair, not a special anonymous-mode flag |
 
-1. **Omit the credential keys entirely** and see what happens.
-2. **Pass empty strings or a placeholder like `"anonymous"`** for both keys — this is a common pattern in `s3a://`-based connectors (Zetaris's `s3a://` scheme suggests it's built on the same Hadoop connector family), where an empty credential pair often means "use anonymous/unsigned requests."
-3. **If neither works**, a free-tier AWS account with a minimal IAM user (`s3:GetObject`/`s3:ListBucket`) will get you a valid credential pair to authenticate with, even though the bucket itself doesn't require one.
+**Root cause:** the error text (`SimpleAWSCredentialsProvider`) confirms Zetaris's S3A connector is configured to always sign requests with a fixed, non-anonymous Hadoop credentials provider. There's no anonymous/unsigned-request mode reachable through the documented `OPTIONS` — unlike the plain `aws s3 --no-sign-request` CLI flag, which bypasses signing entirely, Zetaris always signs. A public bucket's anonymous-read ACL doesn't help if Zetaris never attempts an anonymous request in the first place.
+
+**Confirmed path forward:** provision a free-tier AWS account with a minimal IAM user (`s3:GetObject`/`s3:ListBucket` on the relevant buckets is enough) and use that real key pair in `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` — even though the bucket itself doesn't require one, Zetaris does. This applies to all nine AWS-native S3 sources in this package (everything except Foursquare's Source Cooperative/MinIO-style endpoint, which hasn't been tested this way yet and may behave differently — see `sql/04_foursquare_places.sql`).
 
 ### Plain HTTPS URLs (CloudFront, Source Cooperative's proxy) as a `PATH`
 

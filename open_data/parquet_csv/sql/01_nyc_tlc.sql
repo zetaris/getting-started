@@ -14,14 +14,18 @@
 --   1. The s3://nyc-tlc mirror has been reported unreachable before (a July
 --      2022 community report found it returning zero rows -- see
 --      https://dask.discourse.group/t/s3-nyc-tlc-seems-to-have-disappeared/890).
---      Whether it's currently live, and the exact internal key layout (older
---      tooling references a "trip data/" prefix with a literal space in it),
---      isn't confirmed -- list the bucket first.
+--      Whether it's currently live: list the bucket first to check. The key
+--      layout uses a literal space in "trip data/" -- confirmed live, see
+--      caveat 4 below for the percent-encoding fix.
 --   2. NYC TLC's primary, actively-maintained distribution channel is the
 --      CloudFront URL below, which is plain HTTPS -- not an s3a:// or wasb://
 --      path. Documented Zetaris CREATE LIGHTNING FILESTORE TABLE examples use
 --      an S3 or Azure Blob PATH; support for a bare HTTPS file URL as PATH
 --      isn't documented either way. See HOWTO.md, section 2.
+--   4. CONFIRMED against a live Zetaris instance: the bucket's key layout
+--      really does use a literal space in "trip data/", and Zetaris's PATH
+--      needs it percent-encoded as %20 -- a bare space in the PATH string
+--      produces a path-not-found-style error. Fixed below.
 --   3. Every credential value below is a PLACEHOLDER. This bucket is publicly
 --      readable (no AWS account needed for `aws s3 ... --no-sign-request`),
 --      but Zetaris's documented syntax always includes AWSACCESSKEYID /
@@ -30,7 +34,7 @@
 --
 -- OPTION A -- try the S3 mirror directly (test this first):
 CREATE LIGHTNING FILESTORE TABLE nyc_tlc_yellow_trips FROM NYC_TLC_S3 FORMAT PARQUET OPTIONS (
-  PATH "s3a://nyc-tlc/trip data/yellow_tripdata_2025-01.parquet",
+  PATH "s3a://nyc-tlc/trip%20data/yellow_tripdata_2025-01.parquet",
   inferSchema "true",
   AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
   AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
