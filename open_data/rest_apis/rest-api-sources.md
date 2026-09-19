@@ -13,7 +13,7 @@ A catalog of REST API sources you can point a small Zetaris deployment at direct
 | # | Source | Domain | License | Status | Onboarding script |
 |---|---|---|---|---|---|
 | 1 | SEC EDGAR XBRL Company Facts | Financial/regulatory | 🟡 Ambiguous | ✅ Live-tested, working | `sql/01_edgar_company_facts.sql` |
-| 2 | PokéAPI | Structured game data | 🟢 BSD-3-Clause | 📋 Scripted, not yet tested | `sql/02_pokeapi.sql` |
+| 2 | PokéAPI | Structured game data | 🟢 BSD-3-Clause | ✅ Live-tested, working | `sql/02_pokeapi.sql` |
 | 3 | Open Food Facts (live API) | Product/nutrition | 🟡 ODbL | 📋 Scripted, not yet tested | `sql/03_open_food_facts_live.sql` |
 | 4 | Singapore data.gov.sg — PM2.5 real-time | Environment | 🟢 SODL v1.0 | 📋 Scripted, not yet tested | `sql/04_singapore_pm25.sql` |
 | 5 | NASA NeoWs (`/neo/browse`) | Astronomy | 🟢 Public domain | 📋 Scripted, not yet tested | `sql/05_nasa_neows.sql` |
@@ -37,14 +37,15 @@ Sources 2–9 were investigated and scripted on 2026-09-19 (real JSON responses 
 
 ---
 
-## 2. 🟢 PokéAPI
+## 2. 🟢 PokéAPI — ✅ live-tested, working
 
 - **What it is:** structured game data (Pokémon stats, abilities, moves, types) — a large, well-modeled REST API good for showing nested JSON.
 - **License:** BSD-3-Clause for the code/API — [LICENSE.md](https://github.com/PokeAPI/pokeapi/blob/master/LICENSE.md). Fair Use Policy: cache responses, don't load-test it. Pokémon names/characters are Nintendo trademarks — fine for a technical demo, not for anything Zetaris-branded.
 - **Access:** no signup, no formal rate limit (removed 2018) but the Fair Use Policy still applies.
 - **Docs:** [pokeapi.co/docs/v2](https://pokeapi.co/docs/v2)
-- **Shape:** top-level object per Pokémon; `abilities` is `array<struct<is_hidden,slot,ability:struct<name,url>>>` — array-of-structs with one extra level of nesting inside the struct (untested whether Zetaris's dot-access reaches that deep).
-- **Not yet live-tested** — see `sql/02_pokeapi.sql`.
+- **Shape:** top-level object per Pokémon; `abilities`, `types`, and `stats` are all `array<struct<..., X:struct<name,url>>>` — array-of-structs with one extra level of nesting inside the struct.
+- **Live-tested (2026-09-19):** confirmed working end to end, including the two-level dot-access through an exploded field (`ability.ability.name`) that was the open question in the original script — this was the first confirmation in this package that Zetaris supports nested-struct access more than one level deep through `LATERAL VIEW explode()`, which derisks similarly-shaped sources elsewhere (e.g. NASA NeoWs, `sql/05`).
+- **Extended to two Pokémon** (Pikachu, Charizard) with `abilities`/`types`/`stats` views each, plus three cross-Pokémon `UNION ALL` views and six example analytical queries (base-stat totals, a side-by-side stat comparison, hidden-ability lookup, full per-Pokémon profile) — see `sql/02_pokeapi.sql`.
 
 ## 3. 🟡 Open Food Facts — live single-product API
 

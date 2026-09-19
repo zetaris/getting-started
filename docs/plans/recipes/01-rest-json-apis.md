@@ -1,6 +1,6 @@
 # Recipe: JSON / REST APIs
 
-**Status:** 🟢 Active — first source live-tested and verified against a real Zetaris instance
+**Status:** 🟢 Active — 2 of 9 sources live-tested and verified against a real Zetaris instance
 **Priority:** 1 (proceeding alongside Parquet/CSV rather than strictly after it — both are being driven by whatever's testable against the live instance at any given moment)
 **Manifest reference:** `quickstart-data-manifest.md` §4 (original scope); EDGAR below is a new addition found via direct Zetaris testing, not in the original manifest
 **Target location:** `open_data/rest_apis/` (matches the `open_data/parquet_csv/` convention already established, rather than the manifest's originally-suggested `json/`)
@@ -14,7 +14,7 @@ The Parquet/CSV package's `HOWTO.md` §6 speculated the REST pattern would be `R
 Status legend: ✅ live-tested and working · 📋 scripted, not yet tested against Zetaris · ⚠️ scripted, high risk of not working at all (flagged reason) · 🔴 not included
 
 1. ✅ **SEC EDGAR XBRL Company Facts API** — live-tested and working, `open_data/rest_apis/sql/01_edgar_company_facts.sql`, 7 companies (Apple, IBM, Oracle, Walmart, Target, Ford, Tesla). 🟡 Ambiguous license (filer-authored content, same posture as the manifest §6 SEC EDGAR PDF entry — point at the live API, don't bulk-redistribute). No signup, but requires a declared `User-Agent` (SEC blocks default ones) and respects a 10 req/sec rate limit. New addition, not in the original manifest.
-2. 📋 **PokéAPI** — `sql/02_pokeapi.sql`. 🟢 BSD-3-Clause, no signup, fair-use rate limiting. Array-of-structs with one extra level of struct nesting inside it (untested how deep Zetaris's dot-access goes).
+2. ✅ **PokéAPI** — `sql/02_pokeapi.sql`. 🟢 BSD-3-Clause, no signup, fair-use rate limiting. Live-tested and working (2026-09-19) — confirmed two-level nested dot-access through `explode()` works, extended to two Pokémon (Pikachu, Charizard) with abilities/types/stats views, cross-Pokémon `UNION ALL` views, and 6 example analytical queries.
 3. 📋 **Open Food Facts — live single-product API** — `sql/03_open_food_facts_live.sql`. 🟡 ODbL. Distinct from the bulk CSV/JSONL export already pulled forward into the Parquet/CSV recipe — this is the live per-product REST lookup instead. Array-of-structs with sparse/optional fields per entry.
 4. 📋 **Singapore data.gov.sg — PM2.5 real-time API** — `sql/04_singapore_pm25.sql`. 🟢 SODL v1.0, no key needed for testing. Different shape class: array nested under a non-top-level wrapper key, fixed (non-array) struct per item.
 5. 📋 **NASA NeoWs** (`/neo/browse`) — `sql/05_nasa_neows.sql`. 🟢 Public domain, `DEMO_KEY` works with no signup. Deeply nested array-of-structs plus a nested array-within-array, needing either indexing or a second `explode()`.
@@ -36,7 +36,8 @@ Establish the confirmed `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW
 - [x] Confirm the actual REST DDL syntax against a live Zetaris instance — done, see correction above and `open_data/rest_apis/HOWTO.md` §1
 - [x] `open_data/rest_apis/sql/01_edgar_company_facts.sql` — live-tested against 7 companies
 - [x] Investigate and script 8 more candidate REST sources (2026-09-19) — real JSON responses pulled and inspected for each (not guessed from docs alone), scripted following the package's conventions, catalogued in `rest-api-sources.md` with a risk/status rating per source
-- [ ] **Test sources 2–9 one by one against Zetaris**, in the order suggested in `HOWTO.md` §3 (lowest-risk/simplest shape first) — fix what can be fixed, drop what can't, same "test until it works or drop it" approach as the Parquet/CSV package's live-testing pass
+- [x] `open_data/rest_apis/sql/02_pokeapi.sql` — live-tested and working (2026-09-19); confirmed two-level nested dot-access through `explode()` works (derisks NeoWs, sql/05, and any other deeply-nested source); extended to a second Pokémon, cross-Pokémon `UNION ALL` views, and 6 example analytical queries
+- [ ] **Test sources 3–9 one by one against Zetaris**, in the order suggested in `HOWTO.md` §3 (lowest-risk/simplest shape first) — fix what can be fixed, drop what can't, same "test until it works or drop it" approach as the Parquet/CSV package's live-testing pass
 - [ ] Verify EDGAR row counts aren't truncated (see `HOWTO.md` §2's "possible response-truncation bug" and §4's verification method) — flagged, not yet confirmed as a real bug or ruled out
 - [ ] Determine whether `CREATE SCHEMASTORE CONTAINER`'s confirmed one-time-only limitation (no `IF NOT EXISTS`, `LightningDdlParseException` on a second run) has a workaround — research what query/API surface Zetaris exposes outside the SQL Editor for an external precheck script to use, if any
 - [ ] Determine whether `CREATE LIGHTNING DATABASE` has the same one-time-only limitation — untested so far, would affect every script in both this package and `open_data/parquet_csv/` if so
