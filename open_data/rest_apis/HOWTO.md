@@ -59,9 +59,16 @@ LATERAL VIEW explode(<array_field>) AS fact;
 
 A REST API's JSON response often has camelCase or mixed-case field names (e.g. `entityName`), which Zetaris's SQL layer doesn't accept unquoted or double-quoted — they need backticks: `` `entityName` ``, not `"entityname"` or bare `entityname`. Separately, JSON field names that collide with SQL reserved words (e.g. `start`, `end`) need backtick-quoting too, even if they're not mixed-case, e.g. `` fact.`start` ``.
 
-### Array-of-structs vs. other nested shapes
+### JSON response shapes — a taxonomy from investigating 8 more sources (2026-09-19)
 
-`LATERAL VIEW explode(<array_field>) AS fact` followed by dot-access (`fact.val`, `fact.accn`, ...) works when a JSON field is an **array of objects** (array-of-structs) — confirmed for EDGAR's `units.USD`. A REST API that instead returns **parallel arrays** (e.g. separate `times: [...]` and `values: [...]` arrays meant to be read pairwise) needs a different flattening approach (typically `posexplode()` on one array, then indexing into the other by position) — don't assume the array-of-structs pattern is universal across every future REST source added here. Confirm the actual JSON shape (via `curl` or the browser) before writing a new script's `SELECT`.
+`LATERAL VIEW explode(<array_field>) AS fact` followed by dot-access (`fact.val`, `fact.accn`, ...) works when a JSON field is an **array of objects** (array-of-structs) — confirmed for EDGAR's `units.USD`. Investigating candidates for `sql/02`–`sql/09` surfaced four distinct response shapes, with very different risk levels for this pattern:
+
+1. **Top-level object, array-of-structs field(s)** — the confirmed-working shape (EDGAR `sql/01`, PokéAPI `sql/02`, Open Food Facts live API `sql/03`, NASA NeoWs `sql/05` via `/neo/browse`). `explode()` + dot-access works directly. Some of these nest a struct *inside* the array's struct (PokéAPI's `ability.ability.name`, two levels deep) — untested whether Zetaris supports that depth, flagged per-script.
+2. **Top-level object, array-of-structs nested under a non-array wrapper key** — Singapore's PM2.5 API (`sql/04`): the array lives at `data.items`, not the top level, and each item's per-region breakdown (`readings.pm25_one_hourly`) is itself a **fixed struct, not an array** — no inner `explode()` needed there, just deeper dot-access.
+3. **Top-level JSON array (no wrapping object at all)** — NASA DONKI's CME endpoint (`sql/06`). Every confirmed-working source so far returns a top-level *object*; whether `CREATE LIGHTNING REST TABLE` can register a table from a bare top-level array is **unknown and untested** — this is flagged as the first thing to check for that script, before worrying about flattening.
+4. **SDMX-family formats (JSON-stat 2.0 / SDMX-JSON 2.0.0)** — Eurostat (`sql/07`) and the Australian ABS Data API (`sql/09`). These are **not row-oriented at all** — they're sparse, multi-dimensional arrays addressed by computed offset keys (Eurostat) or compound colon-separated dimension-index tuples with a further nested time-index (ABS), decoded against separate `dimension`/`structure` metadata. There's no array-of-structs to explode. **High risk of being a dead end** for this package's pattern — both scripts fall back to exposing only the dimension *metadata* as a view and flag the actual value data as possibly requiring a transform outside SQL entirely, or being dropped.
+
+A **parallel-arrays** shape (separate `times: [...]` and `values: [...]` meant to be read pairwise) hasn't been hit yet in this package but would need `posexplode()` + positional indexing instead of a plain `explode()` — don't assume array-of-structs is universal for a future source; confirm the actual JSON shape (`curl` or the browser) before writing a new script's `SELECT`.
 
 ### Possible response-truncation bug — verify row counts, don't trust them
 
@@ -79,6 +86,20 @@ Live-tested against EDGAR: a table's row count came back suspiciously low (11 ro
    - Fill in any required `HEADER` values (e.g. a real `user-agent` string — some APIs, like SEC EDGAR, reject default/missing ones).
    - Run each `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` pair.
    - Run the verification query (sec 4) before trusting the result.
+
+Suggested order — lowest-risk / simplest shape first, so a failure on a harder source doesn't block confirming the basic pattern works at all (see sec 2's shape taxonomy):
+
+| Order | Script | Why here |
+|---|---|---|
+| 1 | `01_edgar_company_facts.sql` | Already live-tested and working — confirms the baseline pattern end to end. |
+| 2 | `08_statcan_wds.sql` | Simplest shape investigated (flat array-of-structs, one level, GET-only) — good smoke test if something else is failing. |
+| 3 | `02_pokeapi.sql` | Array-of-structs with one extra level of nested struct — tests whether two-level dot-access through an exploded field works. |
+| 4 | `03_open_food_facts_live.sql` | Array-of-structs with sparse/optional fields across entries — tests schema-inference tolerance for inconsistent struct shapes. |
+| 5 | `04_singapore_pm25.sql` | Array nested under a non-top-level wrapper key, with a fixed (non-array) struct per item — a different shape class from 1–4. |
+| 6 | `05_nasa_neows.sql` | Array-of-structs with deep nesting (3 levels) and a nested array-within-array (`close_approach_data`) — tests indexing (`[0]`) vs. a second `explode()`. |
+| 7 | `06_nasa_donki.sql` | ⚠️ Top-level JSON array, not object — untested whether `CREATE LIGHTNING REST TABLE` even accepts this at all. |
+| 8 | `07_eurostat.sql` | ⚠️ JSON-stat format, no array-of-structs anywhere — likely drop candidate. |
+| 9 | `09_abs_data_api.sql` | ⚠️ SDMX-JSON with doubly-compound dynamic keys — same risk class as Eurostat, likely drop candidate. |
 
 ---
 
