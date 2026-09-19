@@ -35,14 +35,14 @@
 --      back to ~2008-2009. This smells like the REST connector truncating
 --      the response mid-array rather than SEC actually having that little
 --      history. NOT YET CONFIRMED as a bug vs. some other explanation --
---      run the verification query in HOWTO.md sec 4 before trusting row
---      counts from any table below. Applies to every company here, not
---      just Apple.
+--      run the verification query in HOWTO.md, "Verifying data", before
+--      trusting row counts from any table below. Applies to every company
+--      here, not just Apple.
 --   5. CREATE SCHEMASTORE CONTAINER has no IF NOT EXISTS support (confirmed
 --      via LightningDdlParseException) -- it's simply not in that
 --      statement's grammar, unlike many other CREATE statements. Running it
 --      twice against an existing container name fails outright. See
---      HOWTO.md sec 2 for how this script handles that.
+--      HOWTO.md, "Known limitations", for how this script handles that.
 --
 -- This script repeats the same pattern for seven companies: Apple, IBM,
 -- Oracle, Walmart, Target, Ford, and Tesla -- one REST table (raw JSON) and
@@ -62,8 +62,9 @@ CREATE LIGHTNING DATABASE SEC_DATA DESCRIBE BY "SEC EDGAR XBRL company facts RES
 -- STEP 1: Shared SCHEMASTORE container for every company's flattened view.
 -- RUN THIS EXACTLY ONCE. CREATE SCHEMASTORE CONTAINER has no IF NOT EXISTS
 -- -- re-running it against a name that already exists fails outright (see
--- caveat 5 above and HOWTO.md sec 2). If `edgar` already exists in your
--- environment, comment this line out before running the rest of the script.
+-- caveat 5 above and HOWTO.md, "Known limitations"). If `edgar` already
+-- exists in your environment, comment this line out before running the
+-- rest of the script.
 -- ---------------------------------------------------------------------------
 CREATE SCHEMASTORE CONTAINER edgar;
 
@@ -326,3 +327,34 @@ LATERAL VIEW explode(units.USD) AS fact;
 -- SELECT * FROM edgar.ford_revenue_table
 -- UNION ALL
 -- SELECT * FROM edgar.tesla_revenue_table;
+
+-- =============================================================================
+-- TEARDOWN -- removes the flattened views this script created. Commented
+-- out by default so a re-run of the file above doesn't accidentally wipe
+-- a live environment; uncomment and run standalone when you want to tear
+-- these views down.
+--
+-- DROP VIEW is the only teardown statement confirmed to work reliably in
+-- this package. There is no SQL statement confirmed to remove the raw
+-- REST tables or the SEC_DATA Lightning database registration itself --
+-- see HOWTO.md, "Removing a source" and "Troubleshooting / FAQ", for the
+-- full explanation. To remove the REST tables and the SEC_DATA
+-- registration, use the Zetaris Data Explorer: locate the entry under
+-- "File Source & API" and remove it from there.
+-- =============================================================================
+
+-- -- Optional cross-company view, if it was ever uncommented and run above:
+-- DROP VIEW edgar.all_companies_revenue_table;
+
+-- -- Per-company views:
+-- DROP VIEW edgar.apple_revenue_table;
+-- DROP VIEW edgar.ibm_revenue_table;
+-- DROP VIEW edgar.oracle_revenue_table;
+-- DROP VIEW edgar.walmart_revenue_table;
+-- DROP VIEW edgar.target_revenue_table;
+-- DROP VIEW edgar.ford_revenue_table;
+-- DROP VIEW edgar.tesla_revenue_table;
+
+-- To remove the SEC_DATA REST tables and Lightning database registration,
+-- use the Zetaris Data Explorer's "File Source & API" panel (see
+-- HOWTO.md, "Removing a source").

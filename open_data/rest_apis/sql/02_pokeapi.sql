@@ -13,13 +13,13 @@
 --   curl -s https://pokeapi.co/api/v2/pokemon/pikachu | python3 -m json.tool | head -20
 -- =============================================================================
 --
--- ✅ LIVE-TESTED AND CONFIRMED WORKING (2026-09-19) against Pikachu's
+-- Live-tested and confirmed working (2026-09-19) against Pikachu's
 -- abilities table -- 2 rows back (is_hidden false/true), all columns
 -- populated including the two-levels-deep dot-access:
 --   1. Response is a single top-level JSON object per Pokémon (not an
 --      array) -- same shape class as EDGAR's companyconcept response.
 --   2. `abilities` is array<struct<is_hidden,slot,ability:struct<name,url>>>
---      -- CONFIRMED: two-level dot-access through an exploded field
+--      -- confirmed: two-level dot-access through an exploded field
 --      (ability.ability.name) works. This was the open question in the
 --      original version of this script -- resolved favorably, and it
 --      means the same pattern should work for any other source in this
@@ -28,7 +28,7 @@
 --   3. `types` and `stats` are the same shape class as `abilities`
 --      (array<struct<..., X:struct<name,url>>>) -- extended below now that
 --      the pattern is confirmed. `moves` also exists on the same object
---      but has a DOUBLY-nested array (`version_group_details` inside each
+--      but has a doubly-nested array (`version_group_details` inside each
 --      move) -- not attempted here, would need a second LATERAL VIEW
 --      explode() layered on top of this pattern; flagged as a future
 --      stretch example, not built.
@@ -37,15 +37,26 @@
 --      structure -- one REST table + one set of views per Pokémon, all
 --      landing in the shared `pokeapi` container.
 --
+-- Full script live-tested and confirmed working end-to-end (2026-09-18):
+-- every CREATE (lightning database, container, both REST tables, all
+-- per-Pokémon and cross-Pokémon views) and example queries 1-6 all ran
+-- successfully against Zetaris.
+--
+-- See HOWTO.md, "Removing a source" and "Troubleshooting / FAQ", for
+-- what does and does not work when tearing this source down. In short:
+-- DROP VIEW is reliable; there is no confirmed SQL statement that
+-- removes the underlying REST tables or the Lightning database
+-- registration -- use the Zetaris Data Explorer for that instead.
+--
 -- ---------------------------------------------------------------------------
 -- STEP 0: Lightning database for this source.
 -- ---------------------------------------------------------------------------
 CREATE LIGHTNING DATABASE POKEAPI_REST DESCRIBE BY "PokeAPI REST source";
 
 -- ---------------------------------------------------------------------------
--- STEP 1: SCHEMASTORE container. RUN ONCE -- see open_data/rest_apis/HOWTO.md
--- sec 2 (no IF NOT EXISTS support). Comment out on a re-run if it already
--- exists in your environment.
+-- STEP 1: SCHEMASTORE container. RUN ONCE -- see open_data/rest_apis/HOWTO.md,
+-- "Known limitations" (no IF NOT EXISTS support). Comment out on a re-run
+-- if it already exists in your environment.
 -- ---------------------------------------------------------------------------
 CREATE SCHEMASTORE CONTAINER pokeapi;
 
@@ -214,16 +225,27 @@ FROM pokeapi.all_pokemon_stats_table
 ORDER BY base_stat DESC
 LIMIT 1;
 
--- 6. Full per-Pokémon profile -- join the base facts (from the abilities
--- view, which already carries height/weight/base_experience) against the
--- aggregated stat total from query 2's logic, inlined as a subquery:
+-- 6. Full per-Pokémon profile -- join the base facts against the
+-- aggregated stat total from query 2's logic, inlined as a subquery.
+-- NOTE: base_experience/height/weight live on the per-Pokémon
+-- pikachu_abilities_table/charizard_abilities_table views (sql/02, lines
+-- 78-109), NOT on all_pokemon_abilities_table -- that cross-Pokémon view
+-- was deliberately narrowed to (pokemon_name, ability_name, is_hidden)
+-- when it was defined above, so it explodes to one row per ability
+-- without carrying duplicate per-Pokémon facts along for the ride. Union
+-- the per-Pokémon views directly here instead, and DISTINCT collapses
+-- each Pokémon's multiple ability rows back down to one profile row:
 SELECT DISTINCT
     a.pokemon_name,
     a.base_experience,
     a.height,
     a.weight,
     st.base_stat_total
-FROM pokeapi.all_pokemon_abilities_table a
+FROM (
+    SELECT pokemon_name, base_experience, height, weight FROM pokeapi.pikachu_abilities_table
+    UNION ALL
+    SELECT pokemon_name, base_experience, height, weight FROM pokeapi.charizard_abilities_table
+) a
 JOIN (
     SELECT pokemon_name, SUM(base_stat) AS base_stat_total
     FROM pokeapi.all_pokemon_stats_table
@@ -240,3 +262,35 @@ JOIN (
 -- follows the exact same copy-paste pattern as Charizard above, plus one
 -- more UNION ALL branch per cross-Pokémon view.
 -- ---------------------------------------------------------------------------
+
+-- =============================================================================
+-- TEARDOWN -- removes the flattened views this script created. Commented
+-- out by default so a re-run of the file above doesn't accidentally wipe
+-- a live environment; uncomment and run standalone when you want to tear
+-- these views down.
+--
+-- DROP VIEW is the only teardown statement confirmed to work reliably in
+-- this package. There is no SQL statement confirmed to remove the raw
+-- REST tables or the POKEAPI_REST Lightning database registration itself
+-- -- see HOWTO.md, "Removing a source" and "Troubleshooting / FAQ", for
+-- the full explanation. To remove the REST tables and the POKEAPI_REST
+-- registration, use the Zetaris Data Explorer: locate the entry under
+-- "File Source & API" and remove it from there.
+-- =============================================================================
+
+-- -- Cross-Pokémon views:
+-- DROP VIEW pokeapi.all_pokemon_types_table;
+-- DROP VIEW pokeapi.all_pokemon_stats_table;
+-- DROP VIEW pokeapi.all_pokemon_abilities_table;
+
+-- -- Per-Pokémon views:
+-- DROP VIEW pokeapi.pikachu_abilities_table;
+-- DROP VIEW pokeapi.pikachu_types_table;
+-- DROP VIEW pokeapi.pikachu_stats_table;
+-- DROP VIEW pokeapi.charizard_abilities_table;
+-- DROP VIEW pokeapi.charizard_types_table;
+-- DROP VIEW pokeapi.charizard_stats_table;
+
+-- To remove the POKEAPI_REST REST tables and Lightning database
+-- registration, use the Zetaris Data Explorer's "File Source & API"
+-- panel (see HOWTO.md, "Removing a source").
