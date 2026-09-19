@@ -14,9 +14,21 @@ Every script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for register
 - **`FORMAT PARQUET`**: the MinIO and Amazon S3 how-to pages both show working `FORMAT PARQUET` examples, alongside CSV/JSON.
 - **Quick-start walkthrough / UI equivalent**: [data-fabric.readthedocs.io Cloud Data Fabric Quick-Start Guide](https://data-fabric.readthedocs.io/en/latest/clouddatafabric/cloud-data-fabric-quick-start-guide.html)
 
-The general shape:
+### Prerequisite: `CREATE LIGHTNING DATABASE` — CORRECTED, this package had this wrong
+
+**Earlier revisions of this doc claimed the `FROM <logical_datasource_name>` value was just a label needing no prior setup. That's wrong, caught by live testing against a real Zetaris instance.** `<logical_datasource_name>` must be registered first with its own DDL statement, or `CREATE LIGHTNING FILESTORE TABLE ... FROM <name>` fails because `<name>` doesn't exist yet:
 
 ```sql
+CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
+```
+
+Run this once per logical datasource name **before** the first `CREATE LIGHTNING FILESTORE TABLE` statement that references it (a name used by multiple tables in the same script, e.g. `PUDL_S3`, only needs one `CREATE LIGHTNING DATABASE` call, not one per table). Every script in `sql/` has been updated with this statement. Source: the quick-start guide's own worked example (`CREATE LIGHTNING DATABASE TEST_DATABASE DESCRIBE BY " TEST_DATABASE";`), confirmed against kbase's description of the equivalent UI flow ("Virtual File Sources" — a database must be created before any tables can be assigned to it).
+
+The general shape, now with the prerequisite included:
+
+```sql
+CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
+
 CREATE LIGHTNING FILESTORE TABLE <table_name>
 FROM <logical_datasource_name>
 FORMAT <CSV | JSON | PARQUET>
@@ -32,30 +44,37 @@ OPTIONS (
 );
 ```
 
-`<logical_datasource_name>` (the `FROM ...` value) is just a label — it doesn't need a separate `CREATE DATASOURCE` statement first for filestore tables. The scripts in this package use descriptive all-caps names (`NOAA_GHCN_S3`, `PUDL_S3`, etc.).
+The scripts in this package use descriptive all-caps names for `<logical_datasource_name>` (`NOAA_GHCN_S3`, `PUDL_S3`, etc.) — same name in both the `CREATE LIGHTNING DATABASE` statement and the table's `FROM` clause.
 
 ---
 
-## 2. Two things worth testing yourself before you assume they don't work
+## 2. Two things worth knowing about credentials and `PATH` before you run these
 
-### Credentials on a public bucket
+### Credentials on a public bucket — CONFIRMED: you need a real AWS key pair
 
-All nine sources in this package live in publicly readable S3 (or S3-compatible) buckets — you can `aws s3 ls --no-sign-request` every one of them with no AWS account. The Zetaris filestore syntax, as documented, always includes `AWSACCESSKEYID` and `AWSSECRETACCESSKEY` in `OPTIONS`, with no separately documented "skip auth" flag.
+All nine sources in this package live in publicly readable S3 (or S3-compatible) buckets — you can `aws s3 ls --no-sign-request` every one of them with no AWS account. That made it tempting to assume Zetaris could read them without real credentials too. **Live-tested against `sql/01_nyc_tlc.sql` (2026-09) and confirmed otherwise:**
 
-Three things worth trying, in order, before provisioning AWS credentials for buckets you don't own:
+| Tried | Result |
+|---|---|
+| Omit `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` entirely | `403 Forbidden` from S3 (Zetaris still sends a *signed* request — it fills in something non-empty behind the scenes, just not anything this bucket accepts) |
+| Empty strings (`""`, `""`) | `NoAwsCredentialsException: SimpleAWSCredentialsProvider: No AWS credentials in the Hadoop configuration` — fails Zetaris's own config validation before a request is even sent |
+| Literal `"anonymous"` / `"anonymous"` | `403 Forbidden` — treated as a real (bogus) key pair, not a special anonymous-mode flag |
 
-1. **Omit the credential keys entirely** and see what happens.
-2. **Pass empty strings or a placeholder like `"anonymous"`** for both keys — this is a common pattern in `s3a://`-based connectors (Zetaris's `s3a://` scheme suggests it's built on the same Hadoop connector family), where an empty credential pair often means "use anonymous/unsigned requests."
-3. **If neither works**, a free-tier AWS account with a minimal IAM user (`s3:GetObject`/`s3:ListBucket`) will get you a valid credential pair to authenticate with, even though the bucket itself doesn't require one.
+**Root cause:** the error text (`SimpleAWSCredentialsProvider`) confirms Zetaris's S3A connector is configured to always sign requests with a fixed, non-anonymous Hadoop credentials provider. There's no anonymous/unsigned-request mode reachable through the documented `OPTIONS` — unlike the plain `aws s3 --no-sign-request` CLI flag, which bypasses signing entirely, Zetaris always signs. A public bucket's anonymous-read ACL doesn't help if Zetaris never attempts an anonymous request in the first place.
 
-### Plain HTTPS URLs (CloudFront, Source Cooperative's proxy) as a `PATH`
+**Confirmed path forward:** provision a free-tier AWS account with a minimal IAM user (`s3:GetObject`/`s3:ListBucket` on the relevant buckets is enough) and use that real key pair in `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` — even though the bucket itself doesn't require one, Zetaris does. This applies to all nine AWS-native S3 sources in this package (everything except Foursquare's Source Cooperative/MinIO-style endpoint, which hasn't been tested this way yet and may behave differently — see `sql/04_foursquare_places.sql`).
 
-Every documented `PATH` example uses `s3a://`, `s3n://`, or `wasb://` — not a generic `https://` file URL. Two sources here are more naturally reached over HTTPS:
+### Plain HTTPS URLs as a `PATH` — CONFIRMED: not supported
 
-- **NYC TLC**'s primary distribution channel is a CloudFront URL (`https://d37ci6vzurychx.cloudfront.net/...`), not the S3 mirror (which has a history of intermittent availability — see `sql/01_nyc_tlc.sql`).
-- **Foursquare Places** is reachable both via Source Cooperative's S3-compatible endpoint (what `sql/04_foursquare_places.sql` uses) and via plain HTTPS at `https://data.source.coop/...`.
+**Live-tested (2026-09):** a plain `https://` `PATH` (the CloudFront URL, `https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2025-01.parquet`) fails with a hard validation error — `Invalid file path to access` — not a fetch/network failure. Only `s3a://`/`wasb://`-style paths are accepted; HTTPS is rejected outright regardless of whether the file itself is reachable.
 
-Both affected scripts default to the S3-protocol route. If your Zetaris SQL Editor gives a clear error when you try an `https://` `PATH`, that will tell you directly whether it's supported.
+**This closes off NYC TLC's easy path entirely:** its S3 mirror (`s3://nyc-tlc`) is now also confirmed dead — `AccessDenied` on both an unsigned/anonymous request *and* a real, working IAM user's signed request (verified via `aws sts get-caller-identity` succeeding, then `aws s3 ls`/`head-object` against the bucket both failing). This isn't a credentials problem; the bucket itself no longer grants read access to anyone. See `sql/01_nyc_tlc.sql`'s updated Option B, now the only viable route: download the file from CloudFront, upload it into an S3 bucket you control, point Zetaris's `PATH` at that instead.
+
+**This also settles the local-cache-to-Zetaris question for the pulled-forward sources (§3):** `tmp/cache/datagovsg/` and `tmp/cache/openfoodfacts/` files can't be read by Zetaris in place, and there's no HTTPS shortcut either — they need the same "upload to a bucket you control" treatment before a `CREATE LIGHTNING FILESTORE TABLE` statement can point at them.
+
+**Practical note:** doing this requires `s3:PutObject`/`s3:CreateBucket` permissions, which a read-only IAM user (e.g. one using the `AmazonS3ReadOnlyAccess` managed policy) doesn't have — you'll need write permissions on whatever bucket you stage files in, separate from the read-only credentials used for the original public buckets.
+
+Foursquare Places (Source Cooperative) hasn't been tested against this specific HTTPS finding yet, but given NYC TLC's result, assume its plain-HTTPS alternative (`https://data.source.coop/...`) is equally unsupported — `sql/04_foursquare_places.sql` already defaults to the S3-compatible-endpoint route, which is now confirmed as the only kind of `PATH` Zetaris accepts at all.
 
 ---
 

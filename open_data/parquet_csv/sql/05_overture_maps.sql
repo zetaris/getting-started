@@ -13,12 +13,18 @@
 --   aws s3 ls --no-sign-request s3://overturemaps-us-west-2/release/
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous. AWSACCESSKEYID/AWSSECRETACCESSKEY
--- below are placeholders -- see HOWTO.md, "Credentials on a public bucket".
+-- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
+-- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
+-- required below (a free-tier account with s3:GetObject/s3:ListBucket is
+-- enough), even though the bucket itself doesn't require one.
 -- The release folder (2026-08-19.0 below) is a MOVING TARGET -- Overture
 -- ships a new one roughly monthly. Confirm the current one with the listing
 -- command above before an event.
 --
+-- PREREQUISITE: OVERTURE_S3 must be registered as a logical database before
+-- the table below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE OVERTURE_S3 DESCRIBE BY "Overture Maps Places theme S3 filestore source";
+
 CREATE LIGHTNING FILESTORE TABLE overture_places FROM OVERTURE_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://overturemaps-us-west-2/release/2026-08-19.0/theme=places/type=place/",
   inferSchema "true",

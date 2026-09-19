@@ -14,13 +14,19 @@
 --   aws s3 ls --no-sign-request s3://aws-public-blockchain/v1.0/btc/transactions/
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous. AWSACCESSKEYID/AWSSECRETACCESSKEY
--- below are placeholders -- see HOWTO.md, "Credentials on a public bucket".
+-- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
+-- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
+-- required below (a free-tier account with s3:GetObject/s3:ListBucket is
+-- enough), even though the bucket itself doesn't require one.
 -- The date partition (2026-09-01 below) is a MOVING TARGET -- this dataset
 -- updates daily. Confirm the current date's partition exists with the
 -- listing command above before an event -- very recent dates can lag behind
 -- real time by a day or more.
 --
+-- PREREQUISITE: AWS_BLOCKCHAIN_S3 must be registered as a logical database
+-- before the tables below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE AWS_BLOCKCHAIN_S3 DESCRIBE BY "AWS Public Blockchain Data S3 filestore source";
+
 CREATE LIGHTNING FILESTORE TABLE btc_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://aws-public-blockchain/v1.0/btc/transactions/date=2026-09-01/",
   inferSchema "true",

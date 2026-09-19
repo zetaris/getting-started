@@ -16,16 +16,23 @@
 -- useS3PathStyleAccess "true" to OPTIONS, same pattern as below.
 --
 -- CAVEAT 2: Source Cooperative access is anonymous (--no-sign-request, no
--- account needed). AWSACCESSKEYID/AWSSECRETACCESSKEY below are placeholders
--- -- see HOWTO.md, "Credentials on a public bucket". For a MinIO-style
--- endpoint specifically, an empty string or a dummy value (e.g. "anonymous")
--- is sometimes accepted where AWS's own endpoint would reject it -- worth
--- trying before assuming you need to fabricate a real key pair.
+-- account needed). AWSACCESSKEYID/AWSSECRETACCESSKEY below are placeholders.
+-- NOTE: live testing against nyc-tlc (an AWS-native bucket, not this
+-- MinIO-style endpoint) confirmed Zetaris always signs S3 requests and
+-- rejects omitted/empty/"anonymous" credential values -- see HOWTO.md sec 2.
+-- Whether a MinIO-style endpoint behaves the same way is NOT yet tested here;
+-- try omitted/empty/"anonymous" first since MinIO's own auth stack sometimes
+-- differs from AWS's, but don't be surprised if it needs a real key pair too
+-- (any AWS account's key would do, since the bucket doesn't check ownership).
 --
 -- CAVEAT 3: the release date in the path (2024-11-19 below) is the release
 -- folder name, not a wildcard -- confirm the current one with the listing
 -- command above, since Foursquare ships new releases periodically.
 --
+-- PREREQUISITE: FSQ_SOURCE_COOP must be registered as a logical database
+-- before the table below can reference it in FROM -- see HOWTO.md sec 1.
+CREATE LIGHTNING DATABASE FSQ_SOURCE_COOP DESCRIBE BY "Foursquare Open Source Places, via Source Cooperative";
+
 CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT PARQUET OPTIONS (
   PATH "s3a://fused/fsq-os-places/2024-11-19/places/",
   s3Endpoint "https://data.source.coop",
