@@ -1,16 +1,16 @@
 # HOWTO: onboard these Parquet/CSV sources into Zetaris
 
-The general walkthrough for the `sql/` scripts in this package — read this once before running any of them. A couple of sources also need a `scripts/` fetch step first — see §3.
+The general walkthrough for the `sql/` scripts in this package. Seven are current runnable examples. The two SQL files marked `-- ! Forbidden` remain here as reference files and will be updated later. A couple of sources also need a `scripts/` fetch step first. See §3.
 
 ---
 
 ## 1. The SQL syntax these scripts use
 
-Every script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for registering a file-based external table (as opposed to `CREATE DATASOURCE`, for JDBC-backed relational sources, or `REGISTER REST DATASOURCE TABLE`, for REST APIs). References:
+Every runnable script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for registering a file-based external table (as opposed to `CREATE DATASOURCE`, for JDBC-backed relational sources, or `REGISTER REST DATASOURCE TABLE`, for REST APIs). References:
 
 - **Data source overview** (file formats supported — CSV, JSON, Parquet, ORC, Delta, Avro, plus AWS S3/Azure Blob as storage locations): [kbase.zetaris.com/knowledge/connect](https://kbase.zetaris.com/knowledge/connect)
-- **AWS S3 connection syntax** (`PATH`, `inferSchema`, `header`, `AWSACCESSKEYID`, `AWSSECRETACCESSKEY`, `awsSessionToken`): [kbase.zetaris.com/knowledge/amazon-s3-storage](https://kbase.zetaris.com/knowledge/amazon-s3-storage), [kbase.zetaris.com/knowledge/connection-to-aws-s3](https://kbase.zetaris.com/knowledge/connection-to-aws-s3)
-- **S3-compatible (non-AWS) endpoint syntax** (`s3Endpoint`, `useS3PathStyleAccess`) — the pattern used for Foursquare's Source Cooperative hosting: [kbase.zetaris.com/knowledge/how-to-connect-to-minio-s3](https://kbase.zetaris.com/knowledge/how-to-connect-to-minio-s3)
+- **AWS S3 connection syntax** (`PATH`, `inferSchema`, `header`, `isS3BucketPublic`, `useS3PathStyleAccess`, `s3Endpoint`): [kbase.zetaris.com/knowledge/amazon-s3-storage](https://kbase.zetaris.com/knowledge/amazon-s3-storage), [kbase.zetaris.com/knowledge/connection-to-aws-s3](https://kbase.zetaris.com/knowledge/connection-to-aws-s3)
+- **S3-compatible endpoint syntax** (`s3Endpoint`, `useS3PathStyleAccess`) — the pattern used for Foursquare's Source Cooperative hosting: [kbase.zetaris.com/knowledge/how-to-connect-to-minio-s3](https://kbase.zetaris.com/knowledge/how-to-connect-to-minio-s3)
 - **`FORMAT PARQUET`**: the MinIO and Amazon S3 how-to pages both show working `FORMAT PARQUET` examples, alongside CSV/JSON.
 - **Quick-start walkthrough / UI equivalent**: [data-fabric.readthedocs.io Cloud Data Fabric Quick-Start Guide](https://data-fabric.readthedocs.io/en/latest/clouddatafabric/cloud-data-fabric-quick-start-guide.html)
 
@@ -22,7 +22,7 @@ Every script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for register
 CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
 ```
 
-Run this once per logical datasource name **before** the first `CREATE LIGHTNING FILESTORE TABLE` statement that references it (a name used by multiple tables in the same script, e.g. `PUDL_S3`, only needs one `CREATE LIGHTNING DATABASE` call, not one per table). Every script in `sql/` has been updated with this statement. Source: the quick-start guide's own worked example (`CREATE LIGHTNING DATABASE TEST_DATABASE DESCRIBE BY " TEST_DATABASE";`), confirmed against kbase's description of the equivalent UI flow ("Virtual File Sources" — a database must be created before any tables can be assigned to it).
+Run this once per logical datasource name **before** the first `CREATE LIGHTNING FILESTORE TABLE` statement that references it (a name used by multiple tables in the same script, e.g. `PUDL_S3`, only needs one `CREATE LIGHTNING DATABASE` call, not one per table). Every runnable script in `sql/` includes this prerequisite. Source: the quick-start guide's own worked example (`CREATE LIGHTNING DATABASE TEST_DATABASE DESCRIBE BY " TEST_DATABASE";`), confirmed against kbase's description of the equivalent UI flow ("Virtual File Sources". A database must be created before any tables can be assigned to it).
 
 The general shape, now with the prerequisite included:
 
@@ -36,51 +36,39 @@ OPTIONS (
   PATH "s3a://bucket/prefix/or/file.parquet",
   inferSchema "true",
   header "true",                          -- CSV only, omit for Parquet/JSON
-  AWSACCESSKEYID "...",
-  AWSSECRETACCESSKEY "...",
-  awsSessionToken "...",                  -- optional, for temporary STS creds
-  s3Endpoint "https://...",               -- only for non-AWS S3-compatible storage
-  useS3PathStyleAccess "true"             -- only for non-AWS S3-compatible storage
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.<region>.amazonaws.com"
 );
 ```
 
-The scripts in this package use descriptive all-caps names for `<logical_datasource_name>` (`NOAA_GHCN_S3`, `PUDL_S3`, etc.) — same name in both the `CREATE LIGHTNING DATABASE` statement and the table's `FROM` clause.
+The runnable scripts target public S3 or S3-compatible locations. They set `isS3BucketPublic "true"` and do not include AWS credential values. AWS-native sources use the regional S3 endpoint shown in each script. Foursquare uses `https://data.source.coop` as its S3-compatible endpoint. The scripts use descriptive all-caps names for `<logical_datasource_name>` (`NOAA_GHCN_S3`, `PUDL_S3`, etc.), with the same name in the `CREATE LIGHTNING DATABASE` statement and the table's `FROM` clause.
 
 ---
 
-## 2. Two things worth knowing about credentials and `PATH` before you run these
+## 2. Public S3 access and `PATH`
 
-### Credentials on a public bucket — CONFIRMED: you need a real AWS key pair
+### Use the public-bucket options in the scripts
 
-All nine sources in this package live in publicly readable S3 (or S3-compatible) buckets — you can `aws s3 ls --no-sign-request` every one of them with no AWS account. That made it tempting to assume Zetaris could read them without real credentials too. **Live-tested against `sql/01_nyc_tlc.sql` (2026-09) and confirmed otherwise:**
+The seven runnable sources are public S3 or S3-compatible sources. Their current SQL uses the same access pattern:
 
-| Tried | Result |
+| Option | Use |
 |---|---|
-| Omit `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` entirely | `403 Forbidden` from S3 (Zetaris still sends a *signed* request — it fills in something non-empty behind the scenes, just not anything this bucket accepts) |
-| Empty strings (`""`, `""`) | `NoAwsCredentialsException: SimpleAWSCredentialsProvider: No AWS credentials in the Hadoop configuration` — fails Zetaris's own config validation before a request is even sent |
-| Literal `"anonymous"` / `"anonymous"` | `403 Forbidden` — treated as a real (bogus) key pair, not a special anonymous-mode flag |
+| `isS3BucketPublic "true"` | Tells Zetaris that the source is publicly readable. |
+| `useS3PathStyleAccess "true"` | Enables the path-style S3 access used by these scripts. |
+| `s3Endpoint "..."` | Selects the AWS regional endpoint or the S3-compatible host. |
 
-**Root cause:** the error text (`SimpleAWSCredentialsProvider`) confirms Zetaris's S3A connector is configured to always sign requests with a fixed, non-anonymous Hadoop credentials provider. There's no anonymous/unsigned-request mode reachable through the documented `OPTIONS` — unlike the plain `aws s3 --no-sign-request` CLI flag, which bypasses signing entirely, Zetaris always signs. A public bucket's anonymous-read ACL doesn't help if Zetaris never attempts an anonymous request in the first place.
+These public-source examples do not need AWS credential values. If you adapt the pattern for a private bucket, use the credential options in Zetaris's S3 documentation instead.
 
-**Confirmed path forward:** provision a free-tier AWS account with a minimal IAM user (`s3:GetObject`/`s3:ListBucket` on the relevant buckets is enough) and use that real key pair in `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` — even though the bucket itself doesn't require one, Zetaris does. This applies to all nine AWS-native S3 sources in this package (everything except Foursquare's Source Cooperative/MinIO-style endpoint, which hasn't been tested this way yet and may behave differently — see `sql/04_foursquare_places.sql`).
+### Keep source URLs separate from the Zetaris `PATH`
 
-### Plain HTTPS URLs as a `PATH` — CONFIRMED: not supported
-
-**Live-tested (2026-09):** a plain `https://` `PATH` (the CloudFront URL, `https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2025-01.parquet`) fails with a hard validation error — `Invalid file path to access` — not a fetch/network failure. Only `s3a://`/`wasb://`-style paths are accepted; HTTPS is rejected outright regardless of whether the file itself is reachable.
-
-**This closes off NYC TLC's easy path entirely:** its S3 mirror (`s3://nyc-tlc`) is now also confirmed dead — `AccessDenied` on both an unsigned/anonymous request *and* a real, working IAM user's signed request (verified via `aws sts get-caller-identity` succeeding, then `aws s3 ls`/`head-object` against the bucket both failing). This isn't a credentials problem; the bucket itself no longer grants read access to anyone. See `sql/01_nyc_tlc.sql`'s updated Option B, now the only viable route: download the file from CloudFront, upload it into an S3 bucket you control, point Zetaris's `PATH` at that instead.
-
-**This also settles the local-cache-to-Zetaris question for the pulled-forward sources (§3):** `tmp/cache/datagovsg/` and `tmp/cache/openfoodfacts/` files can't be read by Zetaris in place, and there's no HTTPS shortcut either — they need the same "upload to a bucket you control" treatment before a `CREATE LIGHTNING FILESTORE TABLE` statement can point at them.
-
-**Practical note:** doing this requires `s3:PutObject`/`s3:CreateBucket` permissions, which a read-only IAM user (e.g. one using the `AmazonS3ReadOnlyAccess` managed policy) doesn't have — you'll need write permissions on whatever bucket you stage files in, separate from the read-only credentials used for the original public buckets.
-
-Foursquare Places (Source Cooperative) hasn't been tested against this specific HTTPS finding yet, but given NYC TLC's result, assume its plain-HTTPS alternative (`https://data.source.coop/...`) is equally unsupported — `sql/04_foursquare_places.sql` already defaults to the S3-compatible-endpoint route, which is now confirmed as the only kind of `PATH` Zetaris accepts at all.
+The catalog may show a browser or download URL for a source. The runnable SQL scripts use an `s3a://` value in `PATH`. Put an S3-compatible HTTPS host in `s3Endpoint`, as the Foursquare script does, rather than replacing `PATH` with the catalog's browser URL.
 
 ---
 
 ## 3. Sources that need a local fetch step first
 
-Two sources — pulled forward from later categories in the main manifest rather than being part of the original nine — don't expose a stable, hardcodable bucket/URL `PATH` the way the rest of this package does. `scripts/` has a small, dependency-free Python fetcher for each; run these *before* the corresponding `sql/` script, not instead of it.
+Two sources pulled forward from later categories in the main manifest do not expose a stable, hardcodable bucket/URL `PATH` like the seven runnable sources do. `scripts/` has a small, dependency-free Python fetcher for each. Run these before attempting to create a corresponding SQL registration. Neither source has an onboarding SQL script yet.
 
 ### `scripts/fetch_datagovsg.py` — a data.gov.sg CSV dataset (Singapore)
 
@@ -117,11 +105,11 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstar
 ## 4. Running the scripts
 
 1. Open the Zetaris **SQL Editor** ([SQL Editor overview](https://kbase.zetaris.com/knowledge/sql-editor-overview), [How to Save and Re-use SQL](https://kbase.zetaris.com/knowledge/how-to-save-and-re-use-sql)).
-2. For each script in `sql/`, in order:
+2. For each runnable script in `sql/`, in order. Skip any file containing the `-- ! Forbidden` marker:
    - Read the header comment — it names the listing command (`aws s3 ls --no-sign-request s3://...`) that confirms the current partition/release/version before you run the statement.
-   - Fill in `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` per the credentials guidance above.
+   - Check that the `PATH` and `s3Endpoint` values still point at the intended current source.
    - Run the `CREATE LIGHTNING FILESTORE TABLE` statement(s).
-   - Run the `SELECT ... LIMIT 10` verification query right after.
+   - Run the fully qualified `SELECT ... LIMIT 10` verification query included in the script right after.
 3. Once created, a table shows up in Zetaris's Schema Browser and is queryable from the Query Builder UI as well as the SQL Editor.
 
 Suggested order — cleanest license first, in case you want to stop partway through:
@@ -134,19 +122,22 @@ Suggested order — cleanest license first, in case you want to stop partway thr
 | 4 | `05_overture_maps.sql` | Large-scale GeoParquet, simple caveat ("stick to Places theme") |
 | 5 | `08_gbif.sql` | Biggest scale (1.6B+ rows), good "filter before SELECT *" example |
 | 6 | `07_ookla_speedtest.sql` | Same non-commercial caveat pattern as GBIF, different domain |
-| 7 | `06_common_crawl_index.sql` | Different shape of data entirely (web metadata) |
-| 8 | `09_aws_public_blockchain.sql` | License genuinely unresolved — good "how we handle an ambiguous one" example |
-| 9 | `01_nyc_tlc.sql` | Optional — the one most likely to need troubleshooting |
+| 7 | `09_aws_public_blockchain.sql` | License genuinely unresolved — good "how we handle an ambiguous one" example |
+
+The following scripts remain in the package for later update. Do not run them while they carry the forbidden marker:
+
+- `sql/01_nyc_tlc.sql`
+- `sql/06_common_crawl_index.sql`
 
 ---
 
 ## 5. Verifying a table actually has data
 
-For every script:
+For every runnable script:
 
-1. `SELECT COUNT(*) FROM <table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a credentials problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
+1. `SELECT COUNT(*) FROM <logical_datasource_name>.<table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a source configuration problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
 2. Spot-check a couple of column values against the schema described in that source's docs (linked in `parquet-csv-data-sources.md`) — this catches a wrong `inferSchema` result (every column coming back as a string, for example).
-3. For the date/version-partitioned sources (Overture, Common Crawl, Ookla, GBIF, AWS Public Blockchain), re-run the bucket-listing command from that script's header comment shortly before you need it — a path that worked last week can 404 today if a new release rotated out the old one.
+3. For the date/version/release-partitioned sources (PUDL, Foursquare, Overture, Ookla, GBIF, AWS Public Blockchain), re-run the bucket-listing command from that script's header comment shortly before you need the source. A path can stop working when a new release replaces an old one.
 
 ---
 
