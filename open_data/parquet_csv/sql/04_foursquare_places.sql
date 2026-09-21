@@ -35,15 +35,15 @@ CREATE LIGHTNING DATABASE FSQ_SOURCE_COOP DESCRIBE BY "Foursquare Open Source Pl
 
 CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT PARQUET OPTIONS (
   PATH "s3a://fused/fsq-os-places/2024-11-19/places/",
-  s3Endpoint "https://data.source.coop",
   useS3PathStyleAccess "true",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_ACCESS_KEY_OR_ANONYMOUS",
-  AWSSECRETACCESSKEY "YOUR_SECRET_KEY_OR_ANONYMOUS"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "https://data.source.coop"
 );
 
 -- Verify:
-SELECT * FROM foursquare_places LIMIT 10;
+SELECT * FROM FSQ_SOURCE_COOP.foursquare_places LIMIT 10;
 
 -- Note: the places/ prefix above is sharded into many Parquet files
 -- (e.g. .../places/79.parquet, .../places/80.parquet, ...) -- pointing PATH

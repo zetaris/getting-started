@@ -41,11 +41,13 @@
 -- OPTION A -- the S3 mirror. CONFIRMED DEAD, reference only (see caveat 1):
 CREATE LIGHTNING DATABASE NYC_TLC_S3 DESCRIBE BY "NYC TLC S3 mirror filestore source";
 
+-- ! Forbidden
 CREATE LIGHTNING FILESTORE TABLE nyc_tlc_yellow_trips FROM NYC_TLC_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://nyc-tlc/trip%20data/yellow_tripdata_2025-01.parquet",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
 -- Verify:

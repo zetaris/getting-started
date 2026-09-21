@@ -25,22 +25,24 @@ CREATE LIGHTNING DATABASE OOKLA_S3 DESCRIBE BY "Ookla Speedtest Global Performan
 CREATE LIGHTNING FILESTORE TABLE ookla_speedtest_fixed FROM OOKLA_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://ookla-open-data/parquet/performance/type=fixed/year=2026/quarter=2/2026-04-01_performance_fixed_tiles.parquet",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM ookla_speedtest_fixed LIMIT 10;
+SELECT * FROM OOKLA_S3.ookla_speedtest_fixed LIMIT 10;
 
 -- Mobile is the same path pattern with type=mobile instead of type=fixed:
 CREATE LIGHTNING FILESTORE TABLE ookla_speedtest_mobile FROM OOKLA_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://ookla-open-data/parquet/performance/type=mobile/year=2026/quarter=2/2026-04-01_performance_mobile_tiles.parquet",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
-SELECT * FROM ookla_speedtest_mobile LIMIT 10;
+SELECT * FROM OOKLA_S3.ookla_speedtest_mobile LIMIT 10;
 
 -- Note: the filename date (2026-04-01 above) always reflects the *first day*
 -- of the quarter, not the file's publish date -- confirm the current

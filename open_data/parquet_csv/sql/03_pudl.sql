@@ -28,22 +28,24 @@ CREATE LIGHTNING DATABASE PUDL_S3 DESCRIBE BY "Catalyst Cooperative PUDL S3 file
 CREATE LIGHTNING FILESTORE TABLE pudl_eia_energy_sources FROM PUDL_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://pudl.catalyst.coop/stable/core_eia__codes_energy_sources.parquet",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM pudl_eia_energy_sources LIMIT 10;
+SELECT * FROM PUDL_S3.pudl_eia_energy_sources LIMIT 10;
 
 -- A second, larger table for a richer demo -- yearly generator-level output:
 CREATE LIGHTNING FILESTORE TABLE pudl_eia_yearly_generators FROM PUDL_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://pudl.catalyst.coop/stable/out_eia__yearly_generators.parquet",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
-SELECT * FROM pudl_eia_yearly_generators LIMIT 10;
+SELECT * FROM PUDL_S3.pudl_eia_yearly_generators LIMIT 10;
 
 -- Note: PUDL also publishes the identical data as a single SQLite file per
 -- release (e.g. s3://pudl.catalyst.coop/stable/pudl.sqlite.zip) -- worth

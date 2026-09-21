@@ -30,20 +30,22 @@ CREATE LIGHTNING DATABASE AWS_BLOCKCHAIN_S3 DESCRIBE BY "AWS Public Blockchain D
 CREATE LIGHTNING FILESTORE TABLE btc_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://aws-public-blockchain/v1.0/btc/transactions/date=2026-09-01/",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-2.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM btc_transactions LIMIT 10;
+SELECT * FROM AWS_BLOCKCHAIN_S3.btc_transactions LIMIT 10;
 
 -- Ethereum equivalent (also has blocks/, logs/, token_transfers/, traces/,
 -- and contracts/ prefixes under v1.0/eth/ if you want a richer demo):
 CREATE LIGHTNING FILESTORE TABLE eth_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://aws-public-blockchain/v1.0/eth/transactions/date=2026-09-01/",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-2.amazonaws.com"
 );
 
-SELECT * FROM eth_transactions LIMIT 10;
+SELECT * FROM AWS_BLOCKCHAIN_S3.eth_transactions LIMIT 10;

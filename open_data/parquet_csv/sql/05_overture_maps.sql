@@ -28,12 +28,13 @@ CREATE LIGHTNING DATABASE OVERTURE_S3 DESCRIBE BY "Overture Maps Places theme S3
 CREATE LIGHTNING FILESTORE TABLE overture_places FROM OVERTURE_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://overturemaps-us-west-2/release/2026-08-19.0/theme=places/type=place/",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM overture_places LIMIT 10;
+SELECT * FROM OVERTURE_S3.overture_places LIMIT 10;
 
 -- Note: this table includes a "geometry" column encoded per the GeoParquet
 -- spec (WKB) and nested struct columns (names, categories, socials, bbox).

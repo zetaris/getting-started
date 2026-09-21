@@ -24,12 +24,13 @@ CREATE LIGHTNING FILESTORE TABLE noaa_ghcn_daily_2025 FROM NOAA_GHCN_S3 FORMAT C
   PATH "s3a://noaa-ghcn-pds/csv/by_year/2025.csv",
   inferSchema "true",
   header "false",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM noaa_ghcn_daily_2025 LIMIT 10;
+SELECT * FROM NOAA_GHCN_S3.noaa_ghcn_daily_2025 LIMIT 10;
 
 -- Note: GHCN-D's by_year CSVs ship without a header row (see the readme
 -- linked above for the 8-column layout: ID, DATE, ELEMENT, DATA_VALUE,
