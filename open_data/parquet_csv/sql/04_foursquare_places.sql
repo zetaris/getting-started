@@ -15,15 +15,9 @@
 -- S3-compatible endpoint), that means adding s3Endpoint and
 -- useS3PathStyleAccess "true" to OPTIONS, same pattern as below.
 --
--- CAVEAT 2: Source Cooperative access is anonymous (--no-sign-request, no
--- account needed). AWSACCESSKEYID/AWSSECRETACCESSKEY below are placeholders.
--- NOTE: live testing against nyc-tlc (an AWS-native bucket, not this
--- MinIO-style endpoint) confirmed Zetaris always signs S3 requests and
--- rejects omitted/empty/"anonymous" credential values -- see HOWTO.md sec 2.
--- Whether a MinIO-style endpoint behaves the same way is NOT yet tested here;
--- try omitted/empty/"anonymous" first since MinIO's own auth stack sometimes
--- differs from AWS's, but don't be surprised if it needs a real key pair too
--- (any AWS account's key would do, since the bucket doesn't check ownership).
+-- CAVEAT 2: Source Cooperative access is public and no AWS credential values
+-- are needed here. The table below sets isS3BucketPublic "true" and uses the
+-- S3-compatible endpoint with path-style access.
 --
 -- CAVEAT 3: the release date in the path (2024-11-19 below) is the release
 -- folder name, not a wildcard -- confirm the current one with the listing

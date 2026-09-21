@@ -14,10 +14,9 @@
 --   aws s3 ls --no-sign-request s3://aws-public-blockchain/v1.0/btc/transactions/
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
--- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
--- required below (a free-tier account with s3:GetObject/s3:ListBucket is
--- enough), even though the bucket itself doesn't require one.
+-- CAVEAT: this bucket is public/anonymous. The table options below use
+-- Zetaris's public-bucket configuration and the us-east-2 S3 endpoint, so
+-- this script does not need AWS credential values.
 -- The date partition (2026-09-01 below) is a MOVING TARGET -- this dataset
 -- updates daily. Confirm the current date's partition exists with the
 -- listing command above before an event -- very recent dates can lag behind
