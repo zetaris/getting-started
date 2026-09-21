@@ -15,15 +15,9 @@
 -- S3-compatible endpoint), that means adding s3Endpoint and
 -- useS3PathStyleAccess "true" to OPTIONS, same pattern as below.
 --
--- CAVEAT 2: Source Cooperative access is anonymous (--no-sign-request, no
--- account needed). AWSACCESSKEYID/AWSSECRETACCESSKEY below are placeholders.
--- NOTE: live testing against nyc-tlc (an AWS-native bucket, not this
--- MinIO-style endpoint) confirmed Zetaris always signs S3 requests and
--- rejects omitted/empty/"anonymous" credential values -- see HOWTO.md sec 2.
--- Whether a MinIO-style endpoint behaves the same way is NOT yet tested here;
--- try omitted/empty/"anonymous" first since MinIO's own auth stack sometimes
--- differs from AWS's, but don't be surprised if it needs a real key pair too
--- (any AWS account's key would do, since the bucket doesn't check ownership).
+-- CAVEAT 2: Source Cooperative access is public and no AWS credential values
+-- are needed here. The table below sets isS3BucketPublic "true" and uses the
+-- S3-compatible endpoint with path-style access.
 --
 -- CAVEAT 3: the release date in the path (2024-11-19 below) is the release
 -- folder name, not a wildcard -- confirm the current one with the listing
@@ -35,15 +29,15 @@ CREATE LIGHTNING DATABASE FSQ_SOURCE_COOP DESCRIBE BY "Foursquare Open Source Pl
 
 CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT PARQUET OPTIONS (
   PATH "s3a://fused/fsq-os-places/2024-11-19/places/",
-  s3Endpoint "https://data.source.coop",
   useS3PathStyleAccess "true",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_ACCESS_KEY_OR_ANONYMOUS",
-  AWSSECRETACCESSKEY "YOUR_SECRET_KEY_OR_ANONYMOUS"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "https://data.source.coop"
 );
 
 -- Verify:
-SELECT * FROM foursquare_places LIMIT 10;
+SELECT * FROM FSQ_SOURCE_COOP.foursquare_places LIMIT 10;
 
 -- Note: the places/ prefix above is sharded into many Parquet files
 -- (e.g. .../places/79.parquet, .../places/80.parquet, ...) -- pointing PATH

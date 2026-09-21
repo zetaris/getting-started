@@ -13,10 +13,9 @@
 --   aws s3 ls --no-sign-request s3://overturemaps-us-west-2/release/
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
--- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
--- required below (a free-tier account with s3:GetObject/s3:ListBucket is
--- enough), even though the bucket itself doesn't require one.
+-- CAVEAT: this bucket is public/anonymous. The table options below use
+-- Zetaris's public-bucket configuration and the us-west-2 S3 endpoint, so
+-- this script does not need AWS credential values.
 -- The release folder (2026-08-19.0 below) is a MOVING TARGET -- Overture
 -- ships a new one roughly monthly. Confirm the current one with the listing
 -- command above before an event.
@@ -28,12 +27,13 @@ CREATE LIGHTNING DATABASE OVERTURE_S3 DESCRIBE BY "Overture Maps Places theme S3
 CREATE LIGHTNING FILESTORE TABLE overture_places FROM OVERTURE_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://overturemaps-us-west-2/release/2026-08-19.0/theme=places/type=place/",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM overture_places LIMIT 10;
+SELECT * FROM OVERTURE_S3.overture_places LIMIT 10;
 
 -- Note: this table includes a "geometry" column encoded per the GeoParquet
 -- spec (WKB) and nested struct columns (names, categories, socials, bbox).

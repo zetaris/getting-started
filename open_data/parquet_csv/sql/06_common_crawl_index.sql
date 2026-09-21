@@ -24,15 +24,17 @@
 -- the table below can reference it in FROM -- see HOWTO.md sec 1.
 CREATE LIGHTNING DATABASE CC_INDEX_S3 DESCRIBE BY "Common Crawl columnar index S3 filestore source";
 
+-- ! FORBIDDEN
 CREATE LIGHTNING FILESTORE TABLE common_crawl_index FROM CC_INDEX_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://commoncrawl/cc-index/table/cc-main/warc/crawl=CC-MAIN-2025-33/subset=warc/",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM common_crawl_index LIMIT 10;
+SELECT * FROM CC_INDEX_S3.common_crawl_index LIMIT 10;
 
 -- Suggested demo query once loaded -- this is the kind of "needle in a huge
 -- columnar haystack" federation query this dataset is good for:

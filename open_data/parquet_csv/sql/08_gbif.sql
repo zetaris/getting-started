@@ -13,10 +13,9 @@
 --   (also available in af-south-1, ap-southeast-2, eu-central-1, sa-east-1)
 -- =============================================================================
 --
--- CAVEAT: this bucket is public/anonymous, but Zetaris always signs S3
--- requests -- CONFIRMED (see HOWTO.md sec 2): a real AWS IAM key pair is
--- required below (a free-tier account with s3:GetObject/s3:ListBucket is
--- enough), even though the bucket itself doesn't require one.
+-- CAVEAT: this bucket is public/anonymous. The table options below use
+-- Zetaris's public-bucket configuration and the us-east-1 S3 endpoint, so
+-- this script does not need AWS credential values.
 -- The snapshot date (2026-09-01 below) is a MOVING TARGET -- GBIF publishes a
 -- new monthly snapshot on its own cadence. Confirm the current one with the
 -- listing command above before an event.
@@ -28,12 +27,13 @@ CREATE LIGHTNING DATABASE GBIF_S3 DESCRIBE BY "GBIF species occurrences S3 files
 CREATE LIGHTNING FILESTORE TABLE gbif_occurrences FROM GBIF_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://gbif-open-data-us-east-1/occurrence/2026-09-01/occurrence.parquet/",
   inferSchema "true",
-  AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
-  AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
+  isS3BucketPublic "true",
+  useS3PathStyleAccess "true",
+  s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
 -- Verify:
-SELECT * FROM gbif_occurrences LIMIT 10;
+SELECT * FROM GBIF_S3.gbif_occurrences LIMIT 10;
 
 -- Note: this snapshot is large (1.6B+ rows worldwide) -- for a live demo,
 -- filter early and narrowly, e.g. by country code or taxonomic class, rather
