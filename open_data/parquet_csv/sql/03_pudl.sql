@@ -29,7 +29,7 @@ CREATE LIGHTNING FILESTORE TABLE pudl_eia_energy_sources FROM PUDL_S3 FORMAT PAR
   inferSchema "true",
   isS3BucketPublic "true",
   useS3PathStyleAccess "true",
-  s3Endpoint "s3.us-east-1.amazonaws.com"
+  s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
 -- Verify:
