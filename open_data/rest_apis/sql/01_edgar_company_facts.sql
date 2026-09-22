@@ -29,15 +29,25 @@
 --   3. `start`/`end` are reserved words in most SQL dialects -- backtick-
 --      quoted below (fact.`start`, fact.`end`) even though the rest of the
 --      struct's fields don't need it.
---   4. POSSIBLE TRUNCATION BUG: Apple's fetch returned only 11 rows, all
---      from a single accession (0000320193-18-000145, filed 2018-11-05),
---      capping out at FY2018 -- the real endpoint has dozens of filings
---      back to ~2008-2009. This smells like the REST connector truncating
---      the response mid-array rather than SEC actually having that little
---      history. NOT YET CONFIRMED as a bug vs. some other explanation --
---      run the verification query in HOWTO.md, "Verifying data", before
---      trusting row counts from any table below. Applies to every company
---      here, not just Apple.
+--   4. NOT A BUG -- CONFIRMED RESOLVED (2026-09-21): Apple's fetch returns
+--      only 11 rows, all from a single accession (0000320193-18-000145,
+--      filed 2018-11-05), capping out at FY2018. Originally suspected as a
+--      Zetaris REST connector truncating the response mid-array. Ran the
+--      verification query from HOWTO.md, "Verifying data" -- a direct
+--      curl against the live SEC endpoint (no Zetaris involved) ALSO
+--      returned exactly 11 rows for Apple's us-gaap:Revenues tag, and
+--      Zetaris's own SELECT COUNT(*) matched it exactly (11 = 11). This
+--      rules out a Zetaris-side truncation bug entirely -- the live SEC
+--      API itself only has 11 data points under this specific tag for
+--      Apple. Likely explanation: Apple (like many filers) switched which
+--      XBRL tag it uses for total revenue at some point -- e.g. around the
+--      2018 ASC 606 revenue-recognition standard change -- so an older tag
+--      like `Revenues` genuinely stops appearing in later filings, which
+--      is consistent with all 11 rows tracing to one 2018 filing and
+--      nothing after. Still worth spot-checking other companies below the
+--      same way before assuming this generalizes, but treat a low row
+--      count here as "check the real API first," not "assume Zetaris
+--      truncated it."
 --   5. CREATE SCHEMASTORE CONTAINER has no IF NOT EXISTS support (confirmed
 --      via LightningDdlParseException) -- it's simply not in that
 --      statement's grammar, unlike many other CREATE statements. Running it
