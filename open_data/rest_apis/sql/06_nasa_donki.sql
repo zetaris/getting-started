@@ -121,7 +121,7 @@ CREATE LIGHTNING DATABASE NASA_REST DESCRIBE BY "NASA api.nasa.gov REST sources"
 -- (NeoWs). Skip this statement entirely if you already ran sql/05 in this
 -- environment (the `nasa` container will already exist).
 -- ---------------------------------------------------------------------------
--- CREATE SCHEMASTORE CONTAINER nasa;   -- commented: created by sql/05 already
+CREATE SCHEMASTORE CONTAINER nasa;
 
 -- =============================================================================
 -- CME EVENTS -- September 2026, DEMO_KEY
