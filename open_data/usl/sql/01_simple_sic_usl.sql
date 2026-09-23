@@ -123,6 +123,10 @@ SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_usl.sic_code;   -- expect 
 -- same major_group agree on that major_group's description"). See caveat 2
 -- above re: whether this correlated-subquery form is actually supported.
 -- ---------------------------------------------------------------------------
+
+-- ! Does not work
+-- ! org.apache.hive.service.cli.HiveSQLException: Error running query: [INVALID_EXTRACT_BASE_FIELD_TYPE] org.apache.spark.sql.AnalysisException: [INVALID_EXTRACT_BASE_FIELD_TYPE] Can't extract a value from "sic_code". Need a complex type [STRUCT, ARRAY, MAP] but got "STRING".; line 4 pos 27
+-- !
 REGISTER DQ major_group_desc_consistent TABLE lightning.metastore.usl_demo.sic_usl.sic_code AS
 NOT EXISTS (
     SELECT 1
