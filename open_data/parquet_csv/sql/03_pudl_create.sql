@@ -32,9 +32,6 @@ CREATE LIGHTNING FILESTORE TABLE pudl_eia_energy_sources FROM PUDL_S3 FORMAT PAR
   s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM PUDL_S3.pudl_eia_energy_sources LIMIT 10;
-
 -- A second, larger table for a richer demo -- yearly generator-level output:
 CREATE LIGHTNING FILESTORE TABLE pudl_eia_yearly_generators FROM PUDL_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://pudl.catalyst.coop/stable/out_eia__yearly_generators.parquet",
@@ -44,9 +41,9 @@ CREATE LIGHTNING FILESTORE TABLE pudl_eia_yearly_generators FROM PUDL_S3 FORMAT 
   s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
-SELECT * FROM PUDL_S3.pudl_eia_yearly_generators LIMIT 10;
-
 -- Note: PUDL also publishes the identical data as a single SQLite file per
 -- release (e.g. s3://pudl.catalyst.coop/stable/pudl.sqlite.zip) -- worth
 -- knowing if you also want a §5-style "SQL RDBMS" demo sourced from the same
 -- dataset as this Parquet one, for a "same data, two engines" story.
+
+-- Next: verify with sql/03_pudl_select.sql

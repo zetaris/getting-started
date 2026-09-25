@@ -2,7 +2,7 @@
 
 **Status:** Blocked — moved out of the main `sql/` sequence. Not required for this package's goals (8 other sources already cover the JSON-shape range needed); kept here as a flagged item for engineering to debug rather than dropped silently.
 
-**Source script:** [`04_singapore_pm25.sql`](04_singapore_pm25.sql) (unchanged from its last working state in `sql/`, moved here as-is)
+**Source script:** [`04_singapore_pm25_create.sql`](04_singapore_pm25_create.sql) (unchanged from its last working state in `sql/`, moved here as-is)
 
 **Reported by:** Michael Hay, 2026-09-19
 
@@ -10,12 +10,12 @@
 
 ## Summary
 
-Running the first `CREATE LIGHTNING REST TABLE` statement in `04_singapore_pm25.sql` against a live Zetaris SQL Workspace returned an HTTP 502, with no other query run beforehand in that session. The underlying API is confirmed reachable and returning valid data via direct `curl` testing, and confirmed not to require any special header or authentication. The leading hypothesis is that the source API's real-world rate limit is far stricter than documented, and that Zetaris's `CREATE LIGHTNING REST TABLE` path (and/or the Data Explorer's background preview of a newly-created source) issues more than one HTTP request for what appears to be a single SQL statement — but this has **not** been confirmed by inspecting Zetaris's own request logs, and is flagged here specifically so engineering can check that from the inside.
+Running the first `CREATE LIGHTNING REST TABLE` statement in `04_singapore_pm25_create.sql` against a live Zetaris SQL Workspace returned an HTTP 502, with no other query run beforehand in that session. The underlying API is confirmed reachable and returning valid data via direct `curl` testing, and confirmed not to require any special header or authentication. The leading hypothesis is that the source API's real-world rate limit is far stricter than documented, and that Zetaris's `CREATE LIGHTNING REST TABLE` path (and/or the Data Explorer's background preview of a newly-created source) issues more than one HTTP request for what appears to be a single SQL statement — but this has **not** been confirmed by inspecting Zetaris's own request logs, and is flagged here specifically so engineering can check that from the inside.
 
 ## Environment
 
 - Zetaris AI Data Gateway (`cloud.zetaris.com`), SQL Workspace
-- Statement run: the first `CREATE LIGHTNING REST TABLE pm25_readings_20260918 FROM SG_DATAGOVSG_REST REQUEST(...)` in `04_singapore_pm25.sql`
+- Statement run: the first `CREATE LIGHTNING REST TABLE pm25_readings_20260918 FROM SG_DATAGOVSG_REST REQUEST(...)` in `04_singapore_pm25_create.sql`
 - Endpoint: `https://api-open.data.gov.sg/v2/real-time/api/pm25?date=2026-09-18`
 - No prior query had been run against this endpoint or this Lightning database in the session
 
@@ -113,6 +113,6 @@ Skip this source. The other 8 REST sources in this package already cover the JSO
 
 ## References
 
-- Script: [`04_singapore_pm25.sql`](04_singapore_pm25.sql)
+- Script: [`04_singapore_pm25_create.sql`](04_singapore_pm25_create.sql)
 - `../../HOWTO.md`, "Troubleshooting / FAQ" — the general "`CREATE LIGHTNING REST TABLE` ... returned an HTTP 502" entry links back here for the full writeup
 - `../../rest-api-sources.md` — source catalog entry updated to reflect this status

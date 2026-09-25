@@ -6,7 +6,7 @@ Scoped context for picking up `open_data/rest_apis/` work without re-deriving wh
 
 - `open_data/rest_apis/HOWTO.md` — full `CREATE LIGHTNING REST TABLE` / `CREATE SCHEMASTORE VIEW` syntax reference, confirmed gotchas, the JSON-shape taxonomy, and a suggested testing order (§3)
 - `open_data/rest_apis/rest-api-sources.md` — catalog of all 9 candidate sources: license, shape, status, per-source detail
-- `open_data/rest_apis/sql/01_edgar_company_facts.sql` through `09_abs_data_api.sql` — one script per source
+- `open_data/rest_apis/sql/01_edgar_company_facts_create.sql`/`_select.sql` through `09_abs_data_api_create.sql`/`_select.sql` — a `_create.sql` (DDL) + `_select.sql` (verification/example queries) pair per source
 - `docs/plans/recipes/01-rest-json-apis.md` — the tracked plan and work-items for this category
 - `docs/plans/recipes/00-parquet-csv.md` — the sibling filestore-table package; a couple of findings below apply to both, not just REST
 

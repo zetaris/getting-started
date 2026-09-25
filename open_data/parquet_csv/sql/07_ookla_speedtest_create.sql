@@ -29,9 +29,6 @@ CREATE LIGHTNING FILESTORE TABLE ookla_speedtest_fixed FROM OOKLA_S3 FORMAT PARQ
   s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM OOKLA_S3.ookla_speedtest_fixed LIMIT 10;
-
 -- Mobile is the same path pattern with type=mobile instead of type=fixed:
 CREATE LIGHTNING FILESTORE TABLE ookla_speedtest_mobile FROM OOKLA_S3 FORMAT PARQUET OPTIONS (
   PATH "s3a://ookla-open-data/parquet/performance/type=mobile/year=2026/quarter=2/2026-04-01_performance_mobile_tiles.parquet",
@@ -41,9 +38,9 @@ CREATE LIGHTNING FILESTORE TABLE ookla_speedtest_mobile FROM OOKLA_S3 FORMAT PAR
   s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
-SELECT * FROM OOKLA_S3.ookla_speedtest_mobile LIMIT 10;
-
 -- Note: the filename date (2026-04-01 above) always reflects the *first day*
 -- of the quarter, not the file's publish date -- confirm the current
 -- quarter's exact filename with the listing command above rather than
 -- guessing the date pattern.
+
+-- Next: verify with sql/07_ookla_speedtest_select.sql

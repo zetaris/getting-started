@@ -33,18 +33,4 @@ CREATE LIGHTNING FILESTORE TABLE common_crawl_index FROM CC_INDEX_S3 FORMAT PARQ
   s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM CC_INDEX_S3.common_crawl_index LIMIT 10;
-
--- Suggested demo query once loaded -- this is the kind of "needle in a huge
--- columnar haystack" federation query this dataset is good for:
---   SELECT url, url_host_name, fetch_status, content_mime_type, warc_filename
---   FROM common_crawl_index
---   WHERE url_host_tld = 'gov'
---   LIMIT 25;
---
--- Reminder (see the license caveat above): this table gives you the URL,
--- WARC file offset, and metadata to go *find* a page's content inside a WARC
--- file -- it does not itself contain page text. Keep the demo scoped to the
--- index unless you've separately worked through the crawled-content licensing
--- question in parquet-csv-data-sources.md #6.
+-- Next: verify with sql/06_common_crawl_index_select.sql

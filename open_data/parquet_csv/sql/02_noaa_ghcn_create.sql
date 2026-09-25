@@ -27,9 +27,6 @@ CREATE LIGHTNING FILESTORE TABLE noaa_ghcn_daily_2025 FROM NOAA_GHCN_S3 FORMAT C
   s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM NOAA_GHCN_S3.noaa_ghcn_daily_2025 LIMIT 10;
-
 -- Note: GHCN-D's by_year CSVs ship without a header row (see the readme
 -- linked above for the 8-column layout: ID, DATE, ELEMENT, DATA_VALUE,
 -- M-FLAG, Q-FLAG, S-FLAG, OBS-TIME) -- hence header "false" above. If you
@@ -44,3 +41,5 @@ SELECT * FROM NOAA_GHCN_S3.noaa_ghcn_daily_2025 LIMIT 10;
 -- step outside Zetaris, the equivalent one-liner is:
 --   COPY (SELECT * FROM read_csv_auto('s3://noaa-ghcn-pds/csv/by_year/2025.csv'))
 --   TO 'ghcn_2025.parquet' (FORMAT PARQUET);
+
+-- Next: verify with sql/02_noaa_ghcn_select.sql

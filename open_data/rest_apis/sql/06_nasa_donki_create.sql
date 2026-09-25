@@ -3,22 +3,23 @@
 --           Information) -- CME (Coronal Mass Ejection) endpoint
 -- License:  NASA content is a U.S. federal government work, generally not
 --           subject to copyright (17 U.S.C. §105) -- same basis as
---           sql/05_nasa_neows.sql.
+--           sql/05_nasa_neows_create.sql.
 -- Format:   REST/JSON -- TOP-LEVEL ARRAY, not a top-level object. See
 --           caveat 1 below -- this is UNTESTED and may not work at all.
 -- Docs:     https://api.nasa.gov/ (DONKI section) ·
 --           https://ccmc.gsfc.nasa.gov/support/DONKI-webservices.php
 -- Signup:   DEMO_KEY works with no signup (30 req/hour, 50/day per IP) but
---           RECOMMENDED to register a free key instead -- see sql/05's
---           caveat 9 for the full rationale (that script's own testing
---           hit the DEMO_KEY limit). Register directly at
---           https://api.nasa.gov/ (First Name, Last Name, Email -- key
---           emailed immediately, no approval wait) for 1,000 req/hour.
+--           RECOMMENDED to register a free key instead -- see
+--           sql/05_nasa_neows_create.sql's caveat 9 for the full rationale
+--           (that script's own testing hit the DEMO_KEY limit). Register
+--           directly at https://api.nasa.gov/ (First Name, Last Name,
+--           Email -- key emailed immediately, no approval wait) for
+--           1,000 req/hour.
 --           IMPORTANT, CONFIRMED (2026-09-19): this rate limit is shared
---           with sql/05_nasa_neows.sql (same DEMO_KEY, same NASA_REST
---           database, same IP) -- sql/05's own testing had already used
---           up the DEMO_KEY quota, and this script's very first
---           CREATE LIGHTNING REST TABLE statement failed with a 429
+--           with sql/05_nasa_neows_create.sql (same DEMO_KEY, same
+--           NASA_REST database, same IP) -- sql/05's own testing had
+--           already used up the DEMO_KEY quota, and this script's very
+--           first CREATE LIGHTNING REST TABLE statement failed with a 429
 --           OVER_RATE_LIMIT before ever reaching this script's own
 --           question (caveat 1, whether a top-level JSON array registers
 --           at all) -- that question is STILL UNRESOLVED, blocked by the
@@ -85,8 +86,8 @@
 --      characters) and `N05W105` (7 characters, a 3-digit longitude
 --      value beyond +/-99) both occur in this exact date range. The
 --      latitude portion (2 digits, characters 2-3) is fixed-width, so
---      the hemisphere-pair split used in query 7 below
---      (`SUBSTR(source_location, 1, 1)` for N/S,
+--      the hemisphere-pair split used in sql/06_nasa_donki_select.sql
+--      query 6 (`SUBSTR(source_location, 1, 1)` for N/S,
 --      `SUBSTR(source_location, 4, 1)` for E/W) is reliable -- but don't
 --      assume the full string is always 6 characters if extending this
 --      further (e.g. extracting the numeric longitude value itself would
@@ -97,10 +98,11 @@
 --      `isMostAccurate: true` simultaneously -- a naive
 --      `WHERE isMostAccurate = true` filter intended to pick "the one
 --      best analysis per event" will occasionally return two rows for
---      the same event, not one. Query 2 below uses a
---      ROW_NUMBER() OVER (PARTITION BY activity_id ...) window function
---      instead (same confirmed pattern as sql/03 and sql/05) specifically
---      to guarantee exactly one row per event even when this quirk hits.
+--      the same event, not one. sql/06_nasa_donki_select.sql query 2
+--      uses a ROW_NUMBER() OVER (PARTITION BY activity_id ...) window
+--      function instead (same confirmed pattern as sql/03 and sql/05)
+--      specifically to guarantee exactly one row per event even when
+--      this quirk hits.
 --   9. CME `type` is DONKI's own speed-based classification, not
 --      something this script invents: S = slow (roughly <500 km/s),
 --      C = common (~500-1000 km/s), O = occasional (~1000-2000 km/s),
@@ -163,138 +165,6 @@ SELECT
 FROM nasa_rest.cme_events
 LATERAL VIEW explode(cmeAnalyses) AS analysis;
 
--- Verify:
-SELECT * FROM nasa.cme_instruments_table;
-SELECT * FROM nasa.cme_analyses_table;
-
--- ---------------------------------------------------------------------------
--- Diagnostic (run FIRST if the CREATE LIGHTNING REST TABLE statement itself
--- fails -- that's the top-level-array question in caveat 1, not a
--- flattening problem):
---   SELECT * FROM nasa_rest.cme_events;
---   DESCRIBE nasa_rest.cme_events;
--- If the table creation fails outright, report the exact error back before
--- attempting the views -- it'll tell us whether Zetaris supports top-level
--- array REST responses at all, which affects whether this source (and any
--- other API that returns a bare array) is viable in this package.
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Example queries -- run these against the views above to get a feel for
--- the data once everything's loaded. Picked to be genuinely interesting:
--- fastest events, a speed-classification breakdown, which events got the
--- most observational attention, and a look at where on the Sun these
--- eruptions actually came from.
--- ---------------------------------------------------------------------------
-
--- 1. Total CME count and date range actually covered by this table:
-SELECT
-    COUNT(DISTINCT activity_id) AS cme_count,
-    MIN(start_time)             AS earliest_event,
-    MAX(start_time)             AS latest_event
-FROM nasa.cme_analyses_table;
-
--- 2. The 5 fastest CMEs in this window -- one row per event even when an
--- event has more than one analysis flagged "most accurate" (see caveat
--- 8), using the same ROW_NUMBER() OVER (...) window-function pattern
--- confirmed working in sql/03 and sql/05, preferring the accurate flag
--- first and the highest speed as a tiebreaker:
-SELECT activity_id, start_time, speed, type, latitude, longitude
-FROM (
-    SELECT
-        activity_id,
-        start_time,
-        speed,
-        type,
-        latitude,
-        longitude,
-        ROW_NUMBER() OVER (
-            PARTITION BY activity_id
-            ORDER BY is_most_accurate DESC, speed DESC
-        ) AS rn
-    FROM nasa.cme_analyses_table
-) ranked
-WHERE rn = 1
-ORDER BY speed DESC
-LIMIT 5;
-
--- 3. CME speed classification breakdown (see caveat 9 for what S/C/O/R/ER
--- mean) -- count and speed range per type, across every analysis on
--- file (not deduplicated to one-per-event, since this is about the
--- distribution of recorded measurements, not a per-event count):
-SELECT
-    type,
-    COUNT(*)             AS analysis_count,
-    ROUND(MIN(speed), 0) AS min_speed_kms,
-    ROUND(AVG(speed), 0) AS avg_speed_kms,
-    ROUND(MAX(speed), 0) AS max_speed_kms
-FROM nasa.cme_analyses_table
-WHERE speed IS NOT NULL AND type IS NOT NULL
-GROUP BY type
-ORDER BY avg_speed_kms DESC;
-
--- 4. Most-observed events -- CMEs picked up by the most instruments,
--- a proxy for how well-documented/significant an event was:
-SELECT activity_id, start_time, COUNT(*) AS instrument_count
-FROM nasa.cme_instruments_table
-GROUP BY activity_id, start_time
-ORDER BY instrument_count DESC
-LIMIT 5;
-
--- 5. Events that needed more than one analysis on file -- often the
--- harder-to-measure or more scientifically interesting eruptions (see
--- caveat 8 -- some of these are the same events with the
--- multiple-isMostAccurate quirk):
-SELECT activity_id, start_time, COUNT(*) AS analysis_count
-FROM nasa.cme_analyses_table
-GROUP BY activity_id, start_time
-HAVING COUNT(*) > 1
-ORDER BY analysis_count DESC;
-
--- 6. Which solar hemisphere produced more CMEs with a known source
--- region -- north/south and east/west, using the fixed-width latitude
--- portion of source_location (see caveat 7 for why this substring split
--- is safe even though the full string isn't fixed-width):
-SELECT
-    SUBSTR(source_location, 1, 1) AS ns_hemisphere,
-    SUBSTR(source_location, 4, 1) AS ew_hemisphere,
-    COUNT(DISTINCT activity_id)   AS cme_count
-FROM nasa.cme_instruments_table
-WHERE source_location <> ''
-GROUP BY 1, 2
-ORDER BY cme_count DESC;
-
--- 7. Daily CME frequency across the date range -- a simple trend line,
--- extracting just the date portion of the ISO timestamp:
-SELECT
-    SUBSTR(start_time, 1, 10) AS event_date,
-    COUNT(DISTINCT activity_id) AS cme_count
-FROM nasa.cme_analyses_table
-GROUP BY 1
-ORDER BY event_date;
-
--- 8. Full detail on the single fastest CME in this window -- joins the
--- deduplicated-fastest-analysis logic from query 2 against the
--- instruments view for a complete picture, the same
--- join-across-two-view-families pattern as sql/03 query 8 and sql/04
--- query 8:
-SELECT
-    a.activity_id,
-    a.start_time,
-    a.speed,
-    a.type,
-    i.source_location,
-    i.instrument_name
-FROM (
-    SELECT activity_id, start_time, speed, type,
-           ROW_NUMBER() OVER (PARTITION BY activity_id ORDER BY is_most_accurate DESC, speed DESC) AS rn
-    FROM nasa.cme_analyses_table
-) a
-JOIN nasa.cme_instruments_table i ON i.activity_id = a.activity_id
-WHERE a.rn = 1
-ORDER BY a.speed DESC
-LIMIT 1;
-
 -- =============================================================================
 -- TEARDOWN -- removes the flattened view(s) this script created. Commented
 -- out by default so a re-run of the file above doesn't accidentally wipe
@@ -317,3 +187,5 @@ LIMIT 1;
 -- (once both this script's and sql/05's tables are no longer needed), use
 -- the Zetaris Data Explorer's "File Source & API" panel (see HOWTO.md,
 -- "Removing a source").
+
+-- Next: verify with sql/06_nasa_donki_select.sql

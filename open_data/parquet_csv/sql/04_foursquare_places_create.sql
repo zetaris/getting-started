@@ -36,12 +36,11 @@ CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT P
   s3Endpoint "https://data.source.coop"
 );
 
--- Verify:
-SELECT * FROM FSQ_SOURCE_COOP.foursquare_places LIMIT 10;
-
 -- Note: the places/ prefix above is sharded into many Parquet files
 -- (e.g. .../places/79.parquet, .../places/80.parquet, ...) -- pointing PATH
 -- at the directory (as above) rather than a single shard lets Zetaris pick
 -- up the whole dataset. If your Zetaris version requires a single-file PATH
 -- instead of a directory prefix, use one shard directly, e.g.:
 --   PATH "s3a://fused/fsq-os-places/2024-11-19/places/79.parquet"
+
+-- Next: verify with sql/04_foursquare_places_select.sql

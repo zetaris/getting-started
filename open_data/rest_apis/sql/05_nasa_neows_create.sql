@@ -21,7 +21,8 @@
 --
 -- Live-tested and confirmed working (2026-09-19): base table and the
 -- neo_browse_table view both created and verified successfully. Extended
--- the same day with a second, full-history view and 8 example queries.
+-- the same day with a second, full-history view and 8 example queries (see
+-- sql/05_nasa_neows_select.sql).
 --
 -- Investigated 2026-09-19:
 --   1. DELIBERATELY using /neo/browse instead of the more commonly-cited
@@ -56,11 +57,12 @@
 --      Eros this can be a date from 1900 -- expected, not a bug. Each
 --      object's full approach history -- past AND predicted future
 --      approaches, out to the year 2187 for some objects -- is only
---      available through neo_close_approaches_table below; queries 6-8
---      use it for exactly this reason. Two objects on this page (1916
---      Boreas, 1980 Tezcatlipoca) have ZERO recorded approaches at all --
---      expected null/absent behavior, not an error, if they don't show
---      up in an INNER JOIN against the approaches view.
+--      available through neo_close_approaches_table below; example queries
+--      6-8 in sql/05_nasa_neows_select.sql use it for exactly this reason.
+--      Two objects on this page (1916 Boreas, 1980 Tezcatlipoca) have ZERO
+--      recorded approaches at all -- expected null/absent behavior, not an
+--      error, if they don't show up in an INNER JOIN against the
+--      approaches view.
 --   5. Every field this script references (id, name,
 --      absolute_magnitude_h, estimated_diameter.kilometers.*,
 --      is_potentially_hazardous_asteroid, close_approach_date,
@@ -93,17 +95,16 @@
 --      re-issue the underlying HTTP request to the source API on every
 --      subsequent query that touches the table (directly or through a
 --      view built on it), not just the first one. Running this script's
---      base CREATE + both views + the 8 example queries below in one
---      sitting hit NASA's DEMO_KEY rate limit partway through (a 429
---      "OVER_RATE_LIMIT" from api.nasa.gov, surfaced by Zetaris as a
---      failed query, not at CREATE TABLE time but on a later plain
---      SELECT against an already-successfully-created view). This is the
---      same failure class as the Singapore PM2.5 case
---      (failure_cases/singapore_pm25/) and likely explains it much
---      better than the schema-introspection/preview-fetch guesses
---      recorded there -- Singapore's endpoint has a far tighter rate
---      limit, so the same "one HTTP call per query" behavior would
---      exhaust it almost immediately.
+--      base CREATE + both views + the 8 example queries in one sitting hit
+--      NASA's DEMO_KEY rate limit partway through (a 429 "OVER_RATE_LIMIT"
+--      from api.nasa.gov, surfaced by Zetaris as a failed query, not at
+--      CREATE TABLE time but on a later plain SELECT against an
+--      already-successfully-created view). This is the same failure class
+--      as the Singapore PM2.5 case (failure_cases/singapore_pm25/) and
+--      likely explains it much better than the schema-introspection/
+--      preview-fetch guesses recorded there -- Singapore's endpoint has a
+--      far tighter rate limit, so the same "one HTTP call per query"
+--      behavior would exhaust it almost immediately.
 --      WORKAROUND: cache the raw REST table right after creating it,
 --      before running multiple queries against it or its views, using
 --      the Lightning SQL Manual's documented CACHE TABLE statement:
@@ -137,8 +138,8 @@
 --      an hour from your FIRST request in the current window, not just a
 --      short pause like Singapore's endpoint (failure_cases/
 --      singapore_pm25/). To use a registered key, replace `DEMO_KEY` in
---      the endpoint below (and in sql/06_nasa_donki.sql, which shares
---      this rate limit) with the key emailed to you.
+--      the endpoint below (and in sql/06_nasa_donki_create.sql, which
+--      shares this rate limit) with the key emailed to you.
 --
 -- ---------------------------------------------------------------------------
 -- STEP 0: Lightning database for this source. Shared with sql/06 (DONKI) --
@@ -168,10 +169,10 @@ CREATE LIGHTNING REST TABLE neo_browse_page0 FROM NASA_REST REQUEST(
 -- CACHE the raw REST table before running anything else against it -- see
 -- caveat 8 above. This is an attempted fix for "every query re-hits the
 -- API," not yet confirmed to work for a Lightning REST table specifically.
--- If queries below still trigger new HTTP calls (visible as a fresh
--- rate-limit error after this point, or simply by watching whether
--- results change between two identical SELECTs), this didn't help --
--- report back either way:
+-- If queries in sql/05_nasa_neows_select.sql still trigger new HTTP calls
+-- (visible as a fresh rate-limit error after this point, or simply by
+-- watching whether results change between two identical SELECTs), this
+-- didn't help -- report back either way:
 CACHE TABLE nasa_rest.neo_browse_page0;
 
 -- One row per object, with its EARLIEST recorded close approach only (see
@@ -193,8 +194,9 @@ LATERAL VIEW explode(near_earth_objects) AS neo;
 -- Full approach history -- every recorded close approach (past and
 -- predicted future) for every object on this page, via a second
 -- LATERAL VIEW explode() on the nested close_approach_data array (see
--- caveat 2). This is the view queries 4-8 below use for anything needing
--- more than just the earliest approach on file:
+-- caveat 2). This is the view example queries 4-8 in
+-- sql/05_nasa_neows_select.sql use for anything needing more than just the
+-- earliest approach on file:
 CREATE SCHEMASTORE VIEW neo_close_approaches_table WITH CONTAINER nasa AS
 SELECT
     neo.id,
@@ -208,110 +210,13 @@ FROM nasa_rest.neo_browse_page0
 LATERAL VIEW explode(near_earth_objects) AS neo
 LATERAL VIEW explode(neo.close_approach_data) AS approach;
 
--- Verify:
-SELECT * FROM nasa.neo_browse_table;
-SELECT * FROM nasa.neo_close_approaches_table;
-
--- ---------------------------------------------------------------------------
--- Diagnostic (run if either view above fails or comes back empty):
---   SELECT * FROM nasa_rest.neo_browse_page0;
---   DESCRIBE nasa_rest.neo_browse_page0;
--- If array-indexing syntax (close_approach_data[0], used in
--- neo_browse_table) isn't supported by Zetaris's SQL dialect, that's
--- worth reporting back -- neo_close_approaches_table's plain double
--- explode() doesn't depend on it and should be unaffected either way.
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Example queries -- run these against the views above to get a feel for
--- the data once everything's loaded. Picked to be genuinely interesting:
--- size and hazard comparisons, the closest and fastest approaches on
--- record, an object's full approach count, and a look at predicted
--- future approaches.
--- ---------------------------------------------------------------------------
-
--- 1. The 5 largest objects on this page by estimated maximum diameter:
-SELECT name, diameter_km_min, diameter_km_max, is_potentially_hazardous_asteroid
-FROM nasa.neo_browse_table
-ORDER BY diameter_km_max DESC
-LIMIT 5;
-
--- 2. Potentially hazardous asteroids on this page, largest first:
-SELECT name, diameter_km_max, absolute_magnitude_h
-FROM nasa.neo_browse_table
-WHERE is_potentially_hazardous_asteroid = true
-ORDER BY diameter_km_max DESC;
-
--- 3. Average estimated diameter, hazardous vs. non-hazardous -- do the
--- objects NASA flags as potentially hazardous actually tend to be
--- bigger, on this sample?
-SELECT
-    is_potentially_hazardous_asteroid,
-    COUNT(*)                          AS object_count,
-    ROUND(AVG(diameter_km_max), 3)    AS avg_diameter_km_max
-FROM nasa.neo_browse_table
-GROUP BY is_potentially_hazardous_asteroid;
-
--- 4. Most-tracked objects -- how many recorded close approaches (past
--- and predicted future) does each object have on file, most first. A
--- proxy for how long/well an object has been observed:
-SELECT name, COUNT(*) AS approach_count
-FROM nasa.neo_close_approaches_table
-GROUP BY id, name
-ORDER BY approach_count DESC
-LIMIT 5;
-
--- 5. The single closest approach ever recorded across every object and
--- every approach on this page -- note the explicit CAST already applied
--- in the view (see caveat 6); ordering the raw string field here would
--- give a wrong answer:
-SELECT name, close_approach_date, miss_distance_km, relative_velocity_kmh
-FROM nasa.neo_close_approaches_table
-ORDER BY miss_distance_km ASC
-LIMIT 1;
-
--- 6. The single fastest recorded relative velocity across every object
--- and every approach on this page:
-SELECT name, close_approach_date, relative_velocity_kmh, miss_distance_km
-FROM nasa.neo_close_approaches_table
-ORDER BY relative_velocity_kmh DESC
-LIMIT 1;
-
--- 7. Each object's closest-ever approach (not just its earliest, as
--- neo_browse_table gives) -- a window function ranks every object's own
--- approaches by distance, same ROW_NUMBER() OVER (...) pattern confirmed
--- working in sql/03 (Open Food Facts) query 7 and sql/04 (Singapore
--- PM2.5, failure_cases/) query 7, applied here to a genuine "top-N per
--- group" question:
-SELECT name, close_approach_date, miss_distance_km
-FROM (
-    SELECT
-        name,
-        close_approach_date,
-        miss_distance_km,
-        ROW_NUMBER() OVER (PARTITION BY id ORDER BY miss_distance_km ASC) AS rn
-    FROM nasa.neo_close_approaches_table
-) ranked
-WHERE rn = 1
-ORDER BY miss_distance_km ASC;
-
--- 8. Predicted future approaches (after this script's test date) for
--- hazardous objects only, soonest first -- confirms the dataset isn't
--- purely historical: some objects have close-approach predictions out
--- to the year 2187. Swap the literal date for whatever "today" is when
--- you run this:
-SELECT name, close_approach_date, miss_distance_km
-FROM nasa.neo_close_approaches_table
-WHERE is_potentially_hazardous_asteroid = true
-  AND close_approach_date > '2026-09-19'
-ORDER BY close_approach_date ASC;
-
 -- ---------------------------------------------------------------------------
 -- Optional, further follow-up: this page (page 0) is only 20 of 62,401
 -- total objects (see caveat 3). A second REST table against
 -- `?page=1&api_key=DEMO_KEY` would follow the exact same pattern as
 -- PokéAPI's second-Pokémon extension (sql/02) -- not built here, since
--- one page already gives enough variety for the queries above.
+-- one page already gives enough variety for the queries in
+-- sql/05_nasa_neows_select.sql.
 -- ---------------------------------------------------------------------------
 
 -- =============================================================================
@@ -338,3 +243,5 @@ ORDER BY close_approach_date ASC;
 -- (once both this script's and sql/06's tables are no longer needed), use
 -- the Zetaris Data Explorer's "File Source & API" panel (see HOWTO.md,
 -- "Removing a source").
+
+-- Next: verify with sql/05_nasa_neows_select.sql

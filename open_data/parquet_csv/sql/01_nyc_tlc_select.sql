@@ -1,0 +1,16 @@
+-- =============================================================================
+-- Verification queries for 01_nyc_tlc_create.sql
+-- Assumes 01_nyc_tlc_create.sql has already been run.
+--
+-- Commented out by default so running this whole file doesn't silently fire
+-- a read query against the table. Uncomment what you want to run, or run it
+-- directly in the SQL Editor.
+--
+-- Only Option A (CONFIRMED DEAD -- see the create script's caveat 1) has a
+-- table to verify here. Option B is left fully commented out in the create
+-- script; once you've filled in your own bucket/credentials and run it, add
+-- your own verification query below against nyc_tlc_yellow_trips.
+-- =============================================================================
+
+-- === Verification ===
+-- SELECT * FROM nyc_tlc_yellow_trips LIMIT 10;

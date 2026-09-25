@@ -32,18 +32,9 @@ CREATE LIGHTNING FILESTORE TABLE gbif_occurrences FROM GBIF_S3 FORMAT PARQUET OP
   s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM GBIF_S3.gbif_occurrences LIMIT 10;
-
--- Note: this snapshot is large (1.6B+ rows worldwide) -- for a live demo,
--- filter early and narrowly, e.g. by country code or taxonomic class, rather
--- than a bare SELECT * across the whole table:
---   SELECT scientificname, countrycode, decimallatitude, decimallongitude, eventdate
---   FROM gbif_occurrences
---   WHERE countrycode = 'AU' AND class = 'Aves'
---   LIMIT 100;
---
 -- GBIF also publishes a citation.txt alongside each snapshot
 -- (s3://gbif-open-data-us-east-1/occurrence/2026-09-01/citation.txt) -- pull
 -- that into your demo's README/attribution notice per their citation
 -- guidelines linked above.
+
+-- Next: verify with sql/08_gbif_select.sql

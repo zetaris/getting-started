@@ -45,7 +45,8 @@
 --      "national" figure provided by this endpoint at all; a
 --      national-level number has to be computed (e.g. an average across
 --      the 5 regions), not read off a field that isn't there. Fixed
---      below -- see query 5 for the computed replacement.
+--      below -- see 04_singapore_pm25_select.sql query 5 for the computed
+--      replacement.
 --   4. Without a `date` parameter, this endpoint returns only the single
 --      LATEST reading (one item) -- fine for a smoke test, but not enough
 --      data for the kind of trend/comparison queries this script now
@@ -123,7 +124,8 @@ FROM sg_datagovsg_rest.pm25_readings_20260918
 LATERAL VIEW explode(data.items) AS item;
 
 -- Region reference view -- name + coordinates, a static lookup table that
--- pairs naturally with the readings above (see query 8):
+-- pairs naturally with the readings above (see
+-- 04_singapore_pm25_select.sql query 8):
 CREATE SCHEMASTORE VIEW pm25_regions_table WITH CONTAINER singapore AS
 SELECT
     region.name                          AS region_name,
@@ -131,20 +133,6 @@ SELECT
     region.`labelLocation`.longitude     AS longitude
 FROM sg_datagovsg_rest.pm25_readings_20260918
 LATERAL VIEW explode(data.regionMetadata) AS region;
-
--- Verify:
-SELECT * FROM singapore.pm25_readings_table ORDER BY reading_timestamp;
-SELECT * FROM singapore.pm25_regions_table;
-
--- ---------------------------------------------------------------------------
--- Diagnostic (run if any view above fails or comes back empty):
---   SELECT * FROM sg_datagovsg_rest.pm25_readings_20260918;
---   DESCRIBE sg_datagovsg_rest.pm25_readings_20260918;
--- If dot-access through data.items (nested under a non-array `data`
--- struct) fails, that's a different failure mode from every other script
--- in this package -- worth isolating from the "array at the top level"
--- sources (EDGAR, PokéAPI) when reporting back.
--- ---------------------------------------------------------------------------
 
 -- =============================================================================
 -- LONG-FORMAT CROSS-REGION VIEW -- same UNION ALL pattern as EDGAR's
@@ -165,103 +153,6 @@ UNION ALL
 SELECT reading_timestamp, 'west'    AS region, pm25_west    AS pm25 FROM singapore.pm25_readings_table
 UNION ALL
 SELECT reading_timestamp, 'central' AS region, pm25_central AS pm25 FROM singapore.pm25_readings_table;
-
--- ---------------------------------------------------------------------------
--- Example queries -- run these against the views above to get a feel for
--- the data once everything's loaded. Picked to be genuinely interesting:
--- a full-day trend, a region-vs-region comparison, worst/best moments of
--- the day, a health-threshold check, and an hour-by-hour "which region is
--- worst right now" ranking.
--- ---------------------------------------------------------------------------
-
--- 1. Full 24-hour trend, one row per hour with all 5 regions side by
--- side -- the rawest view of the day:
-SELECT * FROM singapore.pm25_readings_table ORDER BY reading_timestamp;
-
--- 2. Daily summary per region -- average, minimum, and maximum PM2.5
--- across the day, worst average first:
-SELECT
-    region,
-    ROUND(AVG(pm25), 1) AS avg_pm25,
-    MIN(pm25)           AS min_pm25,
-    MAX(pm25)           AS max_pm25
-FROM singapore.pm25_readings_long_table
-GROUP BY region
-ORDER BY avg_pm25 DESC;
-
--- 3. The single worst (region, hour) reading of the day:
-SELECT reading_timestamp, region, pm25
-FROM singapore.pm25_readings_long_table
-ORDER BY pm25 DESC
-LIMIT 1;
-
--- 4. The single cleanest (region, hour) reading of the day:
-SELECT reading_timestamp, region, pm25
-FROM singapore.pm25_readings_long_table
-ORDER BY pm25 ASC
-LIMIT 1;
-
--- 5. Computed "national" hourly average -- the API itself has no such
--- field (see caveat 3), so this derives one as the average of the 5
--- regions per hour, then shows the trend across the day:
-SELECT
-    reading_timestamp,
-    ROUND(AVG(pm25), 1) AS national_avg_pm25
-FROM singapore.pm25_readings_long_table
-GROUP BY reading_timestamp
-ORDER BY reading_timestamp;
-
--- 6. Hours each region spent "elevated" (PM2.5 > 55, a commonly used
--- unhealthy-for-sensitive-groups style threshold) -- a health-relevant
--- summary rather than a raw average:
-SELECT
-    region,
-    COUNT(*)                                     AS hours_elevated,
-    ROUND(100.0 * COUNT(*) / 24, 1)               AS pct_of_day_elevated
-FROM singapore.pm25_readings_long_table
-WHERE pm25 > 55
-GROUP BY region
-ORDER BY hours_elevated DESC;
-
--- 7. Which region was worst in EACH hour -- a window function ranks the
--- 5 regions within every hour, same ROW_NUMBER() OVER (...) pattern
--- confirmed working in sql/03 (Open Food Facts) query 7, applied here to
--- a genuine "top-N per group" question rather than a self-join:
-SELECT reading_timestamp, region AS worst_region, pm25
-FROM (
-    SELECT
-        reading_timestamp,
-        region,
-        pm25,
-        ROW_NUMBER() OVER (PARTITION BY reading_timestamp ORDER BY pm25 DESC) AS rn
-    FROM singapore.pm25_readings_long_table
-) ranked
-WHERE rn = 1
-ORDER BY reading_timestamp;
-
--- 8. Worst daily-average region, alongside where it actually is --
--- joins the long-format readings (aggregated) against the region
--- reference view for its coordinates, the same nutrition-view-plus-
--- ingredients-view cross-view join pattern as sql/03 query 8:
-SELECT
-    r.region_name,
-    daily.avg_pm25,
-    r.latitude,
-    r.longitude
-FROM singapore.pm25_regions_table r
-JOIN (
-    SELECT region, ROUND(AVG(pm25), 1) AS avg_pm25
-    FROM singapore.pm25_readings_long_table
-    GROUP BY region
-) daily ON daily.region = r.region_name
-ORDER BY daily.avg_pm25 DESC;
-
--- ---------------------------------------------------------------------------
--- Attribution reminder (SODL v1.0, per the license note above):
---   "Contains information from data.gov.sg accessed on {date} which is
---   made available under the terms of the Singapore Open Data Licence
---   version 1.0."
--- ---------------------------------------------------------------------------
 
 -- =============================================================================
 -- TEARDOWN -- removes the flattened views this script created. Commented
@@ -287,3 +178,5 @@ ORDER BY daily.avg_pm25 DESC;
 -- To remove the SG_DATAGOVSG_REST REST table and Lightning database
 -- registration, use the Zetaris Data Explorer's "File Source & API"
 -- panel (see HOWTO.md, "Removing a source").
+
+-- Next: verify with 04_singapore_pm25_select.sql

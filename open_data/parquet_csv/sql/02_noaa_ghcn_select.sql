@@ -1,0 +1,11 @@
+-- =============================================================================
+-- Verification queries for 02_noaa_ghcn_create.sql
+-- Assumes 02_noaa_ghcn_create.sql has already been run.
+--
+-- Commented out by default so running this whole file doesn't silently fire
+-- a read query against the table. Uncomment what you want to run, or run it
+-- directly in the SQL Editor.
+-- =============================================================================
+
+-- === Verification ===
+-- SELECT * FROM NOAA_GHCN_S3.noaa_ghcn_daily_2025 LIMIT 10;
