@@ -1,6 +1,8 @@
 # Plan: Split CREATE setup from verification/example SELECT queries (REST + Parquet packages)
 
-**Status:** 🔲 Not started — planning only, nothing in this document has been executed.
+> **Archived — done.** This split was executed (commit `4b25da1`, "Split REST/Parquet SQL scripts into CREATE and SELECT files", merged via PR #10). Every `open_data/rest_apis/sql/*` and `open_data/parquet_csv/sql/*` file now ships as a `*_create.sql`/`*_select.sql` pair. Kept here as a historical record of the target structure and rationale.
+
+**Status:** ✅ Done — executed in `4b25da1` (PR #10).
 **Depends on:** `open_data/rest_apis/sql/*.sql`, `open_data/rest_apis/failure_cases/singapore_pm25/04_singapore_pm25.sql`, `open_data/parquet_csv/sql/*.sql`, and every doc that cites them (§5).
 **Out of scope:** `open_data/usl/sql/*.sql` — a different DDL family (`CREATE NAMESPACE`/`CREATE TABLE` against the Iceberg-backed metastore, per `docs/guides/zetaris-sql-companion.md` §7-8) with its own CREATE/INSERT/SELECT shape. Noted as possible future follow-up in §6.
 

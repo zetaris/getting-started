@@ -1,5 +1,7 @@
 # Handoff to Claude Code
 
+> **Archived — superseded.** This was the original one-time Cowork → Claude Code session handoff. Its content is now fully superseded by [`README.md`](../../../README.md) and [`docs/plans/FUTURES.md`](../FUTURES.md), which reflect what was actually built. `quickstart-data-manifest.md` (referenced below) remains at the repo root, still the working source-detail doc for unbuilt categories. Kept here as a historical record.
+
 This package is the starting content for a public GitHub repo — working name `zetaris-quickstart-data` — that helps people trying out a small Zetaris deployment get real, permissively-licensed data queryable in minutes. It was assembled in Cowork (research, license verification, and drafting); this handoff is for picking the work up in Claude Code to turn it into an actual repo.
 
 ## What's in this package

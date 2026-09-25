@@ -14,14 +14,14 @@
 
 | | |
 |---|---|
-| [Zetaris installation & configuration guide](zetaris-installation-guide.md) | 📋 Planned — AWS free-tier mini install + local docker-compose install. Every recipe below needs a running instance to verify against; this is what provides one. |
+| [Zetaris installation & configuration guide](../install/updated_zetaris_installation_guide.md) | ✅ Done — local docker-compose install fully tested; AWS free-tier path checked on paper, not yet run on AWS. See the [test record](../install/zetaris-installation-test-record.md). |
 
 ## Recipes, in priority order
 
 | # | Category | Status | Plan | Why this position |
 |---|---|---|---|---|
-| 0 | Parquet / CSV | 🟢 Active | [recipes/00-parquet-csv.md](recipes/00-parquet-csv.md) | Already scripted (9 sources) + 3 pulled-forward candidates from later categories (Singapore CSV, Open Food Facts bulk export, Sentinel-2 GeoParquet); finishing this first gives a fully verified reference for the filestore-table pattern everything file-based reuses. |
-| 1 | JSON / REST APIs | 🟢 Active | [recipes/01-rest-json-apis.md](recipes/01-rest-json-apis.md) | SEC EDGAR and PokéAPI both live-tested and working — PokéAPI confirmed nested dot-access goes 2+ levels deep through `explode()`, derisking similarly-shaped later sources. 7 more sources scripted 2026-09-19 (Open Food Facts live API, Singapore PM2.5, NASA NeoWs/DONKI, Eurostat, StatCan WDS, ABS) covering a deliberately wide range of JSON shapes, several flagged high-risk (DONKI's top-level array, Eurostat/ABS's SDMX formats) — testing one by one is next. Open Food Facts's bulk export is at priority 0 instead (it's a file source, not a REST one). |
+| 0 | Parquet / CSV | 🟢 Active | [recipes/00-parquet-csv.md](recipes/00-parquet-csv.md) | 9 sources scripted, most live-tested; CREATE/SELECT split done (each source now ships as a `*_create.sql`/`*_select.sql` pair — see `docs/plans/archive/rest-parquet-create-select-split-plan.md`). Gives a fully verified reference for the filestore-table pattern everything file-based reuses. |
+| 1 | JSON / REST APIs | 🟢 Active | [recipes/01-rest-json-apis.md](recipes/01-rest-json-apis.md) | 6 of 9 sources live-tested and working (SEC EDGAR, PokéAPI, NASA NeoWs, Eurostat, StatCan WDS, ABS Data API); Open Food Facts partially tested (query 8 not reached); NASA DONKI still not yet tested (top-level-array question open); Singapore PM2.5 blocked and moved to `failure_cases/`. CREATE/SELECT split done, same as Parquet/CSV. |
 | 2 | SQL RDBMS | 📋 Planned | [recipes/02-sql-rdbms.md](recipes/02-sql-rdbms.md) | Self-hosted via docker compose, no external account needed — establishes the JDBC `CREATE DATASOURCE` pattern independent of any API-key story. |
 | 3 | Logs | 📋 Planned | [recipes/03-logs.md](recipes/03-logs.md) | Reuses the filestore-table pattern from Parquet/CSV directly; low complexity once that pattern is confirmed. |
 | 4 | NASA open APIs | 📋 Planned | [recipes/04-nasa-open-data.md](recipes/04-nasa-open-data.md) | Richest, best-documented API family with a genuine no-key entry point (Image/Video Library) before any signup — high demo value, low friction. |
@@ -37,6 +37,7 @@
 
 - **Kaggle / data.world sourcing rule** (manifest §8) — a cross-cutting verification rule ("independently trace the license, don't trust a badge"), not a category with its own folder. Gets folded into `LICENSE-NOTES.md` and the top-level conventions section of the README rather than its own plan.
 - **Known limitations** (manifest §14) — each item there is already attached to the recipe it affects; check a recipe's "Open questions" section rather than re-reading §14 separately.
+- **Unified Semantic Layer (USL)** ([`open_data/usl/`](../../open_data/usl/), tracked in [`docs/plans/usl-simple-advanced-build-plan.md`](usl-simple-advanced-build-plan.md)) — a contrast track, not a numbered recipe. It rebuilds the priority-10 EDGAR+SIC data product (see `edgar-sic-enrichment-plan.md`) using USL instead of REST+SchemaStore+VDM, specifically to compare the two mechanisms. Live-tested with a null-handling fix applied (`8f18f4f`); believed passing, pending final confirmation from whoever ran it.
 
 ## When picking up the next recipe
 

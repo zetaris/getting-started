@@ -1,6 +1,8 @@
 # REST API work — handoff to next session
 
-Scoped context for picking up `open_data/rest_apis/` work without re-deriving what's already been found. Companion to `handoff.md` (the original Cowork → Claude Code handoff for the whole repo) and `docs/plans/FUTURES.md` (the full category roadmap) — this doc is narrowly about the REST API package.
+> **Archived — superseded.** This is a point-in-time session handoff (2026-09-19). Current, live source status is tracked in [`open_data/rest_apis/rest-api-sources.md`](../../../open_data/rest_apis/rest-api-sources.md) and [`docs/plans/recipes/01-rest-json-apis.md`](../recipes/01-rest-json-apis.md) — read those for the real state, not this doc. Kept here as a historical record.
+
+Scoped context for picking up `open_data/rest_apis/` work without re-deriving what's already been found. Companion to `handoff.md` (the original Cowork → Claude Code handoff for the whole repo, now archived alongside this doc) and `docs/plans/FUTURES.md` (the full category roadmap) — this doc is narrowly about the REST API package.
 
 ## Where everything lives
 

@@ -330,4 +330,4 @@ For the environment, results and memory measurements behind this guide, see the 
 - [ ] Intended Parquet/CSV and REST recipes return data.
 - [ ] For AWS, the cost estimate, credit expiry and teardown time are recorded.
 
-Related documents: [test record](zetaris-installation-test-record.md), [getting-started README](../../README.md), [installation plan](../plans/zetaris-installation-guide.md), [Parquet/CSV plan](../plans/recipes/00-parquet-csv.md).
+Related documents: [test record](zetaris-installation-test-record.md), [getting-started README](../../README.md), [original installation plan](../plans/archive/zetaris-installation-guide.md) (archived — superseded by this guide), [Parquet/CSV plan](../plans/recipes/00-parquet-csv.md).

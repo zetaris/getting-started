@@ -1,6 +1,8 @@
 # Plan: Zetaris hobby-edition installation & configuration guide
 
-**Status:** 📋 Planned — shape of the distribution(s) not yet known; this is a scaffold to fill in as that becomes clear
+> **Archived — superseded.** The real, user-facing guide this plan was scaffolding now exists at [`docs/install/updated_zetaris_installation_guide.md`](../../install/updated_zetaris_installation_guide.md), with its test results in [`docs/install/zetaris-installation-test-record.md`](../../install/zetaris-installation-test-record.md). Kept here only as a historical record of the original planning.
+
+**Status:** ✅ Superseded — shape of the distribution(s) not yet known; this is a scaffold to fill in as that becomes clear
 **Target output:** a real, user-facing guide (working name: `docs/install/zetaris-hobby-edition.md` or a top-level `INSTALL.md` — decide once the content exists) covering two install paths.
 
 ## Why this exists
