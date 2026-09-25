@@ -158,19 +158,26 @@ SELECT COUNT(*) FROM lightning.metastore.usl_demo.company_profile_usl.sic_code; 
 -- as a certainty until confirmed live.
 -- ---------------------------------------------------------------------------
 ACTIVATE USL TABLE lightning.metastore.usl_demo.company_profile_usl.company AS
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.apple_submissions_raw
-UNION ALL
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.ibm_submissions_raw
-UNION ALL
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.oracle_submissions_raw
-UNION ALL
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.walmart_submissions_raw
-UNION ALL
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.target_submissions_raw
-UNION ALL
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.ford_submissions_raw
-UNION ALL
-SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.tesla_submissions_raw;
+SELECT
+    COALESCE(cik, '') AS cik,
+    COALESCE(entity_name, '') AS entity_name,
+    COALESCE(sic, '') AS sic,
+    sic_description_edgar
+FROM (
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.apple_submissions_raw
+    UNION ALL
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.ibm_submissions_raw
+    UNION ALL
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.oracle_submissions_raw
+    UNION ALL
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.walmart_submissions_raw
+    UNION ALL
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.target_submissions_raw
+    UNION ALL
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.ford_submissions_raw
+    UNION ALL
+    SELECT cik, name AS entity_name, sic, `sicDescription` AS sic_description_edgar FROM sec_data.tesla_submissions_raw
+) AS companies;
 
 SELECT COUNT(*) FROM lightning.metastore.usl_demo.company_profile_usl.company;   -- expect 7
 
@@ -185,6 +192,10 @@ SELECT COUNT(*) FROM lightning.metastore.usl_demo.company_profile_usl.company;  
 --       a per-row correlated subquery (REGISTER DQ takes a boolean
 --       expression evaluated per record, not an aggregate WHERE clause).
 -- ---------------------------------------------------------------------------
+-- ! Does not work
+-- ! org.apache.hive.service.cli.HiveSQLException: Error running query: [_LEGACY_ERROR_TEMP_2027] org.apache.spark.SparkRuntimeException: Unexpected operator RelationV2[sic_code#76220, description#76221, division#76222, division_desc#76223, major_group#76224, major_group_desc#76225, industry_group#76226, industry_group_desc#76227] lightning.metastore.usl_demo.company_profile_usl.sic_code metastore.usl_demo.company_profile_usl.sic_code
+-- !
+
 REGISTER DQ sic_description_agrees TABLE lightning.metastore.usl_demo.company_profile_usl.company AS
 sic_description_edgar = (
     SELECT description
