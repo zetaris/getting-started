@@ -96,7 +96,7 @@ These figures fit the preflight check's assumptions (6 GB minimum, 8 GB recommen
 
 ## AWS path
 
-The [installation plan](../plans/zetaris-installation-guide.md) asks for the AWS path to be written up with its services, cost and teardown, and for two questions to be answered: whether a free-tier micro instance can run Zetaris, and whether a session fits the credit budget. Both were checked on paper; nothing was launched on AWS.
+The [original installation plan](../plans/archive/zetaris-installation-guide.md) (archived — superseded by the guide itself) asked for the AWS path to be written up with its services, cost and teardown, and for two questions to be answered: whether a free-tier micro instance can run Zetaris, and whether a session fits the credit budget. Both were checked on paper; nothing was launched on AWS.
 
 | Check | Result |
 | --- | --- |

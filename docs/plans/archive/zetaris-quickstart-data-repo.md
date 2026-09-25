@@ -1,8 +1,10 @@
 # Plan: Build out `zetaris-quickstart-data` — overview
 
-Source: `handoff.md` (Cowork handoff), `quickstart-data-manifest.md` (main source guide, 14 sections), `open_data/parquet_csv/` (the one category with runnable code so far). These currently exist as untracked files in the main checkout (`/Users/mihay42/dev/getting-started`), not yet in this branch/worktree — see Phase 0.
+> **Archived — superseded.** Phase 0's baseline (committing the handoff package) is long done, and the live roadmap now lives in [`docs/plans/FUTURES.md`](../FUTURES.md) and its `docs/plans/recipes/` files, plus the real install guide in [`docs/install/`](../../install/). Kept here as a historical record of the original top-level plan.
 
-This is the top-level plan. The category-by-category rollout lives in **[FUTURES.md](FUTURES.md)** (the roadmap index) and its per-category files in **`recipes/`** — don't duplicate that detail here; this file covers the parts that aren't a single category (baseline, top-level docs, the install guide, and sequencing).
+Source: `handoff.md` (Cowork handoff, now archived alongside this doc), `quickstart-data-manifest.md` (main source guide, 14 sections), `open_data/parquet_csv/` (the one category with runnable code so far, at the time this was written). These currently exist as untracked files in the main checkout (`/Users/mihay42/dev/getting-started`), not yet in this branch/worktree — see Phase 0.
+
+This is the top-level plan. The category-by-category rollout lives in **[FUTURES.md](../FUTURES.md)** (the roadmap index) and its per-category files in **`recipes/`** — don't duplicate that detail here; this file covers the parts that aren't a single category (baseline, top-level docs, the install guide, and sequencing).
 
 ## Context
 
@@ -19,11 +21,11 @@ Note on current layout: the handoff suggested a `parquet/` folder; the package w
 
 ## Phase 1 — Zetaris installation & configuration guide
 
-Deferred from "build the repo tree" status to its own prerequisite: every recipe needs a running Zetaris instance to verify against, and the shape of a hobby/mini edition isn't known yet. Full detail in **[zetaris-installation-guide.md](zetaris-installation-guide.md)** — covers both a candidate AWS free-tier mini install (fits inside free-tier limits + ~$200 promotional credit, time-boxed) and a local `docker compose` install. This needs to reach at least a working local install before the Parquet/CSV recipe's live-verification work items can close.
+Deferred from "build the repo tree" status to its own prerequisite: every recipe needs a running Zetaris instance to verify against, and the shape of a hobby/mini edition isn't known yet. Full detail in **[zetaris-installation-guide.md](zetaris-installation-guide.md)** (archived — see its own banner) — covers both a candidate AWS free-tier mini install (fits inside free-tier limits + ~$200 promotional credit, time-boxed) and a local `docker compose` install. This needs to reach at least a working local install before the Parquet/CSV recipe's live-verification work items can close.
 
 ## Phase 2 — Category rollout
 
-Tracked entirely in **[FUTURES.md](FUTURES.md)**. Summary of current priority order: Parquet/CSV (active) → JSON/REST APIs → SQL RDBMS → Logs → NASA → Singapore → data.gov → EU → UK → Canada/Australia/Mexico/Africa → PDFs → Kafka (deferred, blocked on verification per its recipe). Each category is its own file under `recipes/` with its own checklist — check progress there, update status in both places together.
+Tracked entirely in **[FUTURES.md](../FUTURES.md)**. Summary of current priority order: Parquet/CSV (active) → JSON/REST APIs → SQL RDBMS → Logs → NASA → Singapore → data.gov → EU → UK → Canada/Australia/Mexico/Africa → PDFs → Kafka (deferred, blocked on verification per its recipe). Each category is its own file under `recipes/` with its own checklist — check progress there, update status in both places together.
 
 ## Phase 3 — Top-level docs
 
