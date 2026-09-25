@@ -29,7 +29,7 @@ Right now only the Parquet/CSV corner (`sql/*.sql`, tested against documented sy
 These can't be resolved by reading docs alone — they need an actual `CREATE LIGHTNING FILESTORE TABLE` run against a live Zetaris deployment:
 
 - **Credential-less access to public S3 buckets.** All nine Parquet/CSV sources are public/anonymous buckets, but every documented Zetaris filestore example includes `AWSACCESSKEYID`/`AWSSECRETACCESSKEY` with no documented anonymous option. `HOWTO.md` section 2 lists three things to try (omit the keys, pass empty/`"anonymous"` values, fall back to a real IAM key). Once you know which works, update `HOWTO.md` and all nine `sql/*.sql` headers with the confirmed answer instead of the current placeholder guidance.
-- **Whether `PATH` accepts a plain HTTPS URL**, not just `s3a://`/`wasb://`. Matters specifically for `sql/01_nyc_tlc.sql`, which currently defaults to the (less reliable) S3 mirror because of this. If HTTPS works, that script can switch to the CloudFront URL as primary.
+- **Whether `PATH` accepts a plain HTTPS URL**, not just `s3a://`/`wasb://`. Matters specifically for `sql/01_nyc_tlc_create.sql`, which currently defaults to the (less reliable) S3 mirror because of this. If HTTPS works, that script can switch to the CloudFront URL as primary.
 - Once both are confirmed, re-run all nine scripts end to end and replace the placeholder date/version/release fragments in each `PATH` (called out in every script's header comment) with values confirmed current at the time.
 
 ## Conventions to keep

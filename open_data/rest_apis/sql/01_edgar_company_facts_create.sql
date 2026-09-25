@@ -33,21 +33,21 @@
 --      only 11 rows, all from a single accession (0000320193-18-000145,
 --      filed 2018-11-05), capping out at FY2018. Originally suspected as a
 --      Zetaris REST connector truncating the response mid-array. Ran the
---      verification query from HOWTO.md, "Verifying data" -- a direct
---      curl against the live SEC endpoint (no Zetaris involved) ALSO
---      returned exactly 11 rows for Apple's us-gaap:Revenues tag, and
---      Zetaris's own SELECT COUNT(*) matched it exactly (11 = 11). This
---      rules out a Zetaris-side truncation bug entirely -- the live SEC
---      API itself only has 11 data points under this specific tag for
---      Apple. Likely explanation: Apple (like many filers) switched which
---      XBRL tag it uses for total revenue at some point -- e.g. around the
---      2018 ASC 606 revenue-recognition standard change -- so an older tag
---      like `Revenues` genuinely stops appearing in later filings, which
---      is consistent with all 11 rows tracing to one 2018 filing and
---      nothing after. Still worth spot-checking other companies below the
---      same way before assuming this generalizes, but treat a low row
---      count here as "check the real API first," not "assume Zetaris
---      truncated it."
+--      verification query from sql/01_edgar_company_facts_select.sql, "the
+--      independent curl cross-check -- a direct curl against the live SEC
+--      endpoint (no Zetaris involved) ALSO returned exactly 11 rows for
+--      Apple's us-gaap:Revenues tag, and Zetaris's own SELECT COUNT(*)
+--      matched it exactly (11 = 11). This rules out a Zetaris-side
+--      truncation bug entirely -- the live SEC API itself only has 11 data
+--      points under this specific tag for Apple. Likely explanation: Apple
+--      (like many filers) switched which XBRL tag it uses for total revenue
+--      at some point -- e.g. around the 2018 ASC 606 revenue-recognition
+--      standard change -- so an older tag like `Revenues` genuinely stops
+--      appearing in later filings, which is consistent with all 11 rows
+--      tracing to one 2018 filing and nothing after. Still worth
+--      spot-checking other companies below the same way before assuming
+--      this generalizes, but treat a low row count here as "check the real
+--      API first," not "assume Zetaris truncated it."
 --   5. CREATE SCHEMASTORE CONTAINER has no IF NOT EXISTS support (confirmed
 --      via LightningDdlParseException) -- it's simply not in that
 --      statement's grammar, unlike many other CREATE statements. Running it
@@ -290,38 +290,10 @@ FROM sec_data.tesla_revenue_facts
 LATERAL VIEW explode(units.USD) AS fact;
 
 -- ---------------------------------------------------------------------------
--- Diagnostic (run per company if a view comes back empty or looks wrong):
---   SELECT * FROM sec_data.<company>_revenue_facts;
---   DESCRIBE sec_data.<company>_revenue_facts;
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Verification (do this BEFORE relying on any of the above -- see caveat 4):
--- confirm each REST table's row count matches the live SEC endpoint. Run
--- once per company, swapping the CIK in the URL and the table name:
---   curl -s -A "YOUR_APP_NAME YOUR_CONTACT_EMAIL" \
---     https://data.sec.gov/api/xbrl/companyconcept/CIK0000320193/us-gaap/Revenues.json \
---     | jq '.units.USD | length'
--- Then compare against:
---   SELECT COUNT(*) FROM edgar.apple_revenue_table;
--- If the Zetaris count is lower, the connector is truncating and every view
--- above inherits the same problem until that's fixed upstream.
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Downstream note: EDGAR's companyconcept payload often contains overlapping
--- periods across 10-Q and 10-K filings (a quarter appears standalone AND
--- rolled into the annual figure). Keep each view above as raw fact history;
--- filter at query time, e.g.:
---   SELECT * FROM edgar.apple_revenue_table WHERE form_type = '10-K';
---   SELECT * FROM edgar.tesla_revenue_table WHERE fiscal_period = 'Q1';
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
 -- Optional: single cross-company view for side-by-side comparison. Only
 -- build this once every individual view above has been verified (see
--- Verification above) -- a UNION over unverified, possibly-truncated data
--- just makes the problem harder to spot.
+-- sql/01_edgar_company_facts_select.sql, "Verification") -- a UNION over
+-- unverified, possibly-truncated data just makes the problem harder to spot.
 -- ---------------------------------------------------------------------------
 -- CREATE SCHEMASTORE VIEW all_companies_revenue_table WITH CONTAINER edgar AS
 -- SELECT * FROM edgar.apple_revenue_table
@@ -368,3 +340,5 @@ LATERAL VIEW explode(units.USD) AS fact;
 -- To remove the SEC_DATA REST tables and Lightning database registration,
 -- use the Zetaris Data Explorer's "File Source & API" panel (see
 -- HOWTO.md, "Removing a source").
+
+-- Next: verify with sql/01_edgar_company_facts_select.sql

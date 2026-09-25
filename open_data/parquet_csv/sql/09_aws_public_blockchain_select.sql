@@ -1,0 +1,12 @@
+-- =============================================================================
+-- Verification queries for 09_aws_public_blockchain_create.sql
+-- Assumes 09_aws_public_blockchain_create.sql has already been run.
+--
+-- Commented out by default so running this whole file doesn't silently fire
+-- a read query against either table. Uncomment what you want to run, or run
+-- it directly in the SQL Editor.
+-- =============================================================================
+
+-- === Verification ===
+-- SELECT * FROM AWS_BLOCKCHAIN_S3.btc_transactions LIMIT 10;
+-- SELECT * FROM AWS_BLOCKCHAIN_S3.eth_transactions LIMIT 10;

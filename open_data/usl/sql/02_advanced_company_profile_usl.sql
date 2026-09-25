@@ -46,12 +46,14 @@
 --      cross-USL FKs DO work, this duplication should be removed and
 --      recorded as a correction the same way sql/10-era assumptions have
 --      been corrected elsewhere in this repo.
---   2. cik FORMAT MISMATCH -- SIDESTEPPED THE SAME WAY sql/11 SIDESTEPPED
---      IT, NOT FIXED. company.cik below is typed to match the zero-padded
+--   2. cik FORMAT MISMATCH -- SIDESTEPPED THE SAME WAY
+--      sql/11_edgar_company_profiles_create.sql SIDESTEPPED IT, NOT FIXED.
+--      company.cik below is typed to match the zero-padded
 --      10-digit STRING shape from the submissions endpoint (the only shape
---      this script uses) -- this script never joins against sql/01's
---      revenue tables, where cik is a bare integer (see sql/11 caveat 1
---      for the full mismatch). A future USL extension joining company
+--      this script uses) -- this script never joins against
+--      sql/01_edgar_company_facts_create.sql's revenue tables, where cik
+--      is a bare integer (see sql/11_edgar_company_profiles_create.sql
+--      caveat 1 for the full mismatch). A future USL extension joining company
 --      to revenue data would need to resolve that format difference first
 --      (e.g. normalize both sides to the same padded-string form before
 --      declaring a FOREIGN KEY on cik across that boundary).

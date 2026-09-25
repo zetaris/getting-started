@@ -20,11 +20,12 @@
 -- REST table, the metadata-only view, the snapshot view, and the full
 -- value-decode view (une_rt_m_pl_series_table, all 355 rows, matching
 -- the count and values found via curl during investigation) are all
--- confirmed in Zetaris -- and every one of the 8 example queries below
--- has been run and verified. This is the first source in this package
--- to go from "highest risk, likely drop candidate" to fully working,
--- including a genuinely new reusable technique (caveats 5-6c) for
--- decoding sparse dynamic-key JSON via to_json/from_json coercion.
+-- confirmed in Zetaris -- and every one of the 8 example queries in
+-- sql/07_eurostat_select.sql has been run and verified. This is the first
+-- source in this package to go from "highest risk, likely drop candidate"
+-- to fully working, including a genuinely new reusable technique
+-- (caveats 5-6c) for decoding sparse dynamic-key JSON via
+-- to_json/from_json coercion.
 --
 -- Investigated 2026-09-19:
 --   1. FUNDAMENTALLY DIFFERENT SHAPE from every array-of-structs source in
@@ -92,7 +93,8 @@
 --           keys instead of camelCase ones. This needs no explode() and
 --           no assumption about map-vs-struct inference beyond "each
 --           numeric key becomes its own addressable field" -- see the
---           une_rt_m_pl_snapshot_table view and queries 2-3 below.
+--           une_rt_m_pl_snapshot_table view below and
+--           sql/07_eurostat_select.sql queries 2-3.
 --        b. HIGHER RISK, NOW CONFIRMED WORKING (see caveat 6c) -- a full
 --           decode of every available value into a real (period, rate)
 --           row per month,
@@ -104,7 +106,8 @@
 --           joined against `dimension.time.category.index` (also
 --           exploded) to translate the raw numeric offset back into a
 --           real period label like "2026-07". See
---           une_rt_m_pl_series_table and queries 4-8 below.
+--           une_rt_m_pl_series_table below and
+--           sql/07_eurostat_select.sql queries 4-8.
 --   6c. CONFIRMED WORKING against Zetaris (2026-09-19): the first version
 --       of une_rt_m_pl_series_table applied the to_json/from_json
 --       coercion to `value` but NOT to `dimension.time.category.index`,
@@ -200,105 +203,6 @@ LATERAL VIEW explode(from_json(to_json(value), 'map<string,double>')) AS time_ke
 LATERAL VIEW explode(from_json(to_json(dimension.time.category.index), 'map<string,bigint>')) AS time_label, time_index_value
 WHERE CAST(time_key AS INT) = time_index_value;
 
--- Verify:
-SELECT * FROM eurostat.une_rt_m_pl_metadata_table;
-SELECT * FROM eurostat.une_rt_m_pl_snapshot_table;
-SELECT * FROM eurostat.une_rt_m_pl_series_table ORDER BY period;
-
--- ---------------------------------------------------------------------------
--- Diagnostic (kept for reference -- une_rt_m_pl_series_table is confirmed
--- working now, but this is useful if the same pattern fails on a
--- different JSON-stat/SDMX dataset elsewhere, e.g. ABS, sql/09):
---   SELECT * FROM eurostat_rest.une_rt_m_pl;
---   DESCRIBE eurostat_rest.une_rt_m_pl;
--- CONFIRMED (2026-09-19, see caveat 6c): `value` and
--- `dimension.time.category.index` are BOTH inferred as a STRUCT with one
--- field per dynamic key, not a MAP, exactly as caveat 5 predicted. The
--- to_json/from_json coercion, applied to BOTH exploded fields, resolves
--- this -- confirmed by 355 correct rows being returned. If this pattern
--- fails on a different dynamic-key source, check whether EVERY dynamic-
--- key object being exploded in the same query has the coercion applied,
--- not just the first one you noticed -- that was the exact mistake that
--- produced the DATATYPE_MISMATCH this script hit before the fix.
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Example queries -- ALL CONFIRMED WORKING against Zetaris (2026-09-19).
--- Queries 1-3 use the metadata and snapshot views (no explode()
--- involved); queries 4-8 use the fully-decoded une_rt_m_pl_series_table.
--- ---------------------------------------------------------------------------
-
--- 1. Dataset descriptive metadata -- confirms which dataset, which
--- region, and when it was last updated at the source:
-SELECT dataset_label, dataset_source, last_updated
-FROM eurostat.une_rt_m_pl_metadata_table;
-
--- 2. Long-run change -- Poland's unemployment rate in the earliest
--- available month on record (1997-01) versus the most recent published
--- month (2026-07), using only the low-risk snapshot view:
-SELECT
-    rate_1997_01,
-    rate_2026_07,
-    ROUND(rate_2026_07 - rate_1997_01, 1) AS change_percentage_points
-FROM eurostat.une_rt_m_pl_snapshot_table;
-
--- 3. Year-over-year change -- July 2026 versus July 2025, same
--- low-risk technique:
-SELECT
-    rate_2025_07,
-    rate_2026_07,
-    ROUND(rate_2026_07 - rate_2025_07, 1) AS year_over_year_change_pct_points
-FROM eurostat.une_rt_m_pl_snapshot_table;
-
--- 4. Full decoded time series, chronological -- only works if
--- une_rt_m_pl_series_table above succeeded:
-SELECT * FROM eurostat.une_rt_m_pl_series_table ORDER BY period;
-
--- 5. The highest and lowest unemployment rate ever recorded in this
--- series, and which month each occurred:
-SELECT period, unemployment_rate_pct
-FROM eurostat.une_rt_m_pl_series_table
-ORDER BY unemployment_rate_pct DESC
-LIMIT 1;
-
-SELECT period, unemployment_rate_pct
-FROM eurostat.une_rt_m_pl_series_table
-ORDER BY unemployment_rate_pct ASC
-LIMIT 1;
-
--- 6. The most recent 12 published months, most recent first -- a normal
--- "recent trend" view now that the data is in proper row form:
-SELECT period, unemployment_rate_pct
-FROM eurostat.une_rt_m_pl_series_table
-ORDER BY period DESC
-LIMIT 12;
-
--- 7. Average unemployment rate per decade -- extracting the year from
--- the period string and bucketing it, a simple aggregate that only makes
--- sense once the sparse value data is in real rows:
-SELECT
-    CONCAT(SUBSTR(period, 1, 3), '0s') AS decade,
-    ROUND(AVG(unemployment_rate_pct), 1) AS avg_unemployment_rate_pct,
-    COUNT(*) AS months_counted
-FROM eurostat.une_rt_m_pl_series_table
-GROUP BY 1
-ORDER BY decade;
-
--- 8. First month the rate dropped to single digits (below 10%) --
--- a milestone-style query, ordered chronologically and taking the
--- earliest match:
-SELECT period, unemployment_rate_pct
-FROM eurostat.une_rt_m_pl_series_table
-WHERE unemployment_rate_pct < 10
-ORDER BY period ASC
-LIMIT 1;
-
--- ---------------------------------------------------------------------------
--- Attribution reminder -- carry this into any README or demo that
--- displays data from this source:
---   "Source: Eurostat, une_rt_m (unemployment rate, monthly)."
--- ---------------------------------------------------------------------------
-
 -- =============================================================================
 -- TEARDOWN -- removes the flattened views this script created. Commented
 -- out by default so a re-run of the file above doesn't accidentally wipe
@@ -319,3 +223,5 @@ LIMIT 1;
 -- To remove the EUROSTAT_REST REST table and Lightning database
 -- registration, use the Zetaris Data Explorer's "File Source & API"
 -- panel (see HOWTO.md, "Removing a source").
+
+-- Next: verify with sql/07_eurostat_select.sql

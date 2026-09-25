@@ -34,9 +34,6 @@ CREATE LIGHTNING FILESTORE TABLE btc_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT 
   s3Endpoint "s3.us-east-2.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM AWS_BLOCKCHAIN_S3.btc_transactions LIMIT 10;
-
 -- Ethereum equivalent (also has blocks/, logs/, token_transfers/, traces/,
 -- and contracts/ prefixes under v1.0/eth/ if you want a richer demo):
 CREATE LIGHTNING FILESTORE TABLE eth_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT PARQUET OPTIONS (
@@ -47,4 +44,4 @@ CREATE LIGHTNING FILESTORE TABLE eth_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT 
   s3Endpoint "s3.us-east-2.amazonaws.com"
 );
 
-SELECT * FROM AWS_BLOCKCHAIN_S3.eth_transactions LIMIT 10;
+-- Next: verify with sql/09_aws_public_blockchain_select.sql

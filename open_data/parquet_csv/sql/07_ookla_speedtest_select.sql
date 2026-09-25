@@ -1,0 +1,12 @@
+-- =============================================================================
+-- Verification queries for 07_ookla_speedtest_create.sql
+-- Assumes 07_ookla_speedtest_create.sql has already been run.
+--
+-- Commented out by default so running this whole file doesn't silently fire
+-- a read query against either table. Uncomment what you want to run, or run
+-- it directly in the SQL Editor.
+-- =============================================================================
+
+-- === Verification ===
+-- SELECT * FROM OOKLA_S3.ookla_speedtest_fixed LIMIT 10;
+-- SELECT * FROM OOKLA_S3.ookla_speedtest_mobile LIMIT 10;

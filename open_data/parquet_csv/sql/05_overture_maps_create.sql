@@ -32,12 +32,11 @@ CREATE LIGHTNING FILESTORE TABLE overture_places FROM OVERTURE_S3 FORMAT PARQUET
   s3Endpoint "s3.us-west-2.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM OVERTURE_S3.overture_places LIMIT 10;
-
 -- Note: this table includes a "geometry" column encoded per the GeoParquet
 -- spec (WKB) and nested struct columns (names, categories, socials, bbox).
 -- If your Zetaris version doesn't flatten nested/struct Parquet columns
 -- automatically, plan on a follow-up view/CAST step to pull out the fields
 -- you want to demo (e.g. names.primary, categories.primary) -- same
 -- flattening story DuckDB's example query handles with dot-notation.
+
+-- Next: verify with sql/05_overture_maps_select.sql

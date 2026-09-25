@@ -50,13 +50,10 @@ CREATE LIGHTNING FILESTORE TABLE nyc_tlc_yellow_trips FROM NYC_TLC_S3 FORMAT PAR
   s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
--- Verify:
-SELECT * FROM nyc_tlc_yellow_trips LIMIT 10;
-
 -- OPTION B -- CONFIRMED necessary, not just a fallback (see caveats 1 and 2):
 -- download the current month from the CloudFront mirror, upload it into a
 -- bucket you control (your own S3, or the MinIO instance referenced in
--- sql/04_foursquare_places.sql's pattern), then point Zetaris at that
+-- sql/04_foursquare_places_create.sql's pattern), then point Zetaris at that
 -- instead. This keeps the "don't re-host in the public repo" guidance
 -- intact -- a private bucket used only to feed a live demo query is a
 -- different risk profile than redistributing the files publicly. Needs
@@ -75,3 +72,5 @@ SELECT * FROM nyc_tlc_yellow_trips LIMIT 10;
 --   AWSACCESSKEYID "YOUR_AWS_ACCESS_KEY_ID",
 --   AWSSECRETACCESSKEY "YOUR_AWS_SECRET_ACCESS_KEY"
 -- );
+
+-- Next: verify with sql/01_nyc_tlc_select.sql

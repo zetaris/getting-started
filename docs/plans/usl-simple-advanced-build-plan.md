@@ -1,7 +1,7 @@
 # Plan: Build and Verify a Simple + an Advanced USL, Contrasted Against the Existing REST/VDM Approach
 
 **Status:** 📋 Planned — the two USL SQL scripts and their package doc have been written (`open_data/usl/`), but **nothing in this plan has been run against a live Zetaris instance yet**. Every "Verify" step below is unchecked until it has.
-**Depends on:** `open_data/rest_apis/sql/10_company_dns_sic.sql` and `sql/11_edgar_company_profiles.sql` (both live-tested and confirmed working — see `docs/plans/edgar-sic-enrichment-plan.md` section 8), whose raw REST tables (`company_dns.sic_codes_raw`, `sec_data.*_submissions_raw`) the USL activations below reuse rather than re-registering.
+**Depends on:** `open_data/rest_apis/sql/10_company_dns_sic_create.sql` and `sql/11_edgar_company_profiles_create.sql` (both live-tested and confirmed working — see `docs/plans/edgar-sic-enrichment-plan.md` section 8), whose raw REST tables (`company_dns.sic_codes_raw`, `sec_data.*_submissions_raw`) the USL activations below reuse rather than re-registering.
 **Companion docs:** [`docs/guides/zetaris-sql-companion.md`](../guides/zetaris-sql-companion.md) section 8 (the USL reference material this plan verifies), [`docs/plans/edgar-sic-enrichment-plan.md`](edgar-sic-enrichment-plan.md) (the plan that built the REST+SchemaStore+manual-VDM version of this same data product), [`open_data/usl/`](../../open_data/usl/) (the package this plan builds and verifies)
 **Explicit non-goal:** this plan does **not** replace `sql/10`/`sql/11` or their VDM. The user's stated intent is to keep both approaches side by side and contrast their behavior — this plan only adds the USL side of that contrast.
 **Materialization deferred (2026-09-23):** steps V4 and V7 below (anything using `MATERIALIZE USL TABLE`) are deferred — this repo has no cloud storage target configured yet, and setting one up is out of scope for now. V1-V3 and V5-V6, V8-V10 don't depend on materialization and can proceed without it.
@@ -25,13 +25,13 @@ Per the requested approach, this plan builds two USLs of deliberately different 
 | DDL features exercised | `PRIMARY KEY` only | `PRIMARY KEY`, `FOREIGN KEY ... REFERENCES`, `NOT NULL` |
 | DQ | One custom rule (a direct analog of `sql/10` query 8's self-consistency check) | The auto-generated FK rule, **plus** a custom rule analog of `sql/11` query 8 (description agreement — a value-equality check FK can't express) |
 | Materialization | Exercised once, `Records: All` (no DQ gating needed) | Exercised once, `Records: Valid Records Only` (requires the DQ rule above to exist first, per the USL guide's own gating rule) |
-| Contrast target | N/A (no simple-single-table version exists in `sql/10`/`sql/11` to contrast against — this is new ground) | `open_data/rest_apis/sql/11_edgar_company_profiles.sql` + its manual VDM walkthrough — same 7 companies, same join, different mechanism |
+| Contrast target | N/A (no simple-single-table version exists in `sql/10`/`sql/11` to contrast against — this is new ground) | `open_data/rest_apis/sql/11_edgar_company_profiles_create.sql` + its manual VDM walkthrough — same 7 companies, same join, different mechanism |
 
 ## 3. Build steps (done — see section 5 for what's actually confirmed vs. written)
 
 - [x] Write `open_data/usl/HOWTO.md` — the package-level walkthrough, cross-linking `open_data/rest_apis/HOWTO.md` and `docs/guides/zetaris-sql-companion.md` section 8, explicit about "kept for contrast, not a replacement."
-- [x] Write `open_data/usl/sql/01_simple_sic_usl.sql` — `CREATE NAMESPACE`, `CREATE TABLE sic_code (...)`, `COMPILE USL`, `ACTIVATE USL TABLE ... AS SELECT` reusing `company_dns.sic_codes_raw`'s existing flattening query verbatim from `sql/10`, a custom `REGISTER DQ` rule, `RUN DQ`, `MATERIALIZE USL TABLE`.
-- [x] Write `open_data/usl/sql/02_advanced_company_profile_usl.sql` — `company` + `sic_code` tables with an FK relationship, 7 `ACTIVATE USL TABLE` statements (one per company, reusing each `*_submissions_raw` table from `sql/11`), the auto-generated FK-backed DQ rule, one custom DQ rule for the description-agreement check, `RUN DQ` across both, `MATERIALIZE USL TABLE ... Valid Records Only`.
+- [x] Write `open_data/usl/sql/01_simple_sic_usl.sql` — `CREATE NAMESPACE`, `CREATE TABLE sic_code (...)`, `COMPILE USL`, `ACTIVATE USL TABLE ... AS SELECT` reusing `company_dns.sic_codes_raw`'s existing flattening query verbatim from `sql/10_company_dns_sic_create.sql`, a custom `REGISTER DQ` rule, `RUN DQ`, `MATERIALIZE USL TABLE`.
+- [x] Write `open_data/usl/sql/02_advanced_company_profile_usl.sql` — `company` + `sic_code` tables with an FK relationship, 7 `ACTIVATE USL TABLE` statements (one per company, reusing each `*_submissions_raw` table from `sql/11_edgar_company_profiles_create.sql`), the auto-generated FK-backed DQ rule, one custom DQ rule for the description-agreement check, `RUN DQ` across both, `MATERIALIZE USL TABLE ... Valid Records Only`.
 - [ ] Cross-check both scripts' DDL against the USL User Guide's documented constraint syntax one more time immediately before the first live run (guides drift; this repo has been burned before by an untested assumption holding up on paper and failing live — see `docs/guides/zetaris-sql-companion.md` section 1's `CREATE LIGHTNING DATABASE` correction).
 
 ## 4. Verify steps (live Zetaris required — none done yet)
@@ -55,7 +55,7 @@ Work through in order; each one either confirms or corrects a specific claim in 
 
 ## 5. What's confirmed vs. not, right now
 
-Nothing below the "Build steps" checklist in section 3 has been run. Do not read `open_data/usl/`'s scripts as validated just because they exist and are internally consistent with the USL User Guide — that guide itself hasn't been checked against a live instance for anything beyond what's already in `docs/guides/zetaris-sql-companion.md` section 0's companion-map row for USL (i.e., nothing). Treat every SQL statement in both scripts as "should work per the documented grammar," the same epistemic status `sql/11_edgar_company_profiles.sql` had before its own first live run.
+Nothing below the "Build steps" checklist in section 3 has been run. Do not read `open_data/usl/`'s scripts as validated just because they exist and are internally consistent with the USL User Guide — that guide itself hasn't been checked against a live instance for anything beyond what's already in `docs/guides/zetaris-sql-companion.md` section 0's companion-map row for USL (i.e., nothing). Treat every SQL statement in both scripts as "should work per the documented grammar," the same epistemic status `sql/11_edgar_company_profiles_create.sql` had before its own first live run.
 
 ## 6. Feedback loop back into the companion guide
 

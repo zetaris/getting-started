@@ -1,0 +1,11 @@
+-- =============================================================================
+-- Verification queries for 04_foursquare_places_create.sql
+-- Assumes 04_foursquare_places_create.sql has already been run.
+--
+-- Commented out by default so running this whole file doesn't silently fire
+-- a read query against the table. Uncomment what you want to run, or run it
+-- directly in the SQL Editor.
+-- =============================================================================
+
+-- === Verification ===
+-- SELECT * FROM FSQ_SOURCE_COOP.foursquare_places LIMIT 10;

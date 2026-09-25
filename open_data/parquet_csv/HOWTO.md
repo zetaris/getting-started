@@ -104,30 +104,32 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstar
 
 ## 4. Running the scripts
 
+Each runnable source is split into two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (every `CREATE`/`DROP` DDL statement) and `sql/NN_<name>_select.sql` (verification and, where present, example queries). Run the create script first; the verification query in its matching `_select.sql` is commented out by default so that running a whole file doesn't silently fire read queries — uncomment it, or run it directly in the SQL Editor.
+
 1. Open the Zetaris **SQL Editor** ([SQL Editor overview](https://kbase.zetaris.com/knowledge/sql-editor-overview), [How to Save and Re-use SQL](https://kbase.zetaris.com/knowledge/how-to-save-and-re-use-sql)).
-2. For each runnable script in `sql/`, in order. Skip any file containing the `-- ! Forbidden` marker:
-   - Read the header comment — it names the listing command (`aws s3 ls --no-sign-request s3://...`) that confirms the current partition/release/version before you run the statement.
+2. For each runnable source in `sql/`, in order. Skip any `_create.sql` file containing the `-- ! Forbidden` marker:
+   - Read the header comment in `_create.sql` — it names the listing command (`aws s3 ls --no-sign-request s3://...`) that confirms the current partition/release/version before you run the statement.
    - Check that the `PATH` and `s3Endpoint` values still point at the intended current source.
-   - Run the `CREATE LIGHTNING FILESTORE TABLE` statement(s).
-   - Run the fully qualified `SELECT ... LIMIT 10` verification query included in the script right after.
+   - Run the `CREATE LIGHTNING FILESTORE TABLE` statement(s) in `_create.sql`.
+   - Open the matching `_select.sql`, uncomment the `SELECT ... LIMIT 10` verification query, and run it.
 3. Once created, a table shows up in Zetaris's Schema Browser and is queryable from the Query Builder UI as well as the SQL Editor.
 
 Suggested order — cleanest license first, in case you want to stop partway through:
 
 | Order | Script | Why here |
 |---|---|---|
-| 1 | `03_pudl.sql` | Cleanest license (CC-BY-4.0), reliable AWS-native bucket |
-| 2 | `04_foursquare_places.sql` | Cleanest license (Apache-2.0), shows the S3-compatible-endpoint pattern |
-| 3 | `02_noaa_ghcn.sql` | CC0, and shows CSV onboarding specifically |
-| 4 | `05_overture_maps.sql` | Large-scale GeoParquet, simple caveat ("stick to Places theme") |
-| 5 | `08_gbif.sql` | Biggest scale (1.6B+ rows), good "filter before SELECT *" example |
-| 6 | `07_ookla_speedtest.sql` | Same non-commercial caveat pattern as GBIF, different domain |
-| 7 | `09_aws_public_blockchain.sql` | License genuinely unresolved — good "how we handle an ambiguous one" example |
+| 1 | `03_pudl_create.sql` | Cleanest license (CC-BY-4.0), reliable AWS-native bucket |
+| 2 | `04_foursquare_places_create.sql` | Cleanest license (Apache-2.0), shows the S3-compatible-endpoint pattern |
+| 3 | `02_noaa_ghcn_create.sql` | CC0, and shows CSV onboarding specifically |
+| 4 | `05_overture_maps_create.sql` | Large-scale GeoParquet, simple caveat ("stick to Places theme") |
+| 5 | `08_gbif_create.sql` | Biggest scale (1.6B+ rows), good "filter before SELECT *" example |
+| 6 | `07_ookla_speedtest_create.sql` | Same non-commercial caveat pattern as GBIF, different domain |
+| 7 | `09_aws_public_blockchain_create.sql` | License genuinely unresolved — good "how we handle an ambiguous one" example |
 
-The following scripts remain in the package for later update. Do not run them while they carry the forbidden marker:
+The following scripts remain in the package for later update. Do not run their `_create.sql` while it carries the forbidden marker:
 
-- `sql/01_nyc_tlc.sql`
-- `sql/06_common_crawl_index.sql`
+- `sql/01_nyc_tlc_create.sql`
+- `sql/06_common_crawl_index_create.sql`
 
 ---
 

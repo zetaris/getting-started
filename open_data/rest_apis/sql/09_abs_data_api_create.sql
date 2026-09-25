@@ -7,8 +7,8 @@
 --           may specify 4.0 instead -- check per-dataset if it matters.
 -- Format:   REST/JSON -- SDMX-JSON 2.0.0 (data-message format), NOT
 --           array-of-structs. See caveat 1 below -- same shape class as
---           sql/07_eurostat.sql; both are now fully working, including a
---           full value decode (see caveat 4).
+--           sql/07_eurostat_create.sql; both are now fully working,
+--           including a full value decode (see caveat 4).
 -- Docs:     https://www.abs.gov.au/statistics/application-programming-interfaces-apis/data-api-user-guide/using-api
 --           https://data.api.abs.gov.au/rest/ (base API root)
 -- Rate limit: no API key required.
@@ -82,11 +82,12 @@
 --           has exactly one valid code at position 0). Because there's
 --           only one key, it can be addressed directly via backtick-
 --           quoted dot-access (`` series.`0:0:0:0:0` ``), the same
---           low-risk technique as Eurostat's snapshot view (sql/07) --
---           no explode() or coercion needed for this outer level at all.
---           This ONLY works because the query is scoped to one series;
---           a broader query with multiple series would need the harder,
---           two-level coercion originally anticipated in caveat 1.
+--           low-risk technique as Eurostat's snapshot view
+--           (sql/07_eurostat_create.sql) -- no explode() or coercion
+--           needed for this outer level at all. This ONLY works because
+--           the query is scoped to one series; a broader query with
+--           multiple series would need the harder, two-level coercion
+--           originally anticipated in caveat 1.
 --        b. `data.structures[0].dimensions.observation[0].values` is a
 --           genuine JSON ARRAY of {id, name, start, end} objects (period
 --           labels, e.g. "2015-Q1") -- NOT a dynamic-key object -- so it
@@ -157,117 +158,6 @@ LATERAL VIEW posexplode(data.structures[0].dimensions.observation[0].values) AS 
 LATERAL VIEW explode(from_json(to_json(data.dataSets[0].series.`0:0:0:0:0`.observations), 'map<string,array<double>>')) AS obs_key, obs_value
 WHERE CAST(obs_key AS INT) = obs_position;
 
--- Verify:
-SELECT * FROM abs_data.cpi_dimensions_table;
-SELECT * FROM abs_data.cpi_series_table ORDER BY period;
-
--- ---------------------------------------------------------------------------
--- Diagnostic (run if the CREATE TABLE or either view above fails):
---   SELECT * FROM abs_rest.cpi_raw;
---   DESCRIBE abs_rest.cpi_raw;
--- If DESCRIBE shows `data.dataSets[0].series` as a STRUCT rather than
--- having a `` `0:0:0:0:0` `` field directly addressable, the series key
--- may differ from what this script assumes (see the note above the
--- cpi_series_table view) -- check the actual key first. If the
--- `observations` coercion itself fails, that's the same struct-inference
--- behavior confirmed on Eurostat's `value` field (HOWTO.md,
--- "Troubleshooting / FAQ") -- this view already applies the fix, so a
--- failure here would mean something beyond that specific issue is at
--- play, worth reporting with the exact error.
--- ---------------------------------------------------------------------------
-
--- ---------------------------------------------------------------------------
--- Example queries -- run these against cpi_series_table to get a feel for
--- the data once everything's loaded. Picked to be genuinely interesting:
--- trend, volatility, and milestone questions on a real 11-year quarterly
--- economic time series.
--- ---------------------------------------------------------------------------
-
--- 1. Full series, chronological:
-SELECT period, cpi_index FROM abs_data.cpi_series_table ORDER BY period;
-
--- 2. Highest and lowest index values on record, and which quarter each
--- occurred:
-SELECT period, cpi_index FROM abs_data.cpi_series_table ORDER BY cpi_index DESC LIMIT 1;
-SELECT period, cpi_index FROM abs_data.cpi_series_table ORDER BY cpi_index ASC LIMIT 1;
-
--- 3. Quarter-over-quarter change -- a new pattern for this package,
--- LAG() instead of ROW_NUMBER()/RANK(), for "compare this row to the
--- previous row" rather than "rank within a group":
-SELECT
-    period,
-    cpi_index,
-    ROUND(cpi_index - LAG(cpi_index) OVER (ORDER BY period), 2) AS qoq_change
-FROM abs_data.cpi_series_table
-ORDER BY period;
-
--- 4. Year-over-year percentage change -- LAG by 4 quarters instead of 1,
--- the standard way inflation is usually reported:
-SELECT
-    period,
-    cpi_index,
-    ROUND(100.0 * (cpi_index - LAG(cpi_index, 4) OVER (ORDER BY period))
-        / LAG(cpi_index, 4) OVER (ORDER BY period), 2) AS yoy_pct_change
-FROM abs_data.cpi_series_table
-ORDER BY period;
-
--- 5. Average CPI index per year -- extracting the year from the period
--- string and aggregating (2026 will show fewer quarters than other years
--- since the series doesn't run a full year yet -- not a bug):
-SELECT
-    SUBSTR(period, 1, 4) AS year,
-    ROUND(AVG(cpi_index), 2) AS avg_cpi_index,
-    COUNT(*) AS quarters_counted
-FROM abs_data.cpi_series_table
-GROUP BY 1
-ORDER BY year;
-
--- 6. The 8 most recent quarters (roughly the last 2 years), most recent
--- first -- a normal "recent trend" view now the sparse data is in rows:
-SELECT period, cpi_index
-FROM abs_data.cpi_series_table
-ORDER BY period DESC
-LIMIT 8;
-
--- 7. Cumulative change from the first quarter on record to the most
--- recent one -- how much has the index grown over the full series.
--- Uses FIRST_VALUE/LAST_VALUE windows (not MIN/MAX(cpi_index), which
--- would just find the overall smallest/largest value -- only equal to
--- the first/last chronological value because this series happens to be
--- monotonically increasing) and touches cpi_series_table exactly once,
--- avoiding the multi-reference limitation documented in HOWTO.md (the
--- same MISSING_ATTRIBUTES.RESOLVED_ATTRIBUTE_APPEAR_IN_OPERATION class
--- of error found on Open Food Facts and StatCan):
-SELECT DISTINCT
-    first_val AS earliest_cpi_index,
-    last_val  AS latest_cpi_index,
-    ROUND(100.0 * (last_val - first_val) / first_val, 2) AS total_pct_growth
-FROM (
-    SELECT
-        FIRST_VALUE(cpi_index) OVER (ORDER BY period ASC) AS first_val,
-        LAST_VALUE(cpi_index) OVER (ORDER BY period ASC
-            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_val
-    FROM abs_data.cpi_series_table
-) t;
-
--- 8. Quarters where the index fell versus rose versus stayed flat --
--- a distribution over the whole series, using the same LAG() pattern as
--- query 3:
-SELECT
-    CASE
-        WHEN qoq_change > 0 THEN 'increase'
-        WHEN qoq_change < 0 THEN 'decrease'
-        ELSE 'flat'
-    END AS direction,
-    COUNT(*) AS quarter_count
-FROM (
-    SELECT cpi_index - LAG(cpi_index) OVER (ORDER BY period) AS qoq_change
-    FROM abs_data.cpi_series_table
-) t
-WHERE qoq_change IS NOT NULL
-GROUP BY 1
-ORDER BY quarter_count DESC;
-
 -- =============================================================================
 -- TEARDOWN -- removes the flattened view this script created. Commented
 -- out by default so a re-run of the file above doesn't accidentally wipe
@@ -286,3 +176,5 @@ ORDER BY quarter_count DESC;
 -- To remove the ABS_REST REST table and Lightning database registration,
 -- use the Zetaris Data Explorer's "File Source & API" panel (see
 -- HOWTO.md, "Removing a source").
+
+-- Next: verify with sql/09_abs_data_api_select.sql
