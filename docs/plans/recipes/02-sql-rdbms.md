@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 2
-**Manifest reference:** `quickstart-data-manifest.md` §5
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §5
 **Target location:** `sql/`
 
 ## Sources
@@ -22,7 +22,24 @@ Give Zetaris's `CREATE DATASOURCE` (JDBC) path a working reference, self-hosted-
 ## Work items
 
 - [ ] `postgres_docker/` — `docker-compose.yml` that starts Postgres, waits for health, loads Chinook + Pagila DDL/data on first boot
-- [ ] `chinook/` — PostgreSQL-flavor DDL + data load script (starter DDL excerpt already in the manifest §5)
+- [ ] `chinook/` — PostgreSQL-flavor DDL + data load script; starter excerpt:
+  ```sql
+  CREATE TABLE "Artist" (
+      "ArtistId" INT NOT NULL,
+      "Name" VARCHAR(120),
+      CONSTRAINT "PK_Artist" PRIMARY KEY ("ArtistId")
+  );
+
+  CREATE TABLE "Album" (
+      "AlbumId" INT NOT NULL,
+      "Title" VARCHAR(160) NOT NULL,
+      "ArtistId" INT NOT NULL,
+      CONSTRAINT "PK_Album" PRIMARY KEY ("AlbumId"),
+      CONSTRAINT "FK_AlbumArtistId" FOREIGN KEY ("ArtistId")
+          REFERENCES "Artist" ("ArtistId")
+  );
+  -- Full DDL + data: https://github.com/lerocha/chinook-database/tree/master/ChinookDatabase/DataSources
+  ```
 - [ ] `pagila/` — DDL + data load script
 - [ ] `adventureworks/` — note as SQL Server-specific (`.bak` restore), lower priority than the Postgres-native pair
 - [ ] `hosted/` — Neon setup walkthrough (Chinook/Pagila load), Aiven MySQL walkthrough (Chinook MySQL DDL), Atlas M0 walkthrough flagged with the unconfirmed card-requirement caveat

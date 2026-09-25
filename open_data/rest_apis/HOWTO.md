@@ -300,4 +300,4 @@ not `companies_mart.edgar.all_companies_profile_table`. If a table was renamed o
 
 ## 9. Everything else
 
-For license details and per-source docs links, see `rest-api-sources.md` in this package. For every other category (Kafka, filestore Parquet/CSV, logs, SQL RDBMS, PDFs, and the government open-data sections), see the main `../../quickstart-data-manifest.md` and the roadmap in `../../docs/plans/FUTURES.md`.
+For license details and per-source docs links, see `rest-api-sources.md` in this package. For every other category (Kafka, filestore Parquet/CSV, logs, SQL RDBMS, PDFs, and the government open-data sections), see the roadmap in `../../docs/plans/FUTURES.md` and its per-category `docs/plans/recipes/*.md` files — the original research behind them is archived at `../../docs/plans/archive/quickstart-data-manifest.md`.

@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 7
-**Manifest reference:** `quickstart-data-manifest.md` §11 (European Union subsection)
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §11 (European Union subsection)
 **Target location:** `eu/`
 
 ## Sources

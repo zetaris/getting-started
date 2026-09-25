@@ -2,7 +2,7 @@
 
 **Status:** 🟢 Active — the only category with runnable code today
 **Priority:** 0 (current focus)
-**Manifest reference:** `quickstart-data-manifest.md` §2 (pointer section — the real content lives in the package below)
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §2 (pointer section — the real content lives in the package below)
 **Target location:** `open_data/parquet_csv/` (kept at this path rather than renamed to `parquet/` — see the naming decision in `docs/plans/FUTURES.md`)
 
 ## Sources (9, all in `open_data/parquet_csv/parquet-csv-data-sources.md`)

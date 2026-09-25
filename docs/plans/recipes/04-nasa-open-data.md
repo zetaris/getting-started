@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 4
-**Manifest reference:** `quickstart-data-manifest.md` §9
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §9
 **Target location:** `nasa/`
 
 ## Sources

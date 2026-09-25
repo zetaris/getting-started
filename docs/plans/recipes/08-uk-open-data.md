@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 8
-**Manifest reference:** `quickstart-data-manifest.md` §11 (United Kingdom subsection)
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §11 (United Kingdom subsection)
 **Target location:** `uk/`
 
 ## Sources
@@ -27,3 +27,4 @@ Pairs a straightforward catalog/statistics pattern (data.gov.uk, ONS) with two r
 
 - `tfl_to_kafka/`'s streaming half shares the same Kafka-recipe dependency as the NASA DONKI recipe — sequence both against whichever Kafka work happens first
 - Checked for a CSV/Parquet pull-forward candidate: none found — data.gov.uk/ONS, Companies House, and TfL are all catalog/API-shaped in the manifest's research, no bulk CSV/Parquet export documented
+- Companies House and TfL both appear to be free with no fee mentioned anywhere in their docs, but neither has an explicit "this is free" statement the way Aiven or Neon does — confirm at signup before writing either walkthrough as a flat "no cost"

@@ -1,5 +1,7 @@
 # Zetaris Quick-Start Data Sources
 
+> **Archived — dispersed.** This was the original research manifest behind the repo. Its content has since been folded into [`docs/plans/FUTURES.md`](../FUTURES.md) (roadmap/priority order) and each category's [`docs/plans/recipes/*.md`](../recipes/) file (condensed sourcing, license notes, work items, open questions) — those are now the primary reference for planning unbuilt categories. §2 (Parquet, superseded by `open_data/parquet_csv/`) and §13 (Suggested repo layout, superseded by the repo's actual structure — see the top-level README) are stale and should not be used. Everything else is kept here only as the exhaustive backing reference — full URLs, license text, and citations the condensed recipes intentionally left out.
+
 A collection of real, freely available data sources for trying out Zetaris — streaming, files, APIs, databases, and documents you can point a small Zetaris deployment at and start querying within minutes. Every source below is either fully open or open with a specific condition (attribution, non-commercial use, a free signup). Sources that turned out not to be usable are listed too, with a short note on why, so you don't spend time chasing them later.
 
 **License key:** 🟢 open, use it freely (read the note for any attribution requirement) · 🟡 open with a condition worth reading before you build on it · 🔴 not included — see the note for why
@@ -461,4 +463,4 @@ A short list of items where the guide's own confidence is lower than the rest �
 - **datos.gob.mx (§12)** — the Mexican national portal's license terms couldn't be independently confirmed; source through INEGI instead.
 - **"Open Data for Africa" instances (§12)** — the shared platform's terms don't establish a license; a specific country instance may have its own clear terms and would need its own check.
 - **Australia's CC-BY 3.0 vs. 4.0 (§12)** — data.gov.au's blanket default is the older 3.0 Australia port; some individual datasets may specify 4.0 instead. Not a practical problem, just worth citing the right version.
-- **Zetaris onboarding SQL — two open items** (see `zetaris-parquet-quickstart/HOWTO.md`): whether Zetaris's filestore syntax supports credential-less reads of public S3 buckets, and whether it accepts a plain HTTPS `PATH` (relevant to NYC TLC's CloudFront distribution) versus only `s3a://`/`wasb://`.
+- ~~Zetaris onboarding SQL — two open items (credential-less S3 reads, HTTPS `PATH` support)~~ — **resolved**, see `open_data/parquet_csv/HOWTO.md` and `docs/plans/recipes/00-parquet-csv.md`: no credential-less S3 reads (real IAM keys required), and HTTPS `PATH` is not supported (`s3a://`/`wasb://`-style paths only).

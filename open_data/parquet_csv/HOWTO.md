@@ -153,4 +153,4 @@ For every runnable script:
 
 ## 7. Everything else
 
-For license details, direct data URLs, and per-source docs links, see `parquet-csv-data-sources.md` in this package. For every other category (Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections for Singapore/US/EU/UK/Canada/Australia/Mexico/Africa), see the main `quickstart-data-manifest.md`.
+For license details, direct data URLs, and per-source docs links, see `parquet-csv-data-sources.md` in this package. For every other category (Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections for Singapore/US/EU/UK/Canada/Australia/Mexico/Africa), see `docs/plans/FUTURES.md` and its `recipes/*.md` files.

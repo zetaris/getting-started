@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 5
-**Manifest reference:** `quickstart-data-manifest.md` §7
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §7
 **Target location:** `singapore/`
 
 ## Sources

@@ -42,7 +42,7 @@ A tested installation and configuration guide is available: [`docs/install/updat
 | [`open_data/rest_apis/HOWTO.md`](open_data/rest_apis/HOWTO.md) | REST/JSON onboarding syntax reference and per-source status |
 | [`open_data/parquet_csv/HOWTO.md`](open_data/parquet_csv/HOWTO.md) | Parquet/CSV onboarding syntax reference and per-source status |
 | [`open_data/usl/HOWTO.md`](open_data/usl/HOWTO.md) | USL package: what it exercises, prerequisites, and known open items |
-| [`quickstart-data-manifest.md`](quickstart-data-manifest.md) | The original source-research manifest — still the detail reference for categories not yet built |
+| [`docs/plans/archive/quickstart-data-manifest.md`](docs/plans/archive/quickstart-data-manifest.md) | The original source-research manifest — archived; its content has been dispersed into `docs/plans/recipes/*` and `FUTURES.md`, kept here only as the exhaustive backing reference (full URLs/citations) for categories not yet built |
 
 ## Repo layout
 
