@@ -58,3 +58,52 @@ docs/
 ```
 
 Folders are added as each category in the roadmap actually ships, rather than scaffolded up front. See [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) for the full picture of where this is headed.
+Intentionally minimal right now — folders are added as each category in the roadmap actually ships, rather than scaffolded up front. See `docs/plans/` for the full picture of where this is headed.
+
+## Deno scripts
+
+Use [Deno](https://deno.com/agents.md) 2.9 or later for the TypeScript helper scripts. Check your installation with `deno --version`. Deno downloads script dependencies on first use; `deno.lock` pins their versions.
+
+Run these commands from the repository root:
+
+```sh
+deno task check
+deno task lint
+deno task warmup:company-dns
+```
+
+The warmup task prepares the hosted Company DNS service before running `open_data/rest_apis/sql/10_company_dns_sic.sql`. It grants network access only to `company-dns.mediumroast.io:443` and environment access only to `COMPANY_DNS_BASE_URL`.
+
+For a self-hosted service, set the URL and grant access to its host explicitly:
+
+```sh
+COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --no-prompt --allow-net=localhost:8000 --allow-env=COMPANY_DNS_BASE_URL open_data/rest_apis/scripts/warmup_company_dns.ts
+```
+
+### Check a PostgreSQL connection
+
+Create a local `.env` file using the PostgreSQL fields in `.env.example`. If `.env` already exists, add the fields to it. Set `PGHOST` to your server IP or hostname, then fill in `PGPORT`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD`. Quote passwords containing spaces or `#`. The `.env` file is gitignored. Exported environment variables take precedence over `.env` values.
+
+```sh
+deno task ping:postgres
+```
+
+The script authenticates and runs `SELECT 1`, reports elapsed time, then closes the connection. It exits with code 1 on failure. Connection and server-side query timeouts are 10 seconds. This checks database access, not ICMP ping.
+
+Set `PGSSLMODE=verify-full` if your server uses TLS with a trusted certificate matching the host. The default is `disable` for servers without TLS. The task grants network access and access to `PG*` environment variables. It uses the [Postgres.js driver](https://github.com/porsager/postgres).
+
+### Connect to the Zetaris HTTP API and run SQL
+
+Set the `ZETARIS_*` fields from `.env.example` in your local `.env`. `ZETARIS_BASE_URL` defaults to `http://localhost:3000`; set the numeric `ZETARIS_ORG_ID`. Provide either `ZETARIS_API_TOKEN` or `ZETARIS_USERNAME` and `ZETARIS_PASSWORD`. The scripts use the token directly when present; otherwise they call `POST /api/auth/login` with JSON credentials and use its access token. They send a fresh `X-Request-ID` and your `X-Org-ID` with each API request.
+
+```sh
+./scripts/check_zetaris.ts
+./scripts/query_zetaris.ts "SELECT 1"
+./scripts/query_zetaris.ts --file path/to/one-query.sql
+```
+
+Run these from the repository root. Each script's first line supplies the Deno flags, including `.env` loading and network permission. It also uses `--no-config` to avoid loading the separate PostgreSQL driver. If direct execution is unavailable, run `deno run --no-config --env-file=.env --allow-net --allow-env='ZETARIS*' scripts/check_zetaris.ts` instead.
+
+The check lists visible Lightning databases to confirm authenticated API access. The query command sends the SQL text as one request to `POST /api/proxy/sql-editor/sqls/run-query` and prints its JSON response (`headers`, `data`, `total`, `timeUsed`). For a file with multiple statements, use one statement at a time if the endpoint rejects the batch. Set `ZETARIS_QUERY_LIMIT` to cap returned rows or `ZETARIS_ENGINE_ID` to select a compute engine. SQL runs with your Zetaris account's permissions, so review a file before passing it to the command.
+
+API contract: [Zetaris API reference](http://localhost:8888/redoc/index.html#tag/SQL-Editor). The UI on port 3000 proxies the documented `/api/v1.0/...` endpoints under `/api/proxy/...`.
