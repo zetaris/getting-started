@@ -147,10 +147,10 @@ For every runnable script:
 
 - **Adding another source:** find the bucket/endpoint, confirm the license by reading the actual license page, write the `CREATE LIGHTNING FILESTORE TABLE` statement using this document's syntax reference, and add a verification query.
 - **JDBC/relational sources instead of files:** that's `CREATE DATASOURCE` syntax — see [kbase.zetaris.com/knowledge/connection-to-sql-server](https://kbase.zetaris.com/knowledge/connection-to-sql-server) and the "Registering Logical Datasources" example in the Lightning SQL Manual (`CREATE DATASOURCE ORACLE DESCRIBE BY "..." OPTIONS (jdbcdriver ..., jdbcurl ..., username ..., password ...)`). That's the right tool for the main guide's §5 (Postgres/Chinook/Pagila) sources, not this package.
-- **REST APIs instead of files:** that's `REGISTER REST DATASOURCE TABLE`, e.g. `REGISTER REST DATASOURCE TABLE <name> FROM <datasource> SCHEMA (...) OPTIONS (endpoint "...", method "GET", requesttype "URLENCODED")` — relevant for the main guide's §4 (JSONPlaceholder, PokéAPI, Open Food Facts) and the NASA/data.gov/Singapore REST APIs, not covered by this package.
+- **REST APIs instead of files:** that's `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` — see [`../rest_apis/HOWTO.md`](../rest_apis/HOWTO.md), which corrects an earlier guess in this doc (`REGISTER REST DATASOURCE TABLE`) after live testing found the actual syntax.
 
 ---
 
 ## 7. Everything else
 
-For license details, direct data URLs, and per-source docs links, see `parquet-csv-data-sources.md` in this package. For every other category (Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections for Singapore/US/EU/UK/Canada/Australia/Mexico/Africa), see the main `quickstart-data-manifest.md`.
+For license details, direct data URLs, and per-source docs links, see `parquet-csv-data-sources.md` in this package. For every other category (Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections for Singapore/US/EU/UK/Canada/Australia/Mexico/Africa), see `docs/plans/FUTURES.md` and its `recipes/*.md` files.

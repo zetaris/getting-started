@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 3
-**Manifest reference:** `quickstart-data-manifest.md` §3
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §3
 **Target location:** `logs/`
 
 ## Sources

@@ -1,6 +1,6 @@
 # Roadmap: data source recipes
 
-`quickstart-data-manifest.md` (14 sections of researched-but-mostly-unscripted sources) is being implemented one category at a time rather than all at once. Each category below has its own implementation plan in `docs/plans/recipes/`, with its own checklist. This file is the index and the priority order — update the status column as work lands, don't duplicate the detail here.
+The original source research (14 sections of researched-but-mostly-unscripted sources, now archived at [`docs/plans/archive/quickstart-data-manifest.md`](archive/quickstart-data-manifest.md) — its content has been dispersed into the recipes below) is being implemented one category at a time rather than all at once. Each category below has its own implementation plan in `docs/plans/recipes/`, with its own checklist and full sourcing detail — that's now the primary reference, not the archived manifest. This file is the index and the priority order — update the status column as work lands, don't duplicate the detail here.
 
 **Guiding rule (per current direction):** don't scaffold or build against a category until we're reasonably confident it'll actually work end-to-end against a real Zetaris instance. Parquet/CSV and JSON/REST APIs are both active now — live testing against the real instance is what's actually driving which category gets attention at any given moment, not a strict one-at-a-time queue. Everything below priority 1 still waits its turn, and Kafka specifically is held back pending explicit verification (see its recipe for why).
 
@@ -35,8 +35,11 @@
 
 ## Not a recipe on its own
 
-- **Kaggle / data.world sourcing rule** (manifest §8) — a cross-cutting verification rule ("independently trace the license, don't trust a badge"), not a category with its own folder. Gets folded into `LICENSE-NOTES.md` and the top-level conventions section of the README rather than its own plan.
-- **Known limitations** (manifest §14) — each item there is already attached to the recipe it affects; check a recipe's "Open questions" section rather than re-reading §14 separately.
+- **Kaggle / data.world sourcing rule** — a cross-cutting verification rule, not a category with its own folder:
+  - **Kaggle** is usable, but a license badge on a listing is the uploader's own claim, not something Kaggle vouches for. Only trust it when either (a) the uploader is the original, authoritative source (an official agency's own Kaggle "Organization" account, or a company publishing its own data), or (b) the underlying upstream source can be independently traced and its license confirmed directly — the same way every other source in this repo's research was checked. A random re-upload with a confident-looking badge doesn't meet that bar. Free account required to download; no card needed. Good as a discovery index and for datasets traceable to a verifiable primary source.
+  - **data.world** is not usable — it was acquired by ServiceNow in 2025, and its Open Data Community was formally retired 2026-07-13 (community datasets no longer downloadable, no replacement or archive provided). What remains is ServiceNow's enterprise data-catalog product, not a source of open datasets.
+  - Apply this rule to any Kaggle-hosted (or similarly crowd-hosted) dataset added to any recipe later — it needs its own license trace before it goes in, this rule doesn't pre-clear it.
+- **Known limitations** — each item is already attached to the recipe it affects; check a recipe's "Open questions" section rather than a separate limitations list.
 - **Unified Semantic Layer (USL)** ([`open_data/usl/`](../../open_data/usl/), tracked in [`docs/plans/usl-simple-advanced-build-plan.md`](usl-simple-advanced-build-plan.md)) — a contrast track, not a numbered recipe. It rebuilds the priority-10 EDGAR+SIC data product (see `edgar-sic-enrichment-plan.md`) using USL instead of REST+SchemaStore+VDM, specifically to compare the two mechanisms. Live-tested with a null-handling fix applied (`8f18f4f`); believed passing, pending final confirmation from whoever ran it.
 
 ## When picking up the next recipe

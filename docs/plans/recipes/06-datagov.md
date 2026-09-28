@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 6
-**Manifest reference:** `quickstart-data-manifest.md` §10
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §10
 **Target location:** `datagov/`
 
 ## Sources

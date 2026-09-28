@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned
 **Priority:** 9
-**Manifest reference:** `quickstart-data-manifest.md` §12
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §12
 **Target location:** `canada/`, `australia/`, `mexico/`, `africa/` (four folders, one combined recipe since each is individually small)
 
 ## Sources

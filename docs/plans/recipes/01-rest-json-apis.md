@@ -2,7 +2,7 @@
 
 **Status:** Active — 6 of 9 sources live-tested and verified against a real Zetaris instance (1, 2, 5, 7, 8, 9), 1 partially tested (3), 1 blocked and moved to `failure_cases/` (4), 1 not yet tested (6)
 **Priority:** 1 (proceeding alongside Parquet/CSV rather than strictly after it — both are being driven by whatever's testable against the live instance at any given moment)
-**Manifest reference:** `quickstart-data-manifest.md` §4 (original scope); EDGAR below is a new addition found via direct Zetaris testing, not in the original manifest
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §4 (original scope); EDGAR below is a new addition found via direct Zetaris testing, not in the original manifest
 **Target location:** `open_data/rest_apis/` (matches the `open_data/parquet_csv/` convention already established, rather than the manifest's originally-suggested `json/`)
 
 ## Correction: the actual DDL is not what HOWTO.md's original pointer guessed

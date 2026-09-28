@@ -90,4 +90,4 @@ Every date/version/release fragment in the active "direct data URL" entries move
 
 ---
 
-**See also:** `HOWTO.md` for the Zetaris onboarding walkthrough, and the main [Zetaris Quick-Start Data Sources](../quickstart-data-manifest.md) guide for everything outside Parquet/CSV — Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections.
+**See also:** `HOWTO.md` for the Zetaris onboarding walkthrough, and [`docs/plans/FUTURES.md`](../../docs/plans/FUTURES.md) plus its `recipes/*.md` files for everything outside Parquet/CSV — Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections.

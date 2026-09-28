@@ -1,6 +1,7 @@
 # Plan: Bring repo docs to a production footing
 
 **Status:** ✅ Executed. README rewritten, `docs/plans/archive/` created with 5 plan docs + root `handoff.md` moved into it (each with a supersession banner), `FUTURES.md` and USL status docs refreshed, and cross-links fixed. Kept here as the record of what changed and why.
+**Superseded note (later session):** §2 item 3 and §4's table below decided to keep `quickstart-data-manifest.md` at the repo root. A follow-up review found it duplicated the `docs/plans/recipes/*.md` files in intent, not just content — its content has since been dispersed into `FUTURES.md` and the recipes, and the manifest itself moved to `docs/plans/archive/quickstart-data-manifest.md`. Nothing remains at the repo root except `README.md`, `LICENSE`, and `.env.example`.
 **Trigger:** README.md and several `docs/plans/` entries describe an earlier state of the repo. Five things have since landed: the install + test-record guides (`docs/install/`), full REST source testing (including the advanced sources), the CREATE/SELECT SQL split, a built-and-tested USL, and the Zetaris SQL companion guide (`docs/guides/`).
 
 This session synced the worktree to the current `main` (`git merge origin/main --ff-only`, fast-forwarding two merges that weren't in this branch yet: the CREATE/SELECT split and a USL null-handling fix) before auditing, so the findings below reflect the actual committed state, not a stale snapshot.

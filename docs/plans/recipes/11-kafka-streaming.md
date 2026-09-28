@@ -2,7 +2,7 @@
 
 **Status:** ⏸ Deferred — do not start until verification below is done
 **Priority:** 11 (last, intentionally)
-**Manifest reference:** `quickstart-data-manifest.md` §1
+**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §1
 **Target location:** `kafka/`
 
 ## Why this is deferred
