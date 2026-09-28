@@ -65,7 +65,7 @@
 --      as a best-effort SQL attempt with a commented alternative pointing
 --      at the GUI path -- if the SQL form doesn't support this option,
 --      that's a second VDM-shaped "GUI-only" gap in USL worth recording in
---      docs/guides/zetaris-sql-companion.md sec 8.4 (see ../HOWTO.md sec 4).
+--      docs/guides/zetaris-sql-companion.md sec 8.5 (see ../HOWTO.md sec 4).
 --   4. THE FK-VS-CUSTOM-DQ QUESTION IS THE POINT OF THIS SCRIPT, NOT A
 --      SIDE CAVEAT. See ../HOWTO.md sec 3 -- STEP 5's custom
 --      sic_description_agrees rule is written on the WORKING HYPOTHESIS
