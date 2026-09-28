@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "check": "deno check open_data/rest_apis/scripts/warmup_company_dns.ts scripts/ping_postgres.ts scripts/check_zetaris.ts scripts/query_zetaris.ts",
+    "lint": "deno lint open_data/rest_apis/scripts/ scripts/",
+    "ping:postgres": "deno run --env-file=.env --allow-net --allow-env=PG* scripts/ping_postgres.ts",
+    "warmup:company-dns": "deno run --no-prompt --allow-net=company-dns.mediumroast.io:443 --allow-env=COMPANY_DNS_BASE_URL open_data/rest_apis/scripts/warmup_company_dns.ts"
+  },
+  "imports": {
+    "postgres": "npm:postgres@3.4.7"
+  }
+}
