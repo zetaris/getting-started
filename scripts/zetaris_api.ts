@@ -1,3 +1,5 @@
+// Shared Zetaris API client for the scripts in this folder. It resolves
+// credentials and organization settings, then sends authenticated proxy calls.
 const baseUrl = (Deno.env.get("ZETARIS_BASE_URL") ?? "http://localhost:3000")
   .replace(/\/$/, "");
 const orgId = Deno.env.get("ZETARIS_ORG_ID");

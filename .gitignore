@@ -219,3 +219,5 @@ __marimo__/
 
 # Local data cache (fetch_*.py scripts download here — large files, never commit)
 tmp/
+
+.DS_Store
