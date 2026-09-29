@@ -2,7 +2,7 @@
 -- Source: SEC EDGAR Submissions API (a different endpoint than
 -- 01_edgar_company_facts_create.sql's companyconcept) joined against
 -- company_dns's SIC hierarchy reference
--- (10_company_dns_sic_create.sql) -- a readable company profile (name,
+-- (../non_rate_limited/10_company_dns_sic_create.sql) -- a readable company profile (name,
 -- SIC code and description, full division/major-group/industry-group
 -- hierarchy) for each of the same 7 companies already in
 -- 01_edgar_company_facts_create.sql.
@@ -13,12 +13,12 @@
 --      if they haven't already been run on this instance. Step 0 below
 --      is commented out for that reason -- uncomment only on a fresh
 --      instance that hasn't run 01_edgar_company_facts_create.sql yet.
---   2. company_dns.sic_codes_table (10_company_dns_sic_create.sql) must
+--   2. company_dns.sic_codes_table (../non_rate_limited/10_company_dns_sic_create.sql) must
 --      also already exist.
 --
 -- License: same ambiguous/query-live-don't-redistribute posture as
 -- 01_edgar_company_facts_create.sql (filer-authored EDGAR content) and
--- 10_company_dns_sic_create.sql (SIC data traces to SEC's public list).
+-- ../non_rate_limited/10_company_dns_sic_create.sql (SIC data traces to SEC's public list).
 --
 -- Format: REST/JSON. The submissions endpoint is a flat top-level
 -- object -- no explode() needed for the fields this script uses (cik,

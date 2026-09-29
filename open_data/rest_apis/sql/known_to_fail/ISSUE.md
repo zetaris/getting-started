@@ -1,8 +1,8 @@
 # Failure case: Singapore data.gov.sg PM2.5 API — HTTP 502 on `CREATE LIGHTNING REST TABLE`
 
-**Status:** Blocked — moved out of the main `sql/` sequence. Not required for this package's goals (8 other sources already cover the JSON-shape range needed); kept here as a flagged item for engineering to debug rather than dropped silently.
+**Status:** Known to fail — kept out of `sql/rate_limited/` and `sql/non_rate_limited/`. Not required for this package's goals (the other sources already cover the JSON-shape range needed); kept here as a flagged item for engineering to debug rather than dropped silently.
 
-**Source script:** [`04_singapore_pm25_create.sql`](04_singapore_pm25_create.sql) (unchanged from its last working state in `sql/`, moved here as-is)
+**Source script:** [`04_singapore_pm25_create.sql`](04_singapore_pm25_create.sql) (unchanged from its last working state, moved here as-is)
 
 **Reported by:** Michael Hay, 2026-09-19
 
