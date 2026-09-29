@@ -105,7 +105,7 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstar
 
 ## 4. Running the scripts
 
-Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Run the CREATE file first. The primary verification query is commented out in each SELECT file; optional table queries and examples are commented as well.
+Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Run the CREATE file first. The primary verification query runs when you execute the SELECT file; queries for optional tables and examples remain commented until those tables are created.
 
 1. Open the Zetaris **SQL Editor** ([SQL Editor overview](https://kbase.zetaris.com/knowledge/sql-editor-overview), [How to Save and Re-use SQL](https://kbase.zetaris.com/knowledge/how-to-save-and-re-use-sql)).
 2. Choose a source from the [catalog](parquet-csv-data-sources.md), then:
