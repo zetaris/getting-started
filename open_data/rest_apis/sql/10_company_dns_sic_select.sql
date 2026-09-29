@@ -37,10 +37,10 @@
 -- matching the 4 endpoint counts found during research (caveat 3 in the
 -- create script) even though only 1 endpoint was actually called:
 SELECT
-    COUNT(*)                            AS total_sic_codes,
-    COUNT(DISTINCT division)            AS total_divisions,
-    COUNT(DISTINCT major_group)         AS total_major_groups,
-    COUNT(DISTINCT industry_group)      AS total_industry_groups
+    COUNT(*) AS total_sic_codes,
+    COUNT(DISTINCT division) AS total_divisions,
+    COUNT(DISTINCT major_group) AS total_major_groups,
+    COUNT(DISTINCT industry_group) AS total_industry_groups
 FROM company_dns.sic_codes_table;
 
 -- 2. SIC codes per division, ranked -- which division has the broadest
@@ -88,9 +88,7 @@ ORDER BY sic_code;
 
 -- 7. One representative SIC code per division -- the alphabetically-first
 -- description in each division, via ROW_NUMBER() (the standard "top row
--- per group" window-function pattern already proven throughout this
--- package, e.g. sql/03_open_food_facts_live_select.sql,
--- sql/08_statcan_wds_select.sql):
+-- per group" window-function pattern):
 SELECT division, division_desc, sic_code, description
 FROM (
     SELECT
@@ -107,7 +105,7 @@ ORDER BY division;
 -- 8. Data-quality self-consistency check -- confirms every SIC code
 -- rolled up under the same major_group agrees on that major_group's
 -- description (i.e. the denormalization in the source data is internally
--- consistent, not just individually plausible). Expect ZERO rows back --
+-- consistent, not just individually plausible). Expect zero rows back --
 -- any row returned here would mean the same major_group code maps to more
 -- than one description somewhere in the 1,005 SIC entries, worth
 -- investigating before trusting the reference data further:

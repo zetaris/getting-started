@@ -45,8 +45,8 @@ ORDER BY diameter_km_max DESC;
 -- bigger, on this sample?
 SELECT
     is_potentially_hazardous_asteroid,
-    COUNT(*)                          AS object_count,
-    ROUND(AVG(diameter_km_max), 3)    AS avg_diameter_km_max
+    COUNT(*) AS object_count,
+    ROUND(AVG(diameter_km_max), 3) AS avg_diameter_km_max
 FROM nasa.neo_browse_table
 GROUP BY is_potentially_hazardous_asteroid;
 
@@ -77,10 +77,7 @@ LIMIT 1;
 
 -- 7. Each object's closest-ever approach (not just its earliest, as
 -- neo_browse_table gives) -- a window function ranks every object's own
--- approaches by distance, same ROW_NUMBER() OVER (...) pattern confirmed
--- working in sql/03 (Open Food Facts) query 7 and sql/04 (Singapore
--- PM2.5, failure_cases/) query 7, applied here to a genuine "top-N per
--- group" question:
+-- approaches by distance, a "top-N per group" question:
 SELECT name, close_approach_date, miss_distance_km
 FROM (
     SELECT

@@ -63,15 +63,14 @@ LIMIT 1;
 
 -- 6. Full per-Pokémon profile -- join the base facts against the
 -- aggregated stat total from query 2's logic, inlined as a subquery.
--- NOTE: base_experience/height/weight live on the per-Pokémon
--- pikachu_abilities_table/charizard_abilities_table views (see
--- sql/02_pokeapi_create.sql), NOT on all_pokemon_abilities_table -- that
--- cross-Pokémon view was deliberately narrowed to (pokemon_name,
--- ability_name, is_hidden) when it was defined there, so it explodes to
--- one row per ability without carrying duplicate per-Pokémon facts along
--- for the ride. Union the per-Pokémon views directly here instead, and
--- DISTINCT collapses each Pokémon's multiple ability rows back down to one
--- profile row:
+-- base_experience/height/weight live on the per-Pokémon
+-- pikachu_abilities_table/charizard_abilities_table views, not on
+-- all_pokemon_abilities_table -- that cross-Pokémon view was
+-- deliberately narrowed to (pokemon_name, ability_name, is_hidden), so
+-- it explodes to one row per ability without carrying duplicate
+-- per-Pokémon facts along for the ride. Union the per-Pokémon views
+-- directly here instead, and DISTINCT collapses each Pokémon's
+-- multiple ability rows back down to one profile row:
 SELECT DISTINCT
     a.pokemon_name,
     a.base_experience,
@@ -89,14 +88,11 @@ JOIN (
     GROUP BY pokemon_name
 ) st ON st.pokemon_name = a.pokemon_name;
 
--- ---------------------------------------------------------------------------
--- Optional, further follow-up once the above works: `moves` is the same
--- struct shape but has a doubly-nested array
--- (move:struct<name,url>, version_group_details:array<struct<...>>>) --
--- a good "how deep can this go" stress test, needing a second
--- LATERAL VIEW explode() layered on top of this pattern. Not built here.
--- A third Pokémon (any name/id from https://pokeapi.co/api/v2/pokemon/)
--- follows the exact same copy-paste pattern as Charizard in
--- sql/02_pokeapi_create.sql, plus one more UNION ALL branch per
+-- Optional follow-up: `moves` is the same struct shape but has a
+-- doubly-nested array (move:struct<name,url>,
+-- version_group_details:array<struct<...>>>) -- a good "how deep can
+-- this go" stress test, needing a second LATERAL VIEW explode()
+-- layered on top of this pattern. Not built here. A third Pokémon (any
+-- name/id from https://pokeapi.co/api/v2/pokemon/) follows the same
+-- copy-paste pattern as Charizard, plus one more UNION ALL branch per
 -- cross-Pokémon view.
--- ---------------------------------------------------------------------------

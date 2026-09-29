@@ -13,8 +13,8 @@
 -- SELECT * FROM statcan.changed_cubes_table;
 -- SELECT * FROM statcan.changed_cubes_all_table;
 
--- Row-count cross-check (truncation-bug watch item from the EDGAR test --
--- confirm Zetaris's row count matches the direct API call):
+-- Row-count cross-check (confirm Zetaris's row count matches the direct
+-- API call):
 --   Direct API count for 2026-09-17: 60 rows (confirmed via curl | jq
 --   '.object | length' on 2026-09-18)
 -- SELECT COUNT(*) FROM statcan.changed_cubes_table;  -- expect 60
@@ -43,10 +43,7 @@ FROM statcan.changed_cubes_all_table
 GROUP BY snapshot_date
 ORDER BY snapshot_date;
 
--- 2. Busiest and quietest day, ranked -- same window-function pattern
--- confirmed working in sql/03_open_food_facts_live_select.sql,
--- failure_cases/singapore_pm25/04_singapore_pm25_select.sql, and
--- sql/05_nasa_neows_select.sql:
+-- 2. Busiest and quietest day, ranked:
 SELECT
     snapshot_date,
     cubes_changed,
@@ -58,19 +55,17 @@ FROM (
 ) daily
 ORDER BY busiest_rank;
 
--- 3. "Daily cubes" -- products that changed on EVERY day in this window
--- (see caveat 7 in the create script). CONFIRMED FAILING live
--- (2026-09-19) in its original form, which compared each product's day
--- count against a scalar subquery re-reading changed_cubes_all_table a
--- second time -- MISSING_ATTRIBUTES.RESOLVED_ATTRIBUTE_APPEAR_IN_OPERATION
--- on explode(object), the same self-reference pitfall already documented
--- in HOWTO.md, "Troubleshooting / FAQ" (referencing a UNION ALL'd
--- exploded view more than once in the same query). Fixed by referencing
--- the view exactly once and using a literal for the window size (5 days)
--- instead of a second read of the table -- update the literal if the
--- date range in the create script changes. COUNT(*) (not
--- COUNT(DISTINCT snapshot_date)) is safe here because each product
--- appears at most once per day in this feed:
+-- 3. "Daily cubes" -- products that changed on every day in this
+-- window (see caveat 4 in the create script). An earlier version
+-- compared each product's day count against a scalar subquery
+-- re-reading changed_cubes_all_table a second time and failed with
+-- MISSING_ATTRIBUTES.RESOLVED_ATTRIBUTE_APPEAR_IN_OPERATION -- see the
+-- SQL companion guide for why. Fixed by referencing the view exactly
+-- once and using a literal for the window size (5 days) instead of a
+-- second read of the table -- update the literal if the date range in
+-- the create script changes. COUNT(*) (not COUNT(DISTINCT
+-- snapshot_date)) is safe here because each product appears at most
+-- once per day in this feed:
 SELECT product_id, COUNT(*) AS days_changed
 FROM statcan.changed_cubes_all_table
 GROUP BY product_id
@@ -92,32 +87,32 @@ ORDER BY days_changed;
 -- change events -- shows how much of the volume is repeat activity on
 -- the same handful of products versus one-off changes:
 SELECT
-    COUNT(*)                          AS total_change_events,
-    COUNT(DISTINCT product_id)        AS distinct_products,
+    COUNT(*) AS total_change_events,
+    COUNT(DISTINCT product_id) AS distinct_products,
     ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT product_id), 2) AS avg_changes_per_product
 FROM statcan.changed_cubes_all_table;
 
--- 6. Confirms caveat 6 in the create script from inside Zetaris rather
+-- 6. Confirms caveat 4 in the create script from inside Zetaris rather
 -- than assuming it from the curl investigation -- extracts the
 -- time-of-day portion of every release timestamp and counts how many
 -- distinct values exist (expect exactly 1, "08:30", if StatCan's fixed
 -- publishing schedule holds for this window too):
 SELECT
     SUBSTR(release_time, 12) AS release_time_of_day,
-    COUNT(*)                 AS release_count
+    COUNT(*) AS release_count
 FROM statcan.changed_cubes_all_table
 GROUP BY 1
 ORDER BY release_count DESC;
 
--- 7. Full history for each "daily cube" found in query 3 -- one row per
--- day for each continuously-updated product, confirming they really did
--- change every single day rather than just coincidentally matching the
--- day count. CONFIRMED FAILING live (2026-09-19) in its original
--- WHERE product_id IN (SELECT ... FROM changed_cubes_all_table ...) form
--- -- same self-reference issue as query 3, actually worse here (the
--- table was referenced three times: outer FROM, IN-subquery, and a
--- nested scalar subquery). Fixed with a window function instead of any
--- subquery, so the view is referenced exactly once:
+-- 7. Full history for each "daily cube" found in query 3 -- one row
+-- per day for each continuously-updated product, confirming they
+-- really did change every single day rather than just coincidentally
+-- matching the day count. An earlier
+-- WHERE product_id IN (SELECT ... FROM changed_cubes_all_table ...)
+-- form hit the same self-reference issue as query 3, actually worse
+-- here (the table was referenced three times). Fixed with a window
+-- function instead of any subquery, so the view is referenced exactly
+-- once:
 SELECT product_id, snapshot_date, release_time
 FROM (
     SELECT
@@ -135,9 +130,9 @@ ORDER BY product_id, snapshot_date;
 -- of one-off changes" query, useful as a starting point if you want to
 -- manually look up what a specific cube is via StatCan's own website
 -- (https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=<product_id>).
--- CONFIRMED FAILING live (2026-09-19) in its original
--- WHERE product_id IN (SELECT ...) form -- same fix as query 7, a window
--- function instead of a subquery re-reading the same view:
+-- An earlier WHERE product_id IN (SELECT ...) form hit the same issue
+-- as query 7 -- same fix, a window function instead of a subquery
+-- re-reading the same view:
 SELECT product_id, snapshot_date, release_time
 FROM (
     SELECT
