@@ -269,7 +269,7 @@ The recipe SQL runs **inside Zetaris's SQL Editor**. Open the files from the `ge
 
 ### Parquet/CSV
 
-Read the current [Parquet/CSV HOWTO](../../open_data/parquet_csv/HOWTO.md) and [recipe plan](../plans/recipes/00-parquet-csv.md). Start with the small energy-source table in [the PUDL script](../../open_data/parquet_csv/sql/03_pudl.sql):
+Read the current [Parquet/CSV HOWTO](../../open_data/parquet_csv/HOWTO.md) and [recipe plan](../plans/recipes/00-parquet-csv.md). Start with the small energy-source table in [the PUDL CREATE script](../../open_data/parquet_csv/sql/03_pudl_create.sql):
 
 1. Review its header and verify that the source path is still available.
 2. Run the `CREATE LIGHTNING DATABASE PUDL_S3` prerequisite once.
@@ -284,7 +284,7 @@ Expect 10 rows of energy-source codes and descriptions, beginning with `AB` (agr
 
 ### REST
 
-Follow the [REST HOWTO](../../open_data/rest_apis/HOWTO.md) and [PokéAPI script](../../open_data/rest_apis/sql/02_pokeapi.sql). It needs no API key.
+Follow the [REST HOWTO](../../open_data/rest_apis/HOWTO.md) and [PokéAPI script](../../open_data/rest_apis/sql/02_pokeapi_create.sql). It needs no API key.
 
 Run its database/container prerequisites and the Pikachu REST table and view statements, then query:
 

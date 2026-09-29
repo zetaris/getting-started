@@ -1,12 +1,12 @@
 # HOWTO: onboard these Parquet/CSV sources into Zetaris
 
-The general walkthrough for the `sql/` scripts in this package. Seven are current runnable examples. The two SQL files marked `-- ! Forbidden` remain here as reference files and will be updated later. A couple of sources also need a `scripts/` fetch step first. See §3.
+This guide covers the seven current CREATE/SELECT SQL pairs in `sql/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
 
 ---
 
 ## 1. The SQL syntax these scripts use
 
-Every runnable script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for registering a file-based external table (as opposed to `CREATE DATASOURCE`, for JDBC-backed relational sources, or `REGISTER REST DATASOURCE TABLE`, for REST APIs). References:
+Every active CREATE script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for registering a file-based external table. Use `CREATE DATASOURCE` for JDBC-backed relational sources and `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` for REST APIs. References:
 
 - **Data source overview** (file formats supported — CSV, JSON, Parquet, ORC, Delta, Avro, plus AWS S3/Azure Blob as storage locations): [kbase.zetaris.com/knowledge/connect](https://kbase.zetaris.com/knowledge/connect)
 - **AWS S3 connection syntax** (`PATH`, `inferSchema`, `header`, `isS3BucketPublic`, `useS3PathStyleAccess`, `s3Endpoint`): [kbase.zetaris.com/knowledge/amazon-s3-storage](https://kbase.zetaris.com/knowledge/amazon-s3-storage), [kbase.zetaris.com/knowledge/connection-to-aws-s3](https://kbase.zetaris.com/knowledge/connection-to-aws-s3)
@@ -14,17 +14,17 @@ Every runnable script uses `CREATE LIGHTNING FILESTORE TABLE`, Zetaris's DDL for
 - **`FORMAT PARQUET`**: the MinIO and Amazon S3 how-to pages both show working `FORMAT PARQUET` examples, alongside CSV/JSON.
 - **Quick-start walkthrough / UI equivalent**: [data-fabric.readthedocs.io Cloud Data Fabric Quick-Start Guide](https://data-fabric.readthedocs.io/en/latest/clouddatafabric/cloud-data-fabric-quick-start-guide.html)
 
-### Prerequisite: `CREATE LIGHTNING DATABASE` — CORRECTED, this package had this wrong
+### Prerequisite: register the logical database first
 
-**Earlier revisions of this doc claimed the `FROM <logical_datasource_name>` value was just a label needing no prior setup. That's wrong, caught by live testing against a real Zetaris instance.** `<logical_datasource_name>` must be registered first with its own DDL statement, or `CREATE LIGHTNING FILESTORE TABLE ... FROM <name>` fails because `<name>` doesn't exist yet:
+Register `<logical_datasource_name>` before a file table uses it in `FROM`. Otherwise the table statement fails because the logical database does not exist:
 
 ```sql
 CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
 ```
 
-Run this once per logical datasource name **before** the first `CREATE LIGHTNING FILESTORE TABLE` statement that references it (a name used by multiple tables in the same script, e.g. `PUDL_S3`, only needs one `CREATE LIGHTNING DATABASE` call, not one per table). Every runnable script in `sql/` includes this prerequisite. Source: the quick-start guide's own worked example (`CREATE LIGHTNING DATABASE TEST_DATABASE DESCRIBE BY " TEST_DATABASE";`), confirmed against kbase's description of the equivalent UI flow ("Virtual File Sources". A database must be created before any tables can be assigned to it).
+Run this once per logical database name, before the first table that references it. If one script creates several tables from the same source, one database registration covers them all. Each current `_create.sql` pair includes this prerequisite.
 
-The general shape, now with the prerequisite included:
+The general pattern is:
 
 ```sql
 CREATE LIGHTNING DATABASE <logical_datasource_name> DESCRIBE BY "<short description>";
@@ -42,7 +42,7 @@ OPTIONS (
 );
 ```
 
-The runnable scripts target public S3 or S3-compatible locations. They set `isS3BucketPublic "true"` and do not include AWS credential values. AWS-native sources use the regional S3 endpoint shown in each script. Foursquare uses `https://data.source.coop` as its S3-compatible endpoint. The scripts use descriptive all-caps names for `<logical_datasource_name>` (`NOAA_GHCN_S3`, `PUDL_S3`, etc.), with the same name in the `CREATE LIGHTNING DATABASE` statement and the table's `FROM` clause.
+The current SQL pairs target public S3 or S3-compatible locations and set `isS3BucketPublic "true"`; they do not include AWS credentials. The PUDL energy-source table was confirmed to return rows on a fresh install with no AWS credentials, as recorded in the [installation test record](../../docs/install/zetaris-installation-test-record.md). AWS sources use the regional endpoint in each script. Foursquare uses Source Cooperative's S3-compatible endpoint. Each script uses the same logical database name in `CREATE LIGHTNING DATABASE` and the table's `FROM` clause.
 
 ---
 
@@ -50,7 +50,7 @@ The runnable scripts target public S3 or S3-compatible locations. They set `isS3
 
 ### Use the public-bucket options in the scripts
 
-The seven runnable sources are public S3 or S3-compatible sources. Their current SQL uses the same access pattern:
+The seven current SQL pairs use public-source options. The endpoint and region vary by source:
 
 | Option | Use |
 |---|---|
@@ -58,7 +58,7 @@ The seven runnable sources are public S3 or S3-compatible sources. Their current
 | `useS3PathStyleAccess "true"` | Enables the path-style S3 access used by these scripts. |
 | `s3Endpoint "..."` | Selects the AWS regional endpoint or the S3-compatible host. |
 
-These public-source examples do not need AWS credential values. If you adapt the pattern for a private bucket, use the credential options in Zetaris's S3 documentation instead.
+The scripts do not contain AWS credential values. For a private bucket, use the credential options in Zetaris's S3 documentation instead. The PUDL installation test confirms one source works without credentials; the catalog and test record keep source-specific runtime evidence separate.
 
 ### Keep source URLs separate from the Zetaris `PATH`
 
@@ -68,7 +68,8 @@ The catalog may show a browser or download URL for a source. The runnable SQL sc
 
 ## 3. Sources that need a local fetch step first
 
-Two sources pulled forward from later categories in the main manifest do not expose a stable, hardcodable bucket/URL `PATH` like the seven runnable sources do. `scripts/` has a small, dependency-free Python fetcher for each. Run these before attempting to create a corresponding SQL registration. Neither source has an onboarding SQL script yet.
+These fetchers prepare local files only. They do not create Zetaris tables, and neither source has an onboarding SQL pair yet.
+Run the commands from `open_data/parquet_csv/`.
 
 ### `scripts/fetch_datagovsg.py` — a data.gov.sg CSV dataset (Singapore)
 
@@ -80,14 +81,14 @@ python3 scripts/fetch_datagovsg.py
 
 - Calls the `initiate-download` / `poll-download` API (no key needed for casual use) and saves the result to `../../tmp/cache/datagovsg/<dataset_id>.csv` (i.e. `tmp/cache/datagovsg/` at the repo root — gitignored, never commit what lands there).
 - Default dataset: `d_8b84c4ee58e3cfc0ece0d773c8ca6abc` — "Resale flat prices based on registration date from Jan-2017 onwards." Live-tested: a real, comma-separated, header-included CSV, ~24 MB / ~240k rows.
-- **Live-behavior note:** the published API docs describe a `code: 201` response requiring a separate poll step. In practice (tested 2026-09) the API returns `code: 0` with the download URL already included in the `initiate-download` response — the script handles both, but don't be surprised if you see `code: 0` while reading the docs.
+- The API may return the download URL directly (`code: 0`) or require a separate poll (`code: 201`). The script handles both responses.
 - Prints the required Singapore Open Data Licence (SODL) v1.0 attribution line on completion — copy it into whatever you publish.
 - Re-run before each use rather than reusing an old cached copy: the download URL is presigned with an expiry, and the underlying dataset itself updates periodically.
-- **Not yet resolved:** how Zetaris should actually read the cached file. Every other script in this package points `PATH` at a stable `s3a://`/`wasb://` location; a local cache directory isn't one of the documented `PATH` schemes (see §1). Until that's confirmed — either Zetaris accepts a local/mounted filesystem path, or the cached file needs to be re-uploaded somewhere Zetaris can reach — there's no `sql/10_datagovsg_*.sql` yet. Treat the fetch step as done and the registration step as open.
+- Zetaris cannot read this local cache through a documented `PATH` scheme. To add an SQL registration, first make the file available from storage that Zetaris can reach.
 
 ### `scripts/fetch_openfoodfacts.py` — Open Food Facts bulk export
 
-The manifest recommends the bulk export over the live API for anything beyond single-product lookups (custom `User-Agent` + per-endpoint rate limits make the live API a poor fit for bulk pulls).
+The bulk export is suitable for large downloads; the live API is intended for individual product lookups.
 
 ```bash
 python3 scripts/fetch_openfoodfacts.py                    # full export, ~0.9 GB compressed
@@ -98,20 +99,20 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstar
 - `--sample-rows N` streams a small `sample_<N>rows.csv` out of the gzip without a full decompress first — useful since the full export is ~9 GB uncompressed, far more than a quickstart demo needs.
 - **Important:** despite the `.csv` extension, this export is **tab-separated**, not comma-separated. Whatever reads it downstream needs to know that.
 - Prints the required ODbL attribution + share-alike note on completion.
-- **Not yet resolved, same as above:** the local-cache-to-Zetaris `PATH` question, plus whether Zetaris's `FORMAT CSV` options support a custom delimiter for the tab-separated file. No `sql/11_openfoodfacts.sql` yet.
+- There is no Zetaris SQL registration for this local file. The export is tab-separated, so confirm delimiter support or convert it before adding a table script.
 
 ---
 
 ## 4. Running the scripts
 
-Each runnable source is split into two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (every `CREATE`/`DROP` DDL statement) and `sql/NN_<name>_select.sql` (verification and, where present, example queries). Run the create script first; the verification query in its matching `_select.sql` is commented out by default so that running a whole file doesn't silently fire read queries — uncomment it, or run it directly in the SQL Editor.
+Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Run the CREATE file first. The primary verification query is commented out in each SELECT file; optional table queries and examples are commented as well.
 
 1. Open the Zetaris **SQL Editor** ([SQL Editor overview](https://kbase.zetaris.com/knowledge/sql-editor-overview), [How to Save and Re-use SQL](https://kbase.zetaris.com/knowledge/how-to-save-and-re-use-sql)).
-2. For each runnable source in `sql/`, in order. Skip any `_create.sql` file containing the `-- ! Forbidden` marker:
+2. Choose a source from the [catalog](parquet-csv-data-sources.md), then:
    - Read the header comment in `_create.sql` — it names the listing command (`aws s3 ls --no-sign-request s3://...`) that confirms the current partition/release/version before you run the statement.
    - Check that the `PATH` and `s3Endpoint` values still point at the intended current source.
    - Run the `CREATE LIGHTNING FILESTORE TABLE` statement(s) in `_create.sql`.
-   - Open the matching `_select.sql`, uncomment the `SELECT ... LIMIT 10` verification query, and run it.
+   - Open and run the matching `_select.sql` verification query.
 3. Once created, a table shows up in Zetaris's Schema Browser and is queryable from the Query Builder UI as well as the SQL Editor.
 
 Suggested order — cleanest license first, in case you want to stop partway through:
@@ -125,11 +126,6 @@ Suggested order — cleanest license first, in case you want to stop partway thr
 | 5 | `08_gbif_create.sql` | Biggest scale (1.6B+ rows), good "filter before SELECT *" example |
 | 6 | `07_ookla_speedtest_create.sql` | Same non-commercial caveat pattern as GBIF, different domain |
 | 7 | `09_aws_public_blockchain_create.sql` | License genuinely unresolved — good "how we handle an ambiguous one" example |
-
-The following scripts remain in the package for later update. Do not run their `_create.sql` while it carries the forbidden marker:
-
-- `sql/01_nyc_tlc_create.sql`
-- `sql/06_common_crawl_index_create.sql`
 
 ---
 
@@ -147,7 +143,7 @@ For every runnable script:
 
 - **Adding another source:** find the bucket/endpoint, confirm the license by reading the actual license page, write the `CREATE LIGHTNING FILESTORE TABLE` statement using this document's syntax reference, and add a verification query.
 - **JDBC/relational sources instead of files:** that's `CREATE DATASOURCE` syntax — see [kbase.zetaris.com/knowledge/connection-to-sql-server](https://kbase.zetaris.com/knowledge/connection-to-sql-server) and the "Registering Logical Datasources" example in the Lightning SQL Manual (`CREATE DATASOURCE ORACLE DESCRIBE BY "..." OPTIONS (jdbcdriver ..., jdbcurl ..., username ..., password ...)`). That's the right tool for the main guide's §5 (Postgres/Chinook/Pagila) sources, not this package.
-- **REST APIs instead of files:** that's `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` — see [`../rest_apis/HOWTO.md`](../rest_apis/HOWTO.md), which corrects an earlier guess in this doc (`REGISTER REST DATASOURCE TABLE`) after live testing found the actual syntax.
+- **REST APIs instead of files:** use `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW`; see [`../rest_apis/HOWTO.md`](../rest_apis/HOWTO.md).
 
 ---
 

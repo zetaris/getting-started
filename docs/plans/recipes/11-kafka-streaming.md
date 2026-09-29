@@ -18,7 +18,6 @@ Explicit call: don't push hard on Kafka (or any streaming source) until it's con
 
 ## Planned producers (once unblocked)
 
-- `producer_nyc_trips.py` — replays NYC TLC parquet rows as Kafka events (pairs with the Parquet/CSV recipe)
 - DONKI space-weather replay (pairs with `nasa/donki_to_kafka/`, built JSON-only for now — see the NASA recipe)
 - TfL bus/tube arrival replay (pairs with `uk/tfl_to_kafka/`, same story)
 - LTA DataMall replay (pairs with the Singapore recipe, if picked up)

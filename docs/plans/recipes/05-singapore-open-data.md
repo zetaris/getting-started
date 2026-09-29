@@ -16,14 +16,14 @@
 
 Singapore is a geographically distinct but well-organized bundle: one license, mostly JSON/PDF, explicit gaps in Parquet/Kafka/SQL. Treat it as a REST/JSON-recipe consumer with a documented "honest gap" story rather than trying to force a native Parquet/Kafka/SQL example.
 
-**Update:** the "no native Parquet/CSV source" gap is being partially closed early — a data.gov.sg CSV dataset (e.g. HDB Resale Flat Prices) has been pulled forward into `docs/plans/recipes/00-parquet-csv.md` (priority 0) rather than waiting for this recipe's turn, since it's directly loadable with the same filestore-table pattern already proven there. This recipe keeps the JSON/REST-API side (real-time weather/PSI polling, LTA DataMall, OneMap) — the two aren't redundant.
+The HDB Resale Flat Prices CSV has a fetcher tracked under priority 0. It saves the file locally; there is no Zetaris SQL registration because the local file is not yet available through a supported remote `PATH`. This recipe covers the JSON/REST side while that gap remains open.
 
 ## Work items
 
 - [ ] `datagovsg/` — real-time JSON polling examples (weather, PSI/air-quality, rainfall/tide/temperature) + PDF pulls via the initiate/poll-download API, SODL attribution notice baked into the README template (the CSV/tabular pull is handled by the Parquet/CSV recipe — link to it rather than duplicating)
 - [ ] `lta_datamall/` — signup walkthrough, bus-arrival JSON polling demo
 - [ ] `onemap/` — signup walkthrough, geocoding example paired with LTA data
-- [ ] Document the remaining honest gap in the folder README: no native Kafka or open remote-SQL source (manifest §7) — the Parquet/CSV gap is now closed via the pulled-forward data.gov.sg source
+- [ ] Document the remaining gaps in the folder README: no current Zetaris Parquet/CSV registration, Kafka source, or open remote-SQL source. Link to the fetch-only data.gov.sg work in the Parquet/CSV recipe.
 
 ## Open questions / dependencies
 

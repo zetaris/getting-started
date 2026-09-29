@@ -1,70 +1,39 @@
 # Recipe: Parquet / CSV filestore sources
 
-**Status:** 🟢 Active — the only category with runnable code today
-**Priority:** 0 (current focus)
-**Original research:** `docs/plans/archive/quickstart-data-manifest.md` §2 (pointer section — the real content lives in the package below)
-**Target location:** `open_data/parquet_csv/` (kept at this path rather than renamed to `parquet/` — see the naming decision in `docs/plans/FUTURES.md`)
+**Status:** Active — seven current CREATE/SELECT pairs are listed in `open_data/parquet_csv/`.
+**Priority:** 0
+**Target:** `open_data/parquet_csv/`
 
-## Sources (9, all in `open_data/parquet_csv/parquet-csv-data-sources.md`)
+The script IDs are `02`, `03`, `04`, `05`, `07`, `08`, and `09`. Keep these filenames stable. The catalog describes each source's license and path. Its license markers do not indicate whether a script has been live-tested.
 
-1. NYC TLC trip records
-2. NOAA GHCN-Daily
-3. Catalyst Cooperative PUDL
-4. Foursquare Open Source Places
-5. Overture Maps
-6. Common Crawl columnar index
-7. Ookla Speedtest
-8. GBIF
-9. AWS Public Blockchain Data
+The [installation test record](../../install/zetaris-installation-test-record.md) confirms that the PUDL energy-source table returned 10 rows on a fresh install without AWS credentials. This does not establish the live-test status of every other pair. Keep each source's runtime status explicit when evidence is available.
 
-Citi Bike is explicitly 🔴 excluded (license prohibits redistribution as a stand-alone dataset) — documented, not scripted.
+## Current SQL pairs
 
-## Pulled-forward candidates (from later categories)
+| ID | Source | CREATE script | Notes |
+|---|---|---|---|
+| 02 | NOAA GHCN-Daily | [`sql/02_noaa_ghcn_create.sql`](../../../open_data/parquet_csv/sql/02_noaa_ghcn_create.sql) | Native CSV; no header row. |
+| 03 | Catalyst Cooperative PUDL | [`sql/03_pudl_create.sql`](../../../open_data/parquet_csv/sql/03_pudl_create.sql) | Public S3 source; the energy-source table is covered by the install test record. |
+| 04 | Foursquare Open Source Places | [`sql/04_foursquare_places_create.sql`](../../../open_data/parquet_csv/sql/04_foursquare_places_create.sql) | Source Cooperative's S3-compatible endpoint. |
+| 05 | Overture Maps Places | [`sql/05_overture_maps_create.sql`](../../../open_data/parquet_csv/sql/05_overture_maps_create.sql) | GeoParquet; current release path changes. |
+| 07 | Ookla Speedtest | [`sql/07_ookla_speedtest_create.sql`](../../../open_data/parquet_csv/sql/07_ookla_speedtest_create.sql) | CC BY-NC-SA 4.0, non-commercial. |
+| 08 | GBIF occurrences | [`sql/08_gbif_create.sql`](../../../open_data/parquet_csv/sql/08_gbif_create.sql) | Large monthly snapshot; citation required. |
+| 09 | AWS Public Blockchain Data | [`sql/09_aws_public_blockchain_create.sql`](../../../open_data/parquet_csv/sql/09_aws_public_blockchain_create.sql) | Data license remains unresolved; do not redistribute. |
 
-Per the "selective harvesting" direction (see `docs/plans/FUTURES.md`): scanned every later-priority category for CSV/Parquet-shaped assets that don't need to wait for that category's turn. Three real candidates found, at different levels of readiness — none of these existed in the original 9-source scope.
+Each CREATE file has a matching `_select.sql` file with verification and example queries. Follow [the HOWTO](../../../open_data/parquet_csv/HOWTO.md) and [the source catalog](../../../open_data/parquet_csv/parquet-csv-data-sources.md) for setup, current paths, and licenses.
 
-1. ✅ **Singapore — a data.gov.sg CSV dataset** (pulled forward from `docs/plans/recipes/05-singapore-open-data.md`, manifest §7). Confirmed and scripted: `scripts/fetch_datagovsg.py` calls the `initiate-download` / `poll-download` REST API (`https://api-open.data.gov.sg/v1/public/api/datasets/{datasetId}/...`), no key needed for testing, and caches the CSV locally. Live-tested against dataset `d_8b84c4ee58e3cfc0ece0d773c8ca6abc` ("Resale flat prices based on registration date from Jan-2017 onwards") — a real, actively-maintained HDB dataset — and successfully downloaded a ~24 MB, 240k-row, comma-separated CSV with a header row. Note: the live API's success response uses `code: 0` and returns the download URL immediately in the `initiate-download` call itself, not `code: 201` with a separate poll as the published docs describe — the script handles both. License: SODL v1.0, clean, attribution-only (script prints the required attribution line). This closes the "Singapore has no native Parquet/CSV source" gap the manifest calls out in §7 and §14. Still needed: the actual `sql/10_datagovsg_resale_flat_prices.sql` Zetaris registration script (see Open questions below — the cached file's path, not the fetch step, is what's unresolved).
-2. ✅ **Open Food Facts bulk CSV export** (pulled forward from `docs/plans/recipes/01-rest-json-apis.md`, manifest §4). Confirmed and scripted: `scripts/fetch_openfoodfacts.py` downloads `https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz` (nightly-generated, ~0.9 GB compressed / ~9 GB uncompressed) and can carve out a small `--sample-rows` CSV by streaming the gzip without a full decompress first — useful since the full export is too large for a routine quickstart pull. **Important, newly discovered:** despite the `.csv` name, the export is **tab-separated**, not comma-separated — Zetaris's `FORMAT CSV` registration (and anything else reading it) needs to account for that; HOWTO.md's documented CSV options don't currently mention a delimiter setting, which is a new open item (see below). License: ODbL — attribution required, share-alike if redistributing a combined database (script prints both).
-3. **EU — Sentinel-2 GeoParquet STAC item index, via Source Cooperative (not Azure)** (pulled forward from `docs/plans/recipes/07-eu-open-data.md`, manifest §11). **Revised** after questioning the original candidate: Microsoft's Planetary Computer does publish the `sentinel-2-l2a` collection's STAC items as GeoParquet on Azure Blob Storage, but reaching it would have relied on `wasb://` — which, on closer look, is **not actually confirmed anywhere in this package**. It's mentioned only because a generic Zetaris docs page lists Azure Blob as *a* supported storage type; no worked `wasb://` OPTIONS example exists (§1/§3 of `HOWTO.md` only show S3-style syntax). That put it on the same unverified footing as NYC TLC's HTTPS-`PATH` question, not a free pass, and this recipe shouldn't quietly assume otherwise. Found a better-fitting alternative instead: **`portolan-mirrors/sentinel-2-catalog`**, a GeoParquet STAC item index for Sentinel-2 (51M+ items, sourced from AWS Earth Search) hosted on **Source Cooperative** (`data.source.coop`) — the exact same S3-*compatible* host and connection pattern (`s3Endpoint` + `useS3PathStyleAccess`) already proven working for source #4 (Foursquare). No `wasb://`, no new hosting/mirroring work needed on our part. License: Copernicus Sentinel Data Terms for the underlying data (same as the original candidate), Apache-2.0 for the mirror's own code — **caveat: this is a third-party mirror, not an official Copernicus/AWS/Planetary-Computer source**, same "verify it's still current, don't treat as unimpeachable" treatment as other Source Cooperative and Kaggle entries. Not yet scripted — needs the exact current parquet path confirmed via `aws s3 ls --endpoint-url https://data.source.coop --no-sign-request s3://portolan-mirrors/sentinel-2-catalog/` before writing `sql/12_sentinel2_stac_index.sql`; no `fetch_*.py` script needed, Zetaris can read this directly the same way it reads Foursquare's Parquet.
+## Fetch-only sources
 
-Categories checked and **not** pulled forward because no CSV/Parquet source turned up in the manifest's research (would need fresh discovery, not just promotion, if wanted later): NASA (APIs are JSON-only), data.gov (USAspending/Census are JSON APIs), UK (Companies House/TfL are APIs), Canada/Australia/Mexico/Africa (StatCan WDS, ABS, INEGI, World Bank are all JSON/SDMX APIs). Noted in each of those recipes' Open questions so this isn't re-checked later without reason.
+These scripts download data to the local cache. They do not register a table in Zetaris.
 
-### Local fetch scripts (`scripts/`)
+- [`open_data/parquet_csv/scripts/fetch_datagovsg.py`](../../../open_data/parquet_csv/scripts/fetch_datagovsg.py) downloads a data.gov.sg dataset and prints the SODL attribution. The file must be moved to storage Zetaris can access before a SQL pair can be written.
+- [`open_data/parquet_csv/scripts/fetch_openfoodfacts.py`](../../../open_data/parquet_csv/scripts/fetch_openfoodfacts.py) downloads the Open Food Facts export or a small sample and prints its ODbL attribution. The export is tab-separated; a Zetaris registration needs a reachable file and confirmed delimiter handling.
+- A Sentinel-2 GeoParquet STAC index on Source Cooperative is a candidate. Confirm its current path and license treatment before adding scripts.
 
-Two REST-backed sources above don't expose a stable, hardcodable path the way the original 9 do (a signed/expiring URL for data.gov.sg, a large nightly-regenerated file for Open Food Facts), so each gets a small stdlib-only Python fetcher that pulls the data down to a local cache directory (`tmp/cache/<source>/`, gitignored) instead of a static `PATH` in the SQL script:
+## Current requirements and open work
 
-- `scripts/fetch_datagovsg.py` — calls the initiate-download/poll-download API, saves the CSV, prints the SODL attribution line. Live-tested successfully (see above).
-- `scripts/fetch_openfoodfacts.py` — downloads the bulk export (or a `--sample-rows`-sized slice of it), prints the ODbL attribution/share-alike note. Sample-extraction logic unit-tested; full download not run in this pass (0.9 GB, would just be a bandwidth/time check).
-
-Both are dependency-free (Python 3.8+ stdlib only) so they run without a project-wide `requirements.txt` or virtualenv step, matching the zero-friction spirit of the rest of this recipe.
-
-## Goal
-
-Get all 9 `CREATE LIGHTNING FILESTORE TABLE` scripts fully verified against a real Zetaris instance, with confirmed credential handling and confirmed `PATH` syntax, so this category is a genuinely "done" reference implementation before other categories reuse its pattern.
-
-## Work items
-
-- [ ] Bring `handoff.md`, `quickstart-data-manifest.md`, `open_data/parquet_csv/**` (including the new `scripts/` folder) into this branch (currently untracked in the main checkout)
-- [x] Stand up a Zetaris instance to test against — underway; live testing has started against `sql/01_nyc_tlc_create.sql` (see finding below)
-- [x] Confirm a concrete data.gov.sg `dataset_id` and pull a file through the `initiate-download` API — done, `scripts/fetch_datagovsg.py`, live-tested
-- [ ] Decide how Zetaris reads the data.gov.sg-fetched CSV (local/mounted path vs. re-uploading the cache to somewhere Zetaris can reach — see Open questions), then add `sql/10_datagovsg_resale_flat_prices.sql` and a `parquet-csv-data-sources.md` entry, SODL attribution note included
-- [x] Confirm the current Open Food Facts bulk export URL/format — done, `scripts/fetch_openfoodfacts.py`; discovered the export is tab-separated despite the `.csv` extension
-- [ ] Confirm Zetaris's `FORMAT CSV` options support a custom delimiter (or another way to register a tab-separated file) — new open item, see below; then add `sql/11_openfoodfacts.sql` and a catalog entry, ODbL attribution + share-alike note included
-- [ ] Confirm the exact current parquet path under `s3://portolan-mirrors/sentinel-2-catalog/` on Source Cooperative (listing command above); add `sql/12_sentinel2_stac_index.sql` (same `s3Endpoint`/`useS3PathStyleAccess` pattern as `sql/04_foursquare_places_create.sql`) and a catalog entry, Sentinel Data Legal Notice attribution string + third-party-mirror caveat included
-- [x] Resolve credential-less access to public S3 buckets — **CONFIRMED, live-tested: it doesn't work.** Omitted/empty/`"anonymous"` credential values all fail (403, or a Hadoop config-validation error for empty strings) — Zetaris's S3A connector always signs requests via a fixed `SimpleAWSCredentialsProvider`, no anonymous mode reachable through `OPTIONS`. A real AWS IAM key pair (free-tier, `s3:GetObject`/`s3:ListBucket`) is required for every AWS-native bucket in this package, even though the buckets themselves are publicly readable. `HOWTO.md` §2 and 8 of the 9 script headers updated with this finding; Foursquare's Source Cooperative/MinIO-style endpoint is separately flagged as untested against this specific finding (may or may not behave the same as AWS-native S3)
-- [ ] Resolve whether `PATH` accepts a plain HTTPS URL vs. only `s3a://`/`wasb://`; if HTTPS works, switch `sql/01_nyc_tlc_create.sql` to the CloudFront URL as primary
-- [x] **Prerequisite DDL, initially missed:** `CREATE LIGHTNING FILESTORE TABLE ... FROM <name>` requires `<name>` to be registered first with `CREATE LIGHTNING DATABASE <name> DESCRIBE BY "<description>";` — earlier revisions of `HOWTO.md` incorrectly claimed no prior setup was needed. Caught by live testing (the `FROM PUDL_S3` reference failed because `PUDL_S3` didn't exist yet). Fixed in `HOWTO.md` §1 and all 9 scripts.
-- [ ] Run all 9 scripts end to end in the suggested order (see `HOWTO.md` §3 table); confirm each returns a non-zero row count and spot-check column values against source docs
-- [x] `sql/03_pudl_create.sql`: found and fixed a real bug during live testing — the pinned version (`v2024.11.0`) was ~2 years stale; switched to the `stable` rolling alias, confirmed both files exist there via direct `aws s3 ls` with real credentials
-- [x] `sql/01_nyc_tlc_create.sql`: **both remaining open items now resolved, unfavorably.** The S3 mirror (`s3://nyc-tlc`) is confirmed dead — `AccessDenied` on anonymous *and* real signed-credential requests (verified via `aws sts get-caller-identity` succeeding, then `aws s3 ls`/`head-object` against the bucket both failing) — not a credentials problem, the bucket itself denies outside access now. Separately, Zetaris's `PATH` was tested directly against the CloudFront HTTPS URL and rejected it outright with `Invalid file path to access` — a hard validation error, confirming HTTPS `PATH` support does not exist. Net result: NYC TLC has no working direct source; Option B (download via CloudFront, re-upload to a bucket you control, point Zetaris there) is now the only route in, not just a fallback. This also settles the local-cache-to-Zetaris question for the two pulled-forward sources (data.gov.sg, Open Food Facts) the same way — they'll need the same re-upload treatment, not a local or HTTPS path.
-- [x] `sql/01_nyc_tlc_create.sql`: found and fixed a real bug during live testing — the bucket's `trip data/` prefix has a literal space, which needs percent-encoding (`trip%20data/`) in `PATH` or Zetaris returns a path-not-found-style error. Fixed in the script and noted in `parquet-csv-data-sources.md`.
-- [ ] Replace placeholder date/version/release fragments in each `PATH` with values confirmed current at run time
-- [ ] Record final, verified state in `HOWTO.md` and drop the "two open items" framing once both are closed
-
-## Open questions / dependencies
-
-- Needs a live Zetaris instance — resolved, see `docs/install/updated_zetaris_installation_guide.md` (local docker-compose install tested and working)
-- Everything else in the roadmap that reuses the filestore-table pattern (logs, and any category with a Parquet/CSV angle) should wait on this category's open items being resolved, since the answer changes every other script's header. Both original open items are now resolved: credential handling (real IAM key required) and HTTPS `PATH` support (not supported, confirmed with a hard `Invalid file path to access` error).
-- **RESOLVED: local-cache-to-Zetaris path.** Both fetch scripts land data locally in `tmp/cache/<source>/`, but Zetaris only accepts `s3a://`/`wasb://`-style paths (confirmed by the NYC TLC HTTPS test — a plain HTTPS `PATH` gets a hard `Invalid file path to access` error, and a local filesystem path was never documented as an option either). Answer: option (b) from the original three — the cached file must be re-uploaded to a small S3/Blob location the user controls before a `CREATE LIGHTNING FILESTORE TABLE` statement can reference it, the same pattern now confirmed necessary for NYC TLC's Option B. Also needs real IAM credentials (confirmed above) and the new `CREATE LIGHTNING DATABASE` prerequisite (confirmed above) — three things to get right, not one, before `sql/10_datagovsg_*.sql` and `sql/11_openfoodfacts.sql` can be written.
-- **New: data.gov.sg's download URL is presigned and expiring**, not a stable permalink like the other 9 sources — re-running `fetch_datagovsg.py` shortly before a demo (rather than relying on a URL cached from an earlier run) is the safe pattern; document this in the eventual `sql/10_datagovsg_*.sql` header the same way the date/version-partitioned sources (#5, #6, #7, #8, #9) already document their own "reconfirm before use" caveat.
-- **New: Open Food Facts export is tab-separated**, not comma-separated, despite the `.csv` filename — confirm whether Zetaris's `FORMAT CSV` options support a custom delimiter before writing `sql/11_openfoodfacts.sql`; if not, may need `FORMAT CSV` with a pre-conversion step (fetch script could emit a true comma-separated file instead) rather than assuming Zetaris handles it natively.
+- Register each logical database with `CREATE LIGHTNING DATABASE` before a file table uses it. The HOWTO has the syntax and examples.
+- Current SQL pairs use public-source options and contain no AWS credential values. The PUDL test record confirms credential-free access for that table; do not generalize that result beyond the evidence available.
+- Confirm the current date, version, or release path with the listing command in each CREATE file before use.
+- Resolve storage and format requirements for the two fetch-only sources before adding their SQL pairs. Confirm the Sentinel-2 path before scripting that candidate.
+- Keep source-license notes and live-test evidence separate in the catalog and README.

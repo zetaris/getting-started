@@ -4,8 +4,8 @@
 --           licensed code-SAMPLE repo, not a data-licensing document. No
 --           independent statement that the blockchain data itself is
 --           CC0/public-domain was found. Treat this as "point at it live for
---           a demo, don't re-host a copy" -- same posture as NYC TLC. See
---           parquet-csv-data-sources.md #9 before using this for anything
+--           a demo, don't re-host a copy." See parquet-csv-data-sources.md #9
+--           before using this for anything
 --           beyond a live query demo.
 --           https://registry.opendata.aws/aws-public-blockchain/
 -- Format:   Parquet, snappy-compressed, date-partitioned (native)
