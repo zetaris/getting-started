@@ -18,7 +18,7 @@ That `*_create.sql` / `*_select.sql` split (setup DDL vs. verification/example q
 | [`open_data/rest_apis/`](open_data/rest_apis/) | REST/JSON API sources — catalog, HOWTO, and `sql/*_create.sql` + `*_select.sql` pairs |
 | [`open_data/parquet_csv/`](open_data/parquet_csv/) | Parquet/CSV file sources — same catalog/HOWTO/sql pattern |
 | [`open_data/usl/`](open_data/usl/) | Unified Semantic Layer contrast build — the same EDGAR+SIC data product, rebuilt with USL instead of REST+VDM |
-| [`scripts/`](scripts/) | Deno/TypeScript helpers for the Zetaris HTTP API and a PostgreSQL connection check — see [Deno scripts](#deno-scripts) below |
+| [`scripts/`](scripts/) | TypeScript and Python helpers for the Zetaris HTTP API and a PostgreSQL connection check — see [Client scripts](#client-scripts) below |
 | [`docs/guides/zetaris-sql-companion.md`](docs/guides/zetaris-sql-companion.md) | SQL reference: shapes, quoting, gotchas, and confirmed platform limitations — read alongside the Zetaris Kbase while writing your own SQL |
 | [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) | The full data-source roadmap, priority order, and status per category |
 | [`docs/plans/`](docs/plans/) | Active plans for in-progress or upcoming work; [`docs/plans/archive/`](docs/plans/archive/) holds completed or superseded plans and the original source-research manifest, kept as historical record |
@@ -31,7 +31,7 @@ open_data/
   parquet_csv/     Parquet/CSV file sources — same HOWTO/catalog/sql pattern
   usl/             Unified Semantic Layer contrast build (EDGAR+SIC, rebuilt with USL instead of REST+VDM)
 scripts/
-  check_zetaris.ts, query_zetaris.ts, ping_postgres.ts, zetaris_api.ts — Deno/TypeScript helpers
+  check_zetaris.*, query_zetaris.*, ping_postgres.*, zetaris_api.* — TypeScript and Python helpers
 docs/
   install/         Installation & configuration guide, plus its test record
   guides/          The Zetaris SQL companion reference guide
@@ -40,7 +40,13 @@ docs/
 
 Folders are added as each category in the roadmap actually ships, rather than scaffolded up front — see [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) for where this is headed.
 
-## Deno scripts
+## Client scripts
+
+The helpers are available in both Deno/TypeScript and Python. Both versions load
+`.env`, preserve values already exported in the shell, use the same environment
+variables, and provide the same checks and query behavior.
+
+### Deno/TypeScript
 
 Use [Deno](https://deno.com/agents.md) 2.9 or later for the TypeScript helper scripts. Check your installation with `deno --version`. Deno downloads script dependencies on first use; `deno.lock` pins their versions.
 
@@ -86,6 +92,28 @@ Run these from the repository root. Each script's first line supplies the Deno f
 
 The check lists visible Lightning databases to confirm authenticated API access. The query command sends the SQL text as one request to `POST /api/proxy/sql-editor/sqls/run-query` and prints its JSON response (`headers`, `data`, `total`, `timeUsed`). For a file with multiple statements, use one statement at a time if the endpoint rejects the batch. Set `ZETARIS_QUERY_LIMIT` to cap returned rows or `ZETARIS_ENGINE_ID` to select a compute engine. SQL runs with your Zetaris account's permissions, so review a file before passing it to the command.
 
+### Python
+
+Python 3.9 or later is required. Install the environment-file loader and the
+Psycopg PostgreSQL driver with:
+
+```sh
+python3 -m pip install -r scripts/requirements.txt
+```
+
+Run the Python equivalents from the repository root:
+
+```sh
+python3 scripts/check_zetaris.py
+python3 scripts/query_zetaris.py "SELECT 1"
+python3 scripts/query_zetaris.py --file path/to/one-query.sql
+python3 scripts/ping_postgres.py
+```
+
+They read the same `.env` fields and enforce the same validation, 30-second HTTP
+timeouts, and 10-second PostgreSQL connection and statement timeouts as the
+TypeScript versions.
+
 API contract: [Zetaris API reference](http://localhost:8888/redoc/index.html#tag/SQL-Editor). The UI on port 3000 proxies the documented `/api/v1.0/...` endpoints under `/api/proxy/...`.
 
 ## Status
@@ -97,7 +125,7 @@ API contract: [Zetaris API reference](http://localhost:8888/redoc/index.html#tag
 | Parquet / CSV | 🟢 9 sources catalogued, most live-tested | [`parquet-csv-data-sources.md`](open_data/parquet_csv/parquet-csv-data-sources.md) |
 | SQL scripts | ✅ CREATE/SELECT split done across all sources | see Quickstart above |
 | USL | 🟡 Live-tested, fix applied, pending final confirmation | [`open_data/usl/HOWTO.md`](open_data/usl/HOWTO.md) |
-| Deno/TypeScript scripts | ✅ Zetaris API + PostgreSQL connection helpers available | see Deno scripts above |
+| TypeScript/Python scripts | ✅ Zetaris API + PostgreSQL connection helpers available | see Client scripts above |
 | SQL RDBMS, logs, PDFs, broader NASA, Singapore, data.gov, EU, UK, Canada/Australia/Mexico/Africa | 📋 Planned, not started | [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) |
 | Kafka / streaming | ⏸ Deferred until a hobby-edition Zetaris instance is confirmed to ingest from a broker | [`docs/plans/recipes/11-kafka-streaming.md`](docs/plans/recipes/11-kafka-streaming.md) |
 
