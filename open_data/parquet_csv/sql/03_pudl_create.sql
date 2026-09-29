@@ -12,13 +12,8 @@
 -- CAVEAT: this bucket is public/anonymous. The table options below use
 -- Zetaris's public-bucket configuration and a regional S3 endpoint, so this
 -- script does not need AWS credential values.
--- CONFIRMED live (2026-09): the bucket responds fine to both anonymous and
--- real signed requests). The version originally pinned here (v2024.11.0)
--- still exists but is ~2 years stale. The script now uses the `stable`
--- rolling alias, which resolves to the current release (v2026.9.0 as of this
--- check) and has both files used below. Re-run the listing command above
--- before an event if you want to pin an exact version instead of tracking
--- `stable`.
+-- The paths below use the `stable` alias. Use the listing commands above to
+-- inspect the current data files, or pin a release version for reproducibility.
 --
 -- PREREQUISITE: PUDL_S3 must be registered as a logical database before the
 -- table below can reference it in FROM -- see HOWTO.md sec 1.

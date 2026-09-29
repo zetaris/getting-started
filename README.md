@@ -122,7 +122,7 @@ API contract: [Zetaris API reference](http://localhost:8888/redoc/index.html#tag
 |---|---|---|
 | Install | ✅ Local Docker Compose fully tested; AWS checked on paper only | [`docs/install/`](docs/install/) |
 | REST / JSON APIs | 🟢 6 of 9 sources live-tested and working | [`rest-api-sources.md`](open_data/rest_apis/rest-api-sources.md) |
-| Parquet / CSV | 🟢 9 sources catalogued, most live-tested | [`parquet-csv-data-sources.md`](open_data/parquet_csv/parquet-csv-data-sources.md) |
+| Parquet / CSV | 🟢 7 current CREATE/SELECT pairs; PUDL energy-source table live-tested | [`parquet-csv-data-sources.md`](open_data/parquet_csv/parquet-csv-data-sources.md) |
 | SQL scripts | ✅ CREATE/SELECT split done across all sources | see Quickstart above |
 | USL | 🟡 Live-tested, fix applied, pending final confirmation | [`open_data/usl/HOWTO.md`](open_data/usl/HOWTO.md) |
 | TypeScript/Python scripts | ✅ Zetaris API + PostgreSQL connection helpers available | see Client scripts above |

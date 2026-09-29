@@ -5,9 +5,9 @@
 **Original research:** `docs/plans/archive/quickstart-data-manifest.md` §4 (original scope); EDGAR below is a new addition found via direct Zetaris testing, not in the original manifest
 **Target location:** `open_data/rest_apis/` (matches the `open_data/parquet_csv/` convention already established, rather than the manifest's originally-suggested `json/`)
 
-## Correction: the actual DDL is not what HOWTO.md's original pointer guessed
+## REST table DDL
 
-The Parquet/CSV package's `HOWTO.md` §6 speculated the REST pattern would be `REGISTER REST DATASOURCE TABLE`. **Live-tested and confirmed otherwise (2026-09-18):** it's actually two statements together — `CREATE LIGHTNING REST TABLE ... REQUEST(...) HEADER(...) BODY()` to register the raw JSON response, then `CREATE SCHEMASTORE VIEW ... WITH CONTAINER <name> AS SELECT ... LATERAL VIEW explode(...)` to flatten it into a queryable view. Full syntax reference now in `open_data/rest_apis/HOWTO.md`.
+Register the raw JSON response with `CREATE LIGHTNING REST TABLE ... REQUEST(...) HEADER(...) BODY()`, then flatten it with `CREATE SCHEMASTORE VIEW ... WITH CONTAINER <name> AS SELECT ... LATERAL VIEW explode(...)`. See `open_data/rest_apis/HOWTO.md` for the full syntax and examples.
 
 ## Sources
 
@@ -25,7 +25,7 @@ Status legend: live-tested and working · scripted, not yet tested against Zetar
 10. Not included: REST Countries (now key-gated) — `countries.dev` flagged as an unverified candidate if country reference data is ever needed.
 11. **JSONPlaceholder** — still not scripted (wasn't part of the 2026-09-19 investigation batch above). `https://jsonplaceholder.typicode.com/`, MIT, no signup — the flattest/simplest possible REST source, worth adding if a "get a 200 back in 30 seconds" example is still wanted after the batch above is worked through.
 
-**Pulled forward, not here:** Open Food Facts's *bulk* export (open license, with a condition — ODbL) is in the Parquet/CSV recipe (`docs/plans/recipes/00-parquet-csv.md`) — its bulk JSONL/CSV export is a filestore-table source. Source 3 above is the separate live-API path.
+**Fetch-only candidate:** Open Food Facts's bulk export (ODbL) is tracked in the Parquet/CSV recipe (`docs/plans/recipes/00-parquet-csv.md`). The fetch script has no Zetaris SQL registration yet; its exported file is tab-separated and needs a reachable storage path and confirmed delimiter handling. Source 3 above is the separate live-API path.
 
 ## Goal
 
@@ -33,7 +33,6 @@ Establish the confirmed `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW
 
 ## Work items
 
-- [x] Confirm the actual REST DDL syntax against a live Zetaris instance — done, see correction above and `open_data/rest_apis/HOWTO.md`, "The SQL syntax these scripts use"
 - [x] `open_data/rest_apis/sql/01_edgar_company_facts_create.sql` — live-tested against 7 companies
 - [x] Investigate and script 8 more candidate REST sources (2026-09-19) — real JSON responses pulled and inspected for each (not guessed from docs alone), scripted following the package's conventions, catalogued in `rest-api-sources.md` with a risk/status rating per source
 - [x] `open_data/rest_apis/sql/02_pokeapi_create.sql` — live-tested and working (2026-09-19); confirmed two-level nested dot-access through `explode()` works (derisks NeoWs, sql/05, and any other deeply-nested source); extended to a second Pokémon, cross-Pokémon `UNION ALL` views, and 6 example analytical queries

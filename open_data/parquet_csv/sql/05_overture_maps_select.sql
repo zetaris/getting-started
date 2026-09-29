@@ -2,10 +2,8 @@
 -- Verification queries for 05_overture_maps_create.sql
 -- Assumes 05_overture_maps_create.sql has already been run.
 --
--- Commented out by default so running this whole file doesn't silently fire
--- a read query against the table. Uncomment what you want to run, or run it
--- directly in the SQL Editor.
+-- The verification query runs when you execute this file.
 -- =============================================================================
 
 -- === Verification ===
--- SELECT * FROM OVERTURE_S3.overture_places LIMIT 10;
+SELECT * FROM OVERTURE_S3.overture_places LIMIT 10;

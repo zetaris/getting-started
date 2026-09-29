@@ -57,10 +57,10 @@ Signing in with the email and password set in `.env` returned a session token. `
 | --- | --- |
 | Source check: `aws s3 ls --no-sign-request s3://pudl.catalyst.coop/stable/core_eia__codes_energy_sources.parquet` | The file exists (12,863 bytes, dated 12 Sep 2026) |
 | `CREATE LIGHTNING DATABASE PUDL_S3 …` | Succeeded |
-| `CREATE LIGHTNING FILESTORE TABLE pudl_eia_energy_sources …` with the options from `03_pudl.sql` | Succeeded (7.6 s) |
+| `CREATE LIGHTNING FILESTORE TABLE pudl_eia_energy_sources …` with the options from `03_pudl_create.sql` | Succeeded (7.6 s) |
 | `SELECT * FROM PUDL_S3.pudl_eia_energy_sources LIMIT 10` | Returned **10 rows** with columns `code`, `label`, `fuel_units`, …, `description`. The first rows were `AB` agricultural by-products, `ANT` anthracite coal, `BFG` blast furnace gas, `BIT` bituminous coal |
 
-The current script uses `isS3BucketPublic "true"` and no credential values. It worked on a fresh install with **no AWS credentials** set on the host or in Zetaris. Earlier recipe-plan notes that call for a real IAM key do not apply to this script.
+The test used `isS3BucketPublic "true"` with no AWS credentials configured on the host or in Zetaris, and the query returned 10 rows.
 
 ### §6 REST: PokéAPI
 
