@@ -17,15 +17,14 @@
 -- script fails)
 -- SELECT * FROM abs_rest.cpi_raw;
 -- DESCRIBE abs_rest.cpi_raw;
--- If DESCRIBE shows `data.dataSets[0].series` as a STRUCT rather than
+-- If DESCRIBE shows `data.dataSets[0].series` as a struct rather than
 -- having a `` `0:0:0:0:0` `` field directly addressable, the series key
--- may differ from what the create script assumes (see the note above the
--- cpi_series_table view there) -- check the actual key first. If the
--- `observations` coercion itself fails, that's the same struct-inference
--- behavior confirmed on Eurostat's `value` field (HOWTO.md,
--- "Troubleshooting / FAQ") -- this view already applies the fix, so a
--- failure here would mean something beyond that specific issue is at
--- play, worth reporting with the exact error.
+-- may differ from what the create script assumes (see the note above
+-- the cpi_series_table view there) -- check the actual key first. If
+-- the `observations` coercion itself fails, this view already applies
+-- the fix described in the SQL companion guide, so a failure here would
+-- mean something beyond that specific issue is at play, worth reporting
+-- with the exact error.
 
 -- === Example queries ===
 -- Run these against cpi_series_table to get a feel for the data once
@@ -85,12 +84,11 @@ LIMIT 8;
 -- would just find the overall smallest/largest value -- only equal to
 -- the first/last chronological value because this series happens to be
 -- monotonically increasing) and touches cpi_series_table exactly once,
--- avoiding the multi-reference limitation documented in HOWTO.md (the
--- same MISSING_ATTRIBUTES.RESOLVED_ATTRIBUTE_APPEAR_IN_OPERATION class
--- of error found on Open Food Facts and StatCan):
+-- avoiding the multi-reference self-join limitation covered in the SQL
+-- companion guide:
 SELECT DISTINCT
     first_val AS earliest_cpi_index,
-    last_val  AS latest_cpi_index,
+    last_val AS latest_cpi_index,
     ROUND(100.0 * (last_val - first_val) / first_val, 2) AS total_pct_growth
 FROM (
     SELECT

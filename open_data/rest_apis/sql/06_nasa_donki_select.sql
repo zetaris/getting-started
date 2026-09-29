@@ -9,7 +9,7 @@
 -- before.
 -- =============================================================================
 
--- === Diagnostics === (run FIRST if CREATE LIGHTNING REST TABLE itself failed
+-- === Diagnostics === (run first if CREATE LIGHTNING REST TABLE itself failed
 -- in the create script -- that's the top-level-array question in caveat 1,
 -- not a flattening problem)
 -- SELECT * FROM nasa_rest.cme_events;
@@ -33,17 +33,14 @@
 -- 1. Total CME count and date range actually covered by this table:
 SELECT
     COUNT(DISTINCT activity_id) AS cme_count,
-    MIN(start_time)             AS earliest_event,
-    MAX(start_time)             AS latest_event
+    MIN(start_time) AS earliest_event,
+    MAX(start_time) AS latest_event
 FROM nasa.cme_analyses_table;
 
--- 2. The 5 fastest CMEs in this window -- one row per event even when an
--- event has more than one analysis flagged "most accurate" (see caveat
--- 8 in the create script), using the same ROW_NUMBER() OVER (...)
--- window-function pattern confirmed working in
--- sql/03_open_food_facts_live_select.sql and
--- sql/05_nasa_neows_select.sql, preferring the accurate flag first and
--- the highest speed as a tiebreaker:
+-- 2. The 5 fastest CMEs in this window -- one row per event even when
+-- an event has more than one analysis flagged "most accurate" (see
+-- caveat 8 in the create script), preferring the accurate flag first
+-- and the highest speed as a tiebreaker:
 SELECT activity_id, start_time, speed, type, latitude, longitude
 FROM (
     SELECT
@@ -70,7 +67,7 @@ LIMIT 5;
 -- per-event count):
 SELECT
     type,
-    COUNT(*)             AS analysis_count,
+    COUNT(*) AS analysis_count,
     ROUND(MIN(speed), 0) AS min_speed_kms,
     ROUND(AVG(speed), 0) AS avg_speed_kms,
     ROUND(MAX(speed), 0) AS max_speed_kms
@@ -105,7 +102,7 @@ ORDER BY analysis_count DESC;
 SELECT
     SUBSTR(source_location, 1, 1) AS ns_hemisphere,
     SUBSTR(source_location, 4, 1) AS ew_hemisphere,
-    COUNT(DISTINCT activity_id)   AS cme_count
+    COUNT(DISTINCT activity_id) AS cme_count
 FROM nasa.cme_instruments_table
 WHERE source_location <> ''
 GROUP BY 1, 2
@@ -122,10 +119,7 @@ ORDER BY event_date;
 
 -- 8. Full detail on the single fastest CME in this window -- joins the
 -- deduplicated-fastest-analysis logic from query 2 against the
--- instruments view for a complete picture, the same
--- join-across-two-view-families pattern as
--- sql/03_open_food_facts_live_select.sql query 8 and
--- failure_cases/singapore_pm25/04_singapore_pm25_select.sql query 8:
+-- instruments view for a complete picture:
 SELECT
     a.activity_id,
     a.start_time,

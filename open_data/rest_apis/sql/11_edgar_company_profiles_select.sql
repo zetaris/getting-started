@@ -49,11 +49,11 @@ ORDER BY company_count DESC;
 -- 3. Peer groups -- major groups shared by more than one of these 7
 -- companies (expect Walmart/Target to share one, given both are general
 -- merchandise retailers; the rest are likely each in their own group).
--- NOTE: COLLECT_LIST/CONCAT_WS as an aggregate-to-string pattern are
--- standard Spark SQL but UNCONFIRMED against this Zetaris instance --
--- no earlier script in this package has used them. If either errors,
--- fall back to GROUP_CONCAT(entity_name) (if supported) or drop the
--- `companies` column and just look up which companies matched via query 1:
+-- COLLECT_LIST/CONCAT_WS as an aggregate-to-string pattern are standard
+-- Spark SQL but unconfirmed against this Zetaris instance -- no earlier
+-- script in this package has used them. If either errors, fall back to
+-- GROUP_CONCAT(entity_name) (if supported) or drop the `companies`
+-- column and just look up which companies matched via query 1:
 SELECT major_group, major_group_desc, COUNT(*) AS company_count,
        CONCAT_WS(', ', COLLECT_LIST(entity_name)) AS companies
 FROM edgar.all_companies_profile_table
@@ -66,14 +66,14 @@ HAVING COUNT(*) > 1;
 -- full "advanced data product." See caveat 2 in the create script --
 -- "latest" is the latest value under the us-gaap:Revenues tag
 -- specifically, which may be stale for some companies:
--- Note: each side of every pair below is guaranteed exactly one row (the
+-- Each side of every pair below is guaranteed exactly one row (the
 -- profile view is scoped to a single company; the subquery is LIMIT 1),
--- so a plain comma cross join is safe and correct here -- used instead of
--- CROSS JOIN or JOIN...ON TRUE, neither of which appears in Zetaris's own
--- documented join_type grammar (INNER | (LEFT|RIGHT) SEMI |
--- (LEFT|RIGHT|FULL) [OUTER] | [LEFT] ANTI -- see the SQL Manual's "3.
--- JOIN" section); the comma-join form IS documented there ("Joining
--- multiple data sources").
+-- so a plain comma cross join is safe and correct here -- used instead
+-- of CROSS JOIN or JOIN...ON TRUE, neither of which appears in
+-- Zetaris's own documented join_type grammar (INNER | (LEFT|RIGHT)
+-- SEMI | (LEFT|RIGHT|FULL) [OUTER] | [LEFT] ANTI -- see the SQL
+-- Manual's "3. JOIN" section); the comma-join form is documented there
+-- ("Joining multiple data sources").
 SELECT p.entity_name, p.division_desc, p.industry_group_desc, f.fiscal_year, f.value_usd AS latest_revenue_usd
 FROM edgar.apple_profile_table p, (SELECT * FROM edgar.apple_revenue_table ORDER BY period_end DESC LIMIT 1) f
 UNION ALL
@@ -105,10 +105,10 @@ ORDER BY latest_revenue_usd DESC;
 -- FROM (<query 4 above>) q4
 -- ORDER BY division_desc, rank_in_division;
 
--- 6. Industry-group detail for every company -- a finer cut than query 2,
--- useful for spotting which companies are actually close industry peers
--- versus just sharing a broad division (same COLLECT_LIST/CONCAT_WS
--- caveat as query 3):
+-- 6. Industry-group detail for every company -- a finer cut than
+-- query 2, useful for spotting which companies are actually close
+-- industry peers versus just sharing a broad division (same
+-- COLLECT_LIST/CONCAT_WS caveat as query 3):
 SELECT industry_group, industry_group_desc, division_desc,
        CONCAT_WS(', ', COLLECT_LIST(entity_name)) AS companies
 FROM edgar.all_companies_profile_table
@@ -124,8 +124,8 @@ FROM edgar.all_companies_profile_table
 ORDER BY division_desc, major_group_desc, industry_group_desc, entity_name;
 
 -- 8. Data-quality cross-check -- confirms EDGAR's own sicDescription
--- agrees with company_dns's reference description for every one of the 7
--- companies. Expect ZERO rows back -- any row returned would mean the
+-- agrees with company_dns's reference description for every one of the
+-- 7 companies. Expect zero rows back -- any row returned would mean the
 -- two sources disagree on what a given SIC code means, worth
 -- investigating before trusting either source further:
 SELECT entity_name, sic_code, sic_description_edgar, sic_description_reference
@@ -133,19 +133,18 @@ FROM edgar.all_companies_profile_table
 WHERE sic_description_edgar <> sic_description_reference;
 
 -- =============================================================================
--- MANUAL STEP -- Virtual Data Mart (no SQL equivalent exists; confirmed,
--- docs/plans/edgar-sic-enrichment-plan.md sec 5.3). Build this by hand in
--- the Zetaris UI's Virtual Data Mart tab once every view above is
--- verified. Walkthrough (matches the kbase's own documented steps,
--- "Processes for Automation: Virtual Data Mart creation / deletion"):
+-- Manual step -- Virtual Data Mart (no SQL equivalent exists). Build
+-- this by hand in the Zetaris UI's Virtual Data Mart tab once every
+-- view above is verified. Walkthrough (matches the kbase's own
+-- documented steps, "Processes for Automation: Virtual Data Mart
+-- creation / deletion"):
 --
 --   1. Go to the Virtual Data Mart tab (left nav, under Data Product in
 --      the newer UI / "Virtual Data Mart" in the older Using Zetaris nav).
 --   2. Click the "+" button next to Data Marts.
 --   3. Name it something like "EDGAR Company Profiles" and give it a
---      short description (e.g. "SIC-enriched company profiles + revenue,
---      7 companies -- see docs/plans/edgar-sic-enrichment-plan.md"), then
---      click Create.
+--      short description (e.g. "SIC-enriched company profiles and
+--      revenue, 7 companies"), then click Create.
 --   4. The middle pane becomes a drag-and-drop canvas. From the left
 --      panel's data source tree, drag in:
 --        - edgar.all_companies_profile_table (the main deliverable)
@@ -156,7 +155,7 @@ WHERE sic_description_edgar <> sic_description_reference;
 --          drill into the full 1,005-code reference without needing a
 --          second data mart)
 --   5. Relationships between the dragged-in tables are optional (per the
---      kbase's own guidance) and NOT recommended here: recall caveat 1 in
+--      kbase's own guidance) and not recommended here: recall caveat 1 in
 --      the create script -- the revenue tables' cik is a bare integer
 --      while the profile view's cik came from a zero-padded string
 --      source; even though they represent the same company, Zetaris has

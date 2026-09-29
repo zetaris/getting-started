@@ -3,11 +3,12 @@
 -- Assumes 04_singapore_pm25_create.sql has already been run.
 --
 -- The verification queries below are commented out by default so that
--- running this whole file doesn't automatically fire read queries against
--- every view -- this source is excluded from the main sequence (see
--- HOWTO.md and ISSUE.md) precisely because of a tight, easy-to-trip rate
--- limit. Uncomment what you want to run, or run it directly in the SQL
--- Editor. The example queries further down are left live, same as before.
+-- running this whole file doesn't automatically fire read queries
+-- against every view -- this source is excluded from the main
+-- sequence (see ../ISSUE.md) precisely because of a tight, easy-to-trip
+-- rate limit. Uncomment what you want to run, or run it directly in the
+-- SQL Editor. The example queries further down are left live, same as
+-- before.
 -- =============================================================================
 
 -- === Verification ===
@@ -18,9 +19,8 @@
 -- SELECT * FROM sg_datagovsg_rest.pm25_readings_20260918;
 -- DESCRIBE sg_datagovsg_rest.pm25_readings_20260918;
 -- If dot-access through data.items (nested under a non-array `data`
--- struct) fails, that's a different failure mode from every other script
--- in this package -- worth isolating from the "array at the top level"
--- sources (EDGAR, PokéAPI) when reporting back.
+-- struct) fails, that's worth isolating as its own failure mode when
+-- reporting back.
 
 -- === Example queries ===
 -- Run these against the views created in 04_singapore_pm25_create.sql to
@@ -38,8 +38,8 @@ SELECT * FROM singapore.pm25_readings_table ORDER BY reading_timestamp;
 SELECT
     region,
     ROUND(AVG(pm25), 1) AS avg_pm25,
-    MIN(pm25)           AS min_pm25,
-    MAX(pm25)           AS max_pm25
+    MIN(pm25) AS min_pm25,
+    MAX(pm25) AS max_pm25
 FROM singapore.pm25_readings_long_table
 GROUP BY region
 ORDER BY avg_pm25 DESC;
@@ -57,7 +57,7 @@ ORDER BY pm25 ASC
 LIMIT 1;
 
 -- 5. Computed "national" hourly average -- the API itself has no such
--- field (see caveat 3 in the create script), so this derives one as the
+-- field (see caveat 2 in the create script), so this derives one as the
 -- average of the 5 regions per hour, then shows the trend across the day:
 SELECT
     reading_timestamp,
@@ -71,18 +71,15 @@ ORDER BY reading_timestamp;
 -- summary rather than a raw average:
 SELECT
     region,
-    COUNT(*)                                     AS hours_elevated,
-    ROUND(100.0 * COUNT(*) / 24, 1)               AS pct_of_day_elevated
+    COUNT(*) AS hours_elevated,
+    ROUND(100.0 * COUNT(*) / 24, 1) AS pct_of_day_elevated
 FROM singapore.pm25_readings_long_table
 WHERE pm25 > 55
 GROUP BY region
 ORDER BY hours_elevated DESC;
 
--- 7. Which region was worst in EACH hour -- a window function ranks the
--- 5 regions within every hour, same ROW_NUMBER() OVER (...) pattern
--- confirmed working in sql/03_open_food_facts_live_select.sql query 7,
--- applied here to a genuine "top-N per group" question rather than a
--- self-join:
+-- 7. Which region was worst in each hour -- a window function ranks
+-- the 5 regions within every hour, a "top-N per group" question:
 SELECT reading_timestamp, region AS worst_region, pm25
 FROM (
     SELECT
@@ -97,9 +94,7 @@ ORDER BY reading_timestamp;
 
 -- 8. Worst daily-average region, alongside where it actually is --
 -- joins the long-format readings (aggregated) against the region
--- reference view for its coordinates, the same nutrition-view-plus-
--- ingredients-view cross-view join pattern as
--- sql/03_open_food_facts_live_select.sql query 8:
+-- reference view for its coordinates:
 SELECT
     r.region_name,
     daily.avg_pm25,

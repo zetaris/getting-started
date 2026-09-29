@@ -3,10 +3,11 @@
 -- Assumes 07_eurostat_create.sql has already been run.
 --
 -- The verification queries below are commented out by default so that
--- running this whole file doesn't automatically fire read queries against
--- every view. Uncomment what you want to run, or run it directly in the
--- SQL Editor. The example queries further down are left live, same as
--- before -- ALL CONFIRMED WORKING against Zetaris (2026-09-19).
+-- running this whole file doesn't automatically fire read queries
+-- against every view. Uncomment what you want to run, or run it
+-- directly in the SQL Editor. The example queries further down are
+-- left live, same as before -- all confirmed working against Zetaris
+-- (2026-09-19).
 -- =============================================================================
 
 -- === Verification ===
@@ -14,20 +15,18 @@
 -- SELECT * FROM eurostat.une_rt_m_pl_snapshot_table;
 -- SELECT * FROM eurostat.une_rt_m_pl_series_table ORDER BY period;
 
--- === Diagnostics === (kept for reference -- une_rt_m_pl_series_table is
--- confirmed working now, but this is useful if the same pattern fails on a
--- different JSON-stat/SDMX dataset elsewhere, e.g. ABS, sql/09)
+-- === Diagnostics === (kept for reference -- une_rt_m_pl_series_table
+-- is confirmed working now, but this is useful if the same pattern
+-- fails on a different JSON-stat/SDMX dataset elsewhere)
 -- SELECT * FROM eurostat_rest.une_rt_m_pl;
 -- DESCRIBE eurostat_rest.une_rt_m_pl;
--- CONFIRMED (2026-09-19, see caveat 6c in the create script): `value` and
--- `dimension.time.category.index` are BOTH inferred as a STRUCT with one
--- field per dynamic key, not a MAP, exactly as caveat 5 predicted. The
--- to_json/from_json coercion, applied to BOTH exploded fields, resolves
--- this -- confirmed by 355 correct rows being returned. If this pattern
--- fails on a different dynamic-key source, check whether EVERY dynamic-
--- key object being exploded in the same query has the coercion applied,
--- not just the first one you noticed -- that was the exact mistake that
--- produced the DATATYPE_MISMATCH this script hit before the fix.
+-- `value` and `dimension.time.category.index` are both inferred as a
+-- struct with one field per dynamic key, not a map -- the
+-- to_json/from_json coercion, applied to both exploded fields,
+-- resolves this (confirmed by 355 correct rows being returned). See
+-- the SQL companion guide for the general lesson: check whether every
+-- dynamic-key object being exploded in the same query has the
+-- coercion applied, not just the first one you notice.
 
 -- === Example queries ===
 -- Queries 1-3 use the metadata and snapshot views (no explode() involved);
