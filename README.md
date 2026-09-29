@@ -5,8 +5,8 @@ Real, permissively-licensed data sources you can query within minutes of standin
 ## Quickstart
 
 1. **Install Zetaris.** Follow [`docs/install/updated_zetaris_installation_guide.md`](docs/install/updated_zetaris_installation_guide.md) (local Docker Compose, fully tested) and sign in to the SQL Workspace.
-2. **Pick a source and run its `_create.sql`.** Every source ships as a pair of scripts — e.g. [`open_data/rest_apis/sql/02_pokeapi_create.sql`](open_data/rest_apis/sql/02_pokeapi_create.sql) registers PokéAPI and builds the flattened views.
-3. **Run the matching `_select.sql`** — e.g. [`02_pokeapi_select.sql`](open_data/rest_apis/sql/02_pokeapi_select.sql) — to verify it worked and see example analytical queries against real data.
+2. **Pick a source and run its `_create.sql`.** Every source ships as a pair of scripts — e.g. [`open_data/rest_apis/sql/non_rate_limited/02_pokeapi_create.sql`](open_data/rest_apis/sql/non_rate_limited/02_pokeapi_create.sql) registers PokéAPI and builds the flattened views.
+3. **Run the matching `_select.sql`** — e.g. [`02_pokeapi_select.sql`](open_data/rest_apis/sql/non_rate_limited/02_pokeapi_select.sql) — to verify it worked and see example analytical queries against real data.
 
 That `*_create.sql` / `*_select.sql` split (setup DDL vs. verification/example queries) is consistent across every source in `open_data/rest_apis/sql/` and `open_data/parquet_csv/sql/`, so once you've done it once you can repeat it for any source in the catalogs below.
 
@@ -58,7 +58,7 @@ deno task lint
 deno task warmup:company-dns
 ```
 
-The warmup task prepares the hosted Company DNS service before running `open_data/rest_apis/sql/10_company_dns_sic.sql`. It grants network access only to `company-dns.mediumroast.io:443` and environment access only to `COMPANY_DNS_BASE_URL`.
+The warmup task prepares the hosted Company DNS service before running `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql`. It grants network access only to `company-dns.mediumroast.io:443` and environment access only to `COMPANY_DNS_BASE_URL`.
 
 For a self-hosted service, set the URL and grant access to its host explicitly:
 

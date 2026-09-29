@@ -2,7 +2,7 @@
 -- USL:      company_profile_usl -- a two-table, FK-related Unified Semantic
 --           Layer model rebuilding the SAME "EDGAR company profile enriched
 --           with SIC hierarchy" data product as
---           open_data/rest_apis/sql/11_edgar_company_profiles.sql, but
+--           open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql, but
 --           using USL's CREATE TABLE + FOREIGN KEY + ACTIVATE + DQ +
 --           MATERIALIZE lifecycle instead of sql/11's flat UNION ALL views
 --           plus a manually-built, SQL-free Virtual Data Mart.
@@ -15,12 +15,12 @@
 --           and Appendix B (supplied alongside this repo; no dedicated
 --           Kbase page found as of 2026-09-23 -- see
 --           docs/guides/zetaris-sql-companion.md sec 0).
--- Prerequisite: open_data/rest_apis/sql/11_edgar_company_profiles.sql,
+-- Prerequisite: open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql,
 --           Step 0 and the seven CREATE LIGHTNING REST TABLE
 --           <company>_submissions_raw statements only -- the
 --           CREATE SCHEMASTORE VIEW statements in that script are NOT
 --           needed here (this script activates directly from the raw
---           tables). open_data/rest_apis/sql/10_company_dns_sic.sql Steps
+--           tables). open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql Steps
 --           0-1 must also already be run (same company_dns.sic_codes_raw
 --           dependency as 01_simple_sic_usl.sql).
 --   Run 01_simple_sic_usl.sql first if this is a fresh instance -- it
@@ -119,7 +119,7 @@ CREATE TABLE company (
 -- ---------------------------------------------------------------------------
 -- STEP 2: document the model.
 -- ---------------------------------------------------------------------------
-UPDATE USL lightning.metastore.usl_demo.company_profile_usl SET DESCRIPTION 'USL rebuild of the EDGAR plus SIC company profile data product - 7 companies, FK-related to a SIC hierarchy table. Contrast target for edgar.all_companies_profile_table and its manual Virtual Data Mart (open_data/rest_apis/sql/11_edgar_company_profiles.sql).';
+UPDATE USL lightning.metastore.usl_demo.company_profile_usl SET DESCRIPTION 'USL rebuild of the EDGAR plus SIC company profile data product - 7 companies, FK-related to a SIC hierarchy table. Contrast target for edgar.all_companies_profile_table and its manual Virtual Data Mart (open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql).';
 UPDATE USL lightning.metastore.usl_demo.company_profile_usl.company SET TABLE DESCRIPTION 'One row per company - CIK, name, and SIC code as reported by EDGAR''s own submissions endpoint.';
 UPDATE USL lightning.metastore.usl_demo.company_profile_usl.sic_code SET TABLE DESCRIPTION 'SIC hierarchy reference - same content as sic_usl.sic_code, duplicated here per caveat 1 above pending confirmation of cross-USL foreign keys.';
 

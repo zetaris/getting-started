@@ -284,7 +284,7 @@ Expect 10 rows of energy-source codes and descriptions, beginning with `AB` (agr
 
 ### REST
 
-Follow the [REST HOWTO](../../open_data/rest_apis/HOWTO.md) and [PokéAPI script](../../open_data/rest_apis/sql/02_pokeapi_create.sql). It needs no API key.
+Follow the [REST HOWTO](../../open_data/rest_apis/HOWTO.md) and [PokéAPI script](../../open_data/rest_apis/sql/non_rate_limited/02_pokeapi_create.sql). It needs no API key.
 
 Run its database/container prerequisites and the Pikachu REST table and view statements, then query:
 

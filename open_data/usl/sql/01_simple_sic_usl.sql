@@ -1,7 +1,7 @@
 -- =============================================================================
 -- USL:      sic_usl -- a single-table Unified Semantic Layer model over the
 --           same company_dns SIC hierarchy reference data already onboarded
---           via REST in open_data/rest_apis/sql/10_company_dns_sic.sql.
+--           via REST in open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql.
 -- Purpose:  Lowest-risk USL smoke test -- confirms the basic
 --           namespace/COMPILE/ACTIVATE/DQ/MATERIALIZE lifecycle works at all
 --           before attempting the two-table, FK-related advanced USL
@@ -12,7 +12,7 @@
 --           Appendix B (supplied alongside this repo; no dedicated Kbase
 --           page found as of 2026-09-23 -- see
 --           docs/guides/zetaris-sql-companion.md sec 0).
--- Prerequisite: open_data/rest_apis/sql/10_company_dns_sic.sql, Steps 0-1
+-- Prerequisite: open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql, Steps 0-1
 --           only (through CACHE TABLE company_dns.sic_codes_raw;), must
 --           already have been run on this instance -- this script activates
 --           directly from that raw REST table rather than re-registering
@@ -84,7 +84,7 @@ CREATE TABLE sic_code (
 -- STEP 2: document the model (optional but cheap -- exercises UPDATE USL
 -- ... SET DESCRIPTION per the guide sec 11).
 -- ---------------------------------------------------------------------------
-UPDATE USL lightning.metastore.usl_demo.sic_usl SET DESCRIPTION 'Simple USL smoke test - SIC hierarchy reference, single table, no relationships. Contrast target for company_dns.sic_codes_table (open_data/rest_apis/sql/10_company_dns_sic.sql).';
+UPDATE USL lightning.metastore.usl_demo.sic_usl SET DESCRIPTION 'Simple USL smoke test - SIC hierarchy reference, single table, no relationships. Contrast target for company_dns.sic_codes_table (open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql).';
 
 -- ---------------------------------------------------------------------------
 -- STEP 3: activate -- reuses sql/10's exact flattening query verbatim

@@ -1,6 +1,6 @@
 # HOWTO: the USL rebuild of the EDGAR+SIC data product
 
-**This package is a contrast, not a replacement.** `open_data/rest_apis/sql/10_company_dns_sic_create.sql` and `sql/11_edgar_company_profiles_create.sql` already build this same "EDGAR company profile enriched with a SIC hierarchy" data product using `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` + a manually-built Virtual Data Mart, and both are live-tested and confirmed working (see `docs/plans/edgar-sic-enrichment-plan.md`). This package rebuilds the same data product using the Unified Semantic Layer (USL) instead, so the two approaches can be run side by side and their behavior compared — per explicit request, neither this package nor `docs/plans/edgar-sic-enrichment-plan.md`'s original scripts should be deleted or treated as superseded by the other.
+**This package is a contrast, not a replacement.** `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql` and `open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql` already build this same "EDGAR company profile enriched with a SIC hierarchy" data product using `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` + a manually-built Virtual Data Mart, and both are live-tested and confirmed working (see `docs/plans/edgar-sic-enrichment-plan.md`). This package rebuilds the same data product using the Unified Semantic Layer (USL) instead, so the two approaches can be run side by side and their behavior compared — per explicit request, neither this package nor `docs/plans/edgar-sic-enrichment-plan.md`'s original scripts should be deleted or treated as superseded by the other.
 
 **Status: live-tested, fixes applied, believed passing — pending final confirmation.** Both scripts in this package's `sql/` directory have been run against a live Zetaris instance; a null-handling bug found during that run was fixed in a follow-up commit (`8f18f4f`, "Fix SQL queries in USL scripts to handle null values and document errors"). The person who ran the tests has not yet given final sign-off that both scripts pass end to end post-fix, so treat this as believed-working rather than closed out. See [`docs/plans/usl-simple-advanced-build-plan.md`](../../docs/plans/usl-simple-advanced-build-plan.md) for the build-and-verify checklist, and [`docs/guides/zetaris-sql-companion.md`](../../docs/guides/zetaris-sql-companion.md) section 8 for the reference material this package is meant to validate. The known open items in [section 8.5 of that guide](../../docs/guides/zetaris-sql-companion.md#85-known-open-items-in-this-repos-usl-package-specifically) (cross-USL foreign keys, materialization's SQL surface, the `cik` sidestep) are separate, still-open questions, unaffected by the null-handling fix.
 
@@ -10,8 +10,8 @@
 
 Both scripts here **reuse raw REST tables already registered by the `rest_apis` package** rather than re-registering the same endpoints under USL. Run these first, in this order, if they haven't already been run on the target instance:
 
-1. `open_data/rest_apis/sql/10_company_dns_sic_create.sql` — Steps 0-1 only (through `CACHE TABLE company_dns.sic_codes_raw;`). This package's `01_simple_sic_usl.sql` activates directly from `company_dns.sic_codes_raw`.
-2. `open_data/rest_apis/sql/11_edgar_company_profiles_create.sql` — Step 0 and the seven `CREATE LIGHTNING REST TABLE ..._submissions_raw` statements (the `CREATE SCHEMASTORE VIEW` statements in that script are **not** needed here — this package's advanced USL activates directly from the raw `*_submissions_raw` tables, not from `sql/11`'s own profile views).
+1. `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql` — Steps 0-1 only (through `CACHE TABLE company_dns.sic_codes_raw;`). This package's `01_simple_sic_usl.sql` activates directly from `company_dns.sic_codes_raw`.
+2. `open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql` — Step 0 and the seven `CREATE LIGHTNING REST TABLE ..._submissions_raw` statements (the `CREATE SCHEMASTORE VIEW` statements in that script are **not** needed here — this package's advanced USL activates directly from the raw `*_submissions_raw` tables, not from `sql/11`'s own profile views).
 
 This is deliberate: the point of the contrast is that USL's `ACTIVATE ... AS SELECT` clause can do the same flattening/joining work a `SCHEMASTORE VIEW` does, landing in a different (constraint-checked, DQ-capable, materializable) destination — not that USL needs a different set of raw sources.
 
@@ -26,7 +26,7 @@ Run them in that order — the simple USL is the lower-risk smoke test for the U
 
 ## 3. The specific question this package exists to answer
 
-`open_data/rest_apis/sql/11_edgar_company_profiles_select.sql` query 8 is a hand-written data-quality check:
+`open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_select.sql` query 8 is a hand-written data-quality check:
 
 ```sql
 SELECT entity_name, sic_code, sic_description_edgar, sic_description_reference
@@ -46,4 +46,4 @@ Both scripts include a commented-out `TEARDOWN` block using `REMOVE USL` and `DR
 
 ## 6. Everything else
 
-For the REST/SchemaStore/VDM version of this same data product, see `open_data/rest_apis/sql/10_company_dns_sic_create.sql`, `sql/11_edgar_company_profiles_create.sql`, and `docs/plans/edgar-sic-enrichment-plan.md`. For the general USL reference material this package is built against, see `docs/guides/zetaris-sql-companion.md` section 8. For the build-and-verify tracking, see `docs/plans/usl-simple-advanced-build-plan.md`.
+For the REST/SchemaStore/VDM version of this same data product, see `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql`, `open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql`, and `docs/plans/edgar-sic-enrichment-plan.md`. For the general USL reference material this package is built against, see `docs/guides/zetaris-sql-companion.md` section 8. For the build-and-verify tracking, see `docs/plans/usl-simple-advanced-build-plan.md`.
