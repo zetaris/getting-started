@@ -15,7 +15,7 @@ That `*_create.sql` / `*_select.sql` split (setup DDL vs. verification/example q
 | Doc | What it's for |
 |---|---|
 | [`docs/install/`](docs/install/) | Installing and configuring Zetaris (local or AWS), and the record of what's been tested |
-| [`docs/cookbooks/`](docs/cookbooks/) | Short, task-focused recipes, starting with [creating a USL from a supplied JDBC driver](docs/cookbooks/create-usl-with-jdbc.md) |
+| [`docs/cookbooks/`](docs/cookbooks/) | Short, task-focused recipes: [create a USL from a supplied JDBC driver](docs/cookbooks/create-usl-with-jdbc.md) and [run the build with Codex](docs/cookbooks/codex-build.md) |
 | [`open_data/rest_apis/`](open_data/rest_apis/) | REST/JSON API sources — catalog, HOWTO, and `sql/*_create.sql` + `*_select.sql` pairs |
 | [`open_data/parquet_csv/`](open_data/parquet_csv/) | Parquet/CSV file sources — same catalog/HOWTO/sql pattern |
 | [`open_data/usl/`](open_data/usl/) | Unified Semantic Layer contrast build — the same EDGAR+SIC data product, rebuilt with USL instead of REST+VDM |
