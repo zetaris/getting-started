@@ -60,7 +60,7 @@ Do not initialize Spark or create a SparkSession.
 
 Once connected, verify the connection by executing:
 
-SHOW LIGHTNING TABLES TPCDS_DB
+SELECT 1;
 ```
 
 ### 4.2 Local instance
@@ -68,7 +68,7 @@ SHOW LIGHTNING TABLES TPCDS_DB
 ```text
 Establish a JDBC connection to the local Zetaris instance using:
 
-JDBC URL: jdbc:hive2://localhost:10000/default
+JDBC URL: jdbc:zetaris:lightning@localhost:10000
 
 Credentials:
 - User ID: {{USER_ID}}
@@ -82,25 +82,26 @@ Do not initialize Spark or create a SparkSession.
 
 Once connected, verify the connection by executing:
 
-SHOW LIGHTNING TABLES TPCDS_DB
+SELECT 1;
 ```
 
 ## 5. Verification
 
-The connection is verified by:
+The connection is verified by executing:
 
 ```sql
-SHOW LIGHTNING TABLES TPCDS_DB
+SELECT 1;
 ```
 
-A successful connection returns the tables in `TPCDS_DB`. If it fails, confirm
-the JDBC URL, credentials, driver, and account access, then submit the prompt
-again.
+A result row containing `1` confirms the JDBC connection can execute a query.
+If the query fails, confirm the JDBC URL, credentials, driver, and account
+access.
 
 ## 6. Usage rules
 
-1. **Protocol.** Use the Hive JDBC protocol (`jdbc:hive2://`), but write every
-   statement in Zetaris Lightning SQL.
+1. **Protocol.** Use the URL format expected by the supplied Zetaris driver.
+   The bundled local Lightning driver uses `jdbc:zetaris:lightning@<host>:<port>`.
+   Write every statement in Zetaris Lightning SQL.
 2. **No local Spark.** Do not start Spark or create a SparkSession. Processing
    takes place on the Zetaris instance.
 3. **Statement syntax.** Follow the supplied *Lightning Command Reference* and
