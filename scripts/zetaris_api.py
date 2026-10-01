@@ -66,13 +66,13 @@ def _request(path: str, token: str, method: str = "GET", body: Any = None) -> An
 def zetaris_request(path: str, method: str = "GET", body: Any = None) -> Any:
     """Make an authenticated request to the Zetaris UI proxy API."""
 
-    token = os.environ.get("ZETARIS_API_TOKEN")
+    token = os.environ.get("ZETARIS_API_KEY")
     if not token:
         username = os.environ.get("ZETARIS_USERNAME")
         password = os.environ.get("ZETARIS_PASSWORD")
         if not username or not password:
             raise RuntimeError(
-                "Set ZETARIS_API_TOKEN or both ZETARIS_USERNAME and "
+                "Set ZETARIS_API_KEY or both ZETARIS_USERNAME and "
                 "ZETARIS_PASSWORD."
             )
 

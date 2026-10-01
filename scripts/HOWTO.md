@@ -11,14 +11,14 @@ For the Zetaris scripts:
 ```dotenv
 ZETARIS_BASE_URL=http://localhost:3000
 ZETARIS_ORG_ID=123
-ZETARIS_API_TOKEN=
+ZETARIS_API_KEY=
 ZETARIS_USERNAME=
 ZETARIS_PASSWORD=
 ZETARIS_QUERY_LIMIT=1000
 ZETARIS_ENGINE_ID=
 ```
 
-Replace `123` with your numeric organization ID. Set either `ZETARIS_API_TOKEN` or both username and password. When a token is set, the scripts use it directly. Otherwise, they log in with `POST /api/auth/login` and use the returned access token.
+Replace `123` with your numeric organization ID. Set either `ZETARIS_API_KEY` or both username and password. When a token is set, the scripts use it directly. Otherwise, they log in with `POST /api/auth/login` and use the returned access token.
 
 `ZETARIS_BASE_URL` is the web UI origin. The default `http://localhost:3000` is for the local setup. The scripts use the UI's `/api/proxy/...` routes, so a raw Zetaris API address such as port 8888 is not a drop-in replacement.
 
@@ -37,7 +37,7 @@ Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwor
 
 ## How a request works
 
-Each script loads `.env` from the repository root. The shared helper (`zetaris_api.ts` or `zetaris_api.py`) checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_TOKEN` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds. Both language versions enforce the same validation and timeouts.
+Each script loads `.env` from the repository root. The shared helper (`zetaris_api.ts` or `zetaris_api.py`) checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_KEY` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds. Both language versions enforce the same validation and timeouts.
 
 ## Check the Zetaris connection
 

@@ -53,13 +53,13 @@ export async function zetarisRequest(
   method = "GET",
   body?: unknown,
 ): Promise<unknown> {
-  let token = Deno.env.get("ZETARIS_API_TOKEN");
+  let token = Deno.env.get("ZETARIS_API_KEY");
   if (!token) {
     const username = Deno.env.get("ZETARIS_USERNAME");
     const password = Deno.env.get("ZETARIS_PASSWORD");
     if (!username || !password) {
       throw new Error(
-        "Set ZETARIS_API_TOKEN or both ZETARIS_USERNAME and ZETARIS_PASSWORD.",
+        "Set ZETARIS_API_KEY or both ZETARIS_USERNAME and ZETARIS_PASSWORD.",
       );
     }
     let response: Response;
