@@ -23,6 +23,11 @@ Zetaris Lightning SQL from the supplied *Lightning Command Reference*.
 - The Zetaris JDBC driver JAR and *Lightning Command Reference*.
 - Codex, with a local workspace that permits the agent to run code.
 
+For the local instance, `zetaris-platform` includes the driver at
+`jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar`. Open the `zetaris-platform`
+folder in Codex so the relative JAR path in the local prompt resolves correctly.
+The driver class is `com.zetaris.lightning.jdbc.LightningDriver`.
+
 Add the driver and reference to the Codex prompt with `@` file mentions. Allow
 network access if Codex asks to connect to Zetaris Cloud.
 
@@ -68,15 +73,19 @@ SELECT 1;
 ```text
 Establish a JDBC connection to the local Zetaris instance using:
 
-JDBC URL: jdbc:zetaris:lightning@localhost:10000
+- Driver JAR: jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar
+- Driver class: com.zetaris.lightning.jdbc.LightningDriver
+- JDBC URL: jdbc:zetaris:lightning@localhost:10000
 
 Credentials:
 - User ID: {{USER_ID}}
 - Password: {{PASSWORD}}
 
-Use the supplied JDBC driver and command reference. Use the JDBC endpoint
-directly and execute queries using Zetaris Lightning SQL, not Spark SQL or
-Hive SQL.
+Use this JAR directly (for example, via JayDeBeApi) and load the specified
+driver class. Use the JDBC endpoint directly and follow the supplied Lightning
+Command Reference. Do not substitute a Hive or Spark driver.
+
+Write Zetaris Lightning SQL, one statement per JDBC call.
 
 Do not initialize Spark or create a SparkSession.
 
@@ -100,7 +109,8 @@ access.
 ## 6. Usage rules
 
 1. **Protocol.** Use the URL format expected by the supplied Zetaris driver.
-   The bundled local Lightning driver uses `jdbc:zetaris:lightning@<host>:<port>`.
+   The driver included with `zetaris-platform` uses
+   `jdbc:zetaris:lightning@<host>:<port>` for local instances.
    Write every statement in Zetaris Lightning SQL.
 2. **No local Spark.** Do not start Spark or create a SparkSession. Processing
    takes place on the Zetaris instance.
