@@ -80,8 +80,8 @@ A repo-wide search for `sql/0[1-9]` currently matches these 12 files. None of th
 - `open_data/usl/HOWTO.md` — cites the REST scripts it builds on top of.
 - `docs/plans/edgar-sic-enrichment-plan.md` — cites `sql/01` and `sql/11` repeatedly, **including line-number citations** (`sql/01, line 32-40` / `lines 32-40`, appearing at least twice) that will point at the wrong statement once the file is split and re-numbered. These must be recomputed against the new `_create.sql`, not just renamed.
 - `docs/plans/REST-API-HANDOFF.md`
-- `docs/plans/recipes/00-parquet-csv.md`
-- `docs/plans/recipes/01-rest-json-apis.md`
+- `docs/plans/archive/00-parquet-csv.md`
+- `docs/plans/archive/01-rest-json-apis.md`
 - `docs/plans/usl-simple-advanced-build-plan.md`
 - `docs/guides/zetaris-sql-companion.md`
 - `handoff.md`

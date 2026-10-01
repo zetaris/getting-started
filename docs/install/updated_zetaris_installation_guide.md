@@ -269,18 +269,18 @@ The recipe SQL runs **inside Zetaris's SQL Editor**. Open the files from the `ge
 
 ### Parquet/CSV
 
-Read the current [Parquet/CSV HOWTO](../../open_data/parquet_csv/HOWTO.md) and [recipe plan](../plans/recipes/00-parquet-csv.md). Start with the small energy-source table in [the PUDL CREATE script](../../open_data/parquet_csv/sql/03_pudl_create.sql):
+Read the current [Parquet/CSV HOWTO](../../open_data/parquet_csv/HOWTO.md) and [recipe plan](../plans/archive/00-parquet-csv.md). Start with [the NOAA GHCN-Daily CREATE script](../../open_data/parquet_csv/sql/02_noaa_ghcn_create.sql) — live-tested and confirmed working (PUDL, this walkthrough's earlier example, is now known to fail; see the HOWTO's "Source folders" section):
 
-1. Review its header and verify that the source path is still available.
-2. Run the `CREATE LIGHTNING DATABASE PUDL_S3` prerequisite once.
-3. Run the first `CREATE LIGHTNING FILESTORE TABLE` statement, for `pudl_eia_energy_sources`. Leave the larger generator table for later.
+1. Review its header and verify that the source path (the current year's file) is still available.
+2. Run the `CREATE LIGHTNING DATABASE NOAA_GHCN_S3` prerequisite once.
+3. Run the `CREATE LIGHTNING FILESTORE TABLE` statement, then its `CACHE TABLE` statement — confirmed required for workable query times against this table, not just a nice-to-have.
 4. Run:
 
 ```sql
-SELECT * FROM PUDL_S3.pudl_eia_energy_sources LIMIT 10;
+SELECT * FROM NOAA_GHCN_S3.noaa_ghcn_daily_2025 LIMIT 10;
 ```
 
-Expect 10 rows of energy-source codes and descriptions, beginning with `AB` (agricultural by-products) and `ANT` (anthracite coal). The script reads a public bucket (`isS3BucketPublic "true"`), so you do not need AWS credentials.
+Expect 10 rows of raw station observations (station ID, date, element code, value, and flag columns — no header row, so Zetaris names them `_c0`..`_c7`). The script reads a public bucket (`isS3BucketPublic "true"`), so you do not need AWS credentials. `sql/02_noaa_ghcn_select.sql` has further analytical example queries, also confirmed working, if you want to explore further.
 
 ### REST
 
@@ -330,4 +330,4 @@ For the environment, results and memory measurements behind this guide, see the 
 - [ ] Intended Parquet/CSV and REST recipes return data.
 - [ ] For AWS, the cost estimate, credit expiry and teardown time are recorded.
 
-Related documents: [test record](zetaris-installation-test-record.md), [getting-started README](../../README.md), [original installation plan](../plans/archive/zetaris-installation-guide.md) (archived — superseded by this guide), [Parquet/CSV plan](../plans/recipes/00-parquet-csv.md).
+Related documents: [test record](zetaris-installation-test-record.md), [getting-started README](../../README.md), [original installation plan](../plans/archive/zetaris-installation-guide.md) (archived — superseded by this guide), [Parquet/CSV plan](../plans/archive/00-parquet-csv.md).

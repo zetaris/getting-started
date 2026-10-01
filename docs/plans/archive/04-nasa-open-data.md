@@ -1,5 +1,7 @@
 # Recipe: NASA open APIs
 
+> **Archived — not started, superseded in part.** This recipe's own two standout sources, NASA NeoWs and DONKI, already shipped under the general REST recipe instead (`open_data/rest_apis/`, sources 5-6 in `rest-api-sources.md`). The rest of what this recipe planned — APOD, Mars Rover Photos, EONET, the no-key Images API, and a DONKI-to-Kafka pipeline — was never built; none of the work items below are checked off. Kept here as the original research in case this category gets picked back up; see [`docs/plans/FUTURES.md`](../FUTURES.md) for current priority order.
+
 **Status:** 📋 Planned
 **Priority:** 4
 **Original research:** `docs/plans/archive/quickstart-data-manifest.md` §9

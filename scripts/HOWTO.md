@@ -53,3 +53,23 @@ The script accepts SQL text as one quoted argument or reads the entire file afte
 [`check_zetaris.ts`](check_zetaris.ts) calls `/api/proxy/lightning-database/databases`. [`query_zetaris.ts`](query_zetaris.ts) posts the SQL, row limit, and optional engine ID to `/api/proxy/sql-editor/sqls/run-query`. Both use [`zetaris_api.ts`](zetaris_api.ts) for login, request headers, error handling, and the 30-second timeout.
 
 SQL runs with your Zetaris account's permissions. Review the query before running it. If a request returns 404, check that `ZETARIS_BASE_URL` points to the web UI and that it exposes the proxy routes.
+
+## Warm up company_dns
+
+[`warmup_company_dns.ts`](warmup_company_dns.ts) is unrelated to the Zetaris API scripts above — it talks to `company_dns` directly, not to Zetaris. Its hosted instance (`https://company-dns.mediumroast.io`) can return an empty response or an HTTP 502 on the first request after a period of no traffic; this script polls its `/health` endpoint until the service is warm, then pre-hits the SIC bulk endpoint so Zetaris's own `CREATE LIGHTNING REST TABLE` request lands on an already-warm backend. Run it before `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql` — see that file's own header and `open_data/rest_apis/HOWTO.md`'s Fast Start.
+
+```sh
+deno run --allow-net --allow-env scripts/warmup_company_dns.ts
+```
+
+For a self-hosted instance, set the URL and grant access to its host explicitly:
+
+```sh
+COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --allow-net --allow-env=COMPANY_DNS_BASE_URL scripts/warmup_company_dns.ts
+```
+
+Or use the pinned-permission Deno task instead of raw flags:
+
+```sh
+deno task warmup:company-dns
+```

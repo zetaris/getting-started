@@ -18,7 +18,7 @@ That `*_create.sql` / `*_select.sql` split (setup DDL vs. verification/example q
 | [`docs/connections/`](docs/connections/) | Short connection guides, including [connecting Codex to Zetaris over JDBC](docs/connections/codex-connection.md) |
 | [`open_data/rest_apis/`](open_data/rest_apis/) | REST/JSON API sources — catalog, HOWTO, and `sql/*_create.sql` + `*_select.sql` pairs |
 | [`open_data/parquet_csv/`](open_data/parquet_csv/) | Parquet/CSV file sources — same catalog/HOWTO/sql pattern |
-| [`open_data/usl/`](open_data/usl/) | Unified Semantic Layer contrast build — the same EDGAR+SIC data product, rebuilt with USL instead of REST+VDM |
+| [`open_data/usl/`](open_data/usl/) | Unified Semantic Layer contrast builds — data products already built elsewhere in this repo, rebuilt with USL instead (currently EDGAR+SIC, rebuilt with USL instead of REST+VDM) |
 | [`scripts/`](scripts/) | TypeScript and Python helpers for the Zetaris HTTP API and a PostgreSQL connection check — see [Client scripts](#client-scripts) below |
 | [`docs/guides/zetaris-sql-companion.md`](docs/guides/zetaris-sql-companion.md) | SQL reference: shapes, quoting, gotchas, and confirmed platform limitations — read alongside the Zetaris Kbase while writing your own SQL |
 | [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) | The full data-source roadmap, priority order, and status per category |
@@ -30,14 +30,15 @@ That `*_create.sql` / `*_select.sql` split (setup DDL vs. verification/example q
 open_data/
   rest_apis/      REST/JSON API sources — HOWTO, source catalog, sql/*_create.sql + *_select.sql pairs
   parquet_csv/     Parquet/CSV file sources — same HOWTO/catalog/sql pattern
-  usl/             Unified Semantic Layer contrast build (EDGAR+SIC, rebuilt with USL instead of REST+VDM)
+  usl/             Unified Semantic Layer contrast builds (currently EDGAR+SIC, rebuilt with USL instead of REST+VDM)
 scripts/
   check_zetaris.*, query_zetaris.*, ping_postgres.*, zetaris_api.* — TypeScript and Python helpers
+  warmup_company_dns.ts — pre-warms the company_dns REST source before registering it in Zetaris
 docs/
   connections/     Connection guides (Codex, with Cursor and Grok Build to follow)
   install/         Installation & configuration guide, plus its test record
   guides/          The Zetaris SQL companion reference guide
-  plans/           Active roadmap and category plans (FUTURES.md, recipes/); archive/ for completed plans
+  plans/           Active roadmap and category plans (FUTURES.md, recipes/); archive/ for completed or retired plans
 ```
 
 Folders are added as each category in the roadmap actually ships, rather than scaffolded up front — see [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) for where this is headed.
@@ -65,7 +66,7 @@ The warmup task prepares the hosted Company DNS service before running `open_dat
 For a self-hosted service, set the URL and grant access to its host explicitly:
 
 ```sh
-COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --no-prompt --allow-net=localhost:8000 --allow-env=COMPANY_DNS_BASE_URL open_data/rest_apis/scripts/warmup_company_dns.ts
+COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --no-prompt --allow-net=localhost:8000 --allow-env=COMPANY_DNS_BASE_URL scripts/warmup_company_dns.ts
 ```
 
 ### Check a PostgreSQL connection
@@ -124,9 +125,9 @@ API contract: [Zetaris API reference](http://localhost:8888/redoc/index.html#tag
 |---|---|---|
 | Install | ✅ Local Docker Compose fully tested; AWS checked on paper only | [`docs/install/`](docs/install/) |
 | REST / JSON APIs | 🟢 6 of 9 sources live-tested and working | [`rest-api-sources.md`](open_data/rest_apis/rest-api-sources.md) |
-| Parquet / CSV | 🟢 7 current CREATE/SELECT pairs; PUDL energy-source table live-tested | [`parquet-csv-data-sources.md`](open_data/parquet_csv/parquet-csv-data-sources.md) |
+| Parquet / CSV | 🟢 7 current CREATE/SELECT pairs; NOAA GHCN-Daily and AWS Public Blockchain Data live-tested, PUDL/Ookla/Foursquare/Overture/GBIF known to fail | [`parquet-csv-data-sources.md`](open_data/parquet_csv/parquet-csv-data-sources.md) |
 | SQL scripts | ✅ CREATE/SELECT split done across all sources | see Quickstart above |
-| USL | 🟡 Live-tested, fix applied, pending final confirmation | [`open_data/usl/HOWTO.md`](open_data/usl/HOWTO.md) |
+| USL | 🟡 Lifecycle verified; each model's custom DQ rule confirmed failing; live verification in progress | [`open_data/usl/HOWTO.md`](open_data/usl/HOWTO.md) |
 | TypeScript/Python scripts | ✅ Zetaris API + PostgreSQL connection helpers available | see Client scripts above |
 | SQL RDBMS, logs, PDFs, broader NASA, Singapore, data.gov, EU, UK, Canada/Australia/Mexico/Africa | 📋 Planned, not started | [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) |
 | Kafka / streaming | ⏸ Deferred until a hobby-edition Zetaris instance is confirmed to ingest from a broker | [`docs/plans/recipes/11-kafka-streaming.md`](docs/plans/recipes/11-kafka-streaming.md) |

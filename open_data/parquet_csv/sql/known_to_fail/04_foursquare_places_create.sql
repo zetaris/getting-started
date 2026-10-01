@@ -7,6 +7,11 @@
 --           https://source.coop/fused/fsq-os-places
 -- Before running: list what's actually in the current release folder --
 --   aws s3 ls --endpoint-url https://data.source.coop --no-sign-request s3://fused/fsq-os-places/
+--
+-- KNOWN TO FAIL -- kept here as-is, not in the main sql/ sequence. The
+-- CREATE LIGHTNING FILESTORE TABLE statement below succeeds, but CACHE
+-- TABLE and every SELECT against the resulting table fail with a 500
+-- error. See sql/known_to_fail/ISSUE.md for the full writeup.
 -- =============================================================================
 --
 -- CAVEAT 1: this dataset is NOT on AWS's own S3 endpoint -- Source Cooperative

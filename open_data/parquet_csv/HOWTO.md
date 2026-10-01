@@ -2,6 +2,8 @@
 
 This guide covers the seven current CREATE/SELECT SQL pairs in `sql/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
 
+**Source folders:** two of the seven pairs live directly in `sql/`. Five live in `sql/known_to_fail/`: PUDL and Ookla both fail to register at all (`CREATE LIGHTNING FILESTORE TABLE` itself fails) for different reasons — PUDL's bucket's dotted name (`pudl.catalyst.coop`) isn't accepted by Zetaris's S3 filestore connector, Ookla's bucket has no dots and its 500 error's cause is unconfirmed; Foursquare's table creates successfully but its `CACHE TABLE` and every query fail with a 500 error; Overture's table creates successfully and its plain, bounded `SELECT` works, but its `CACHE TABLE` and every analytical query fail or hang; and GBIF's table creates and even caches successfully via the GUI, but every query against it — including the plain filtered verification SELECT — fails with a 500 error. All five are kept as documented, reproducible examples rather than deleted; none is part of the main sequence below. See `sql/known_to_fail/README.md` and its per-source `ISSUE-NN-<name>.md` files.
+
 ---
 
 ## 1. The SQL syntax these scripts use
@@ -42,7 +44,7 @@ OPTIONS (
 );
 ```
 
-The current SQL pairs target public S3 or S3-compatible locations and set `isS3BucketPublic "true"`; they do not include AWS credentials. The PUDL energy-source table was confirmed to return rows on a fresh install with no AWS credentials, as recorded in the [installation test record](../../docs/install/zetaris-installation-test-record.md). AWS sources use the regional endpoint in each script. Foursquare uses Source Cooperative's S3-compatible endpoint. Each script uses the same logical database name in `CREATE LIGHTNING DATABASE` and the table's `FROM` clause.
+The current SQL pairs target public S3 or S3-compatible locations and set `isS3BucketPublic "true"`; they do not include AWS credentials. NOAA GHCN-Daily has been confirmed live against a real Zetaris instance with no AWS credentials needed (`sql/02_noaa_ghcn_create.sql` / `_select.sql`). The [installation test record](../../docs/install/zetaris-installation-test-record.md) separately records an earlier successful PUDL run against the same no-credentials pattern — that specific source is now known to fail (`sql/known_to_fail/03_pudl_create.sql`, dotted bucket name; see its `ISSUE-03-pudl.md`), a contradiction not yet reconciled. AWS sources use the regional endpoint in each script. Foursquare uses Source Cooperative's S3-compatible endpoint, and its table registration succeeds, but querying it is also known to fail — see `sql/known_to_fail/ISSUE-04-foursquare.md`. Each script uses the same logical database name in `CREATE LIGHTNING DATABASE` and the table's `FROM` clause.
 
 ---
 
@@ -58,7 +60,9 @@ The seven current SQL pairs use public-source options. The endpoint and region v
 | `useS3PathStyleAccess "true"` | Enables the path-style S3 access used by these scripts. |
 | `s3Endpoint "..."` | Selects the AWS regional endpoint or the S3-compatible host. |
 
-The scripts do not contain AWS credential values. For a private bucket, use the credential options in Zetaris's S3 documentation instead. The PUDL installation test confirms one source works without credentials; the catalog and test record keep source-specific runtime evidence separate.
+The scripts do not contain AWS credential values. For a private bucket, use the credential options in Zetaris's S3 documentation instead. NOAA GHCN-Daily's confirmed live run shows one source works without credentials; the catalog and test record keep source-specific runtime evidence separate.
+
+**A bucket name containing a `.` is confirmed to fail, even with `useS3PathStyleAccess "true"` set.** PUDL's `pudl.catalyst.coop` bucket is the one dotted name in this catalog, and it's the one source that fails `CREATE LIGHTNING FILESTORE TABLE` — see `sql/known_to_fail/03_pudl_create.sql` and its `ISSUE.md`. Path-style addressing is the standard S3-client fix for dotted bucket names elsewhere, but it doesn't appear to fix this in Zetaris. Check a new source's bucket name for dots before assuming the syntax here will just work.
 
 ### Keep source URLs separate from the Zetaris `PATH`
 
@@ -115,17 +119,14 @@ Each current source has two files sharing a numeric prefix: `sql/NN_<name>_creat
    - Open and run the matching `_select.sql` verification query.
 3. Once created, a table shows up in Zetaris's Schema Browser and is queryable from the Query Builder UI as well as the SQL Editor.
 
-Suggested order — cleanest license first, in case you want to stop partway through:
+Suggested order — confirmed-working, simplest license first, in case you want to stop partway through:
 
 | Order | Script | Why here |
 |---|---|---|
-| 1 | `03_pudl_create.sql` | Cleanest license (CC-BY-4.0), reliable AWS-native bucket |
-| 2 | `04_foursquare_places_create.sql` | Cleanest license (Apache-2.0), shows the S3-compatible-endpoint pattern |
-| 3 | `02_noaa_ghcn_create.sql` | CC0, and shows CSV onboarding specifically |
-| 4 | `05_overture_maps_create.sql` | Large-scale GeoParquet, simple caveat ("stick to Places theme") |
-| 5 | `08_gbif_create.sql` | Biggest scale (1.6B+ rows), good "filter before SELECT *" example |
-| 6 | `07_ookla_speedtest_create.sql` | Same non-commercial caveat pattern as GBIF, different domain |
-| 7 | `09_aws_public_blockchain_create.sql` | License genuinely unresolved — good "how we handle an ambiguous one" example |
+| 1 | `02_noaa_ghcn_create.sql` | Live-tested and confirmed working. CC0, and shows CSV onboarding specifically — remember to `CACHE TABLE` before the analytical queries (see its own header). |
+| 2 | `09_aws_public_blockchain_create.sql` | Live-tested and confirmed working (both BTC and ETH tables). License genuinely unresolved — good "how we handle an ambiguous one" example. Caching is also confirmed to work here, but asymmetrically between tables and mechanisms — see its own header. |
+
+**Not in this sequence:** `sql/known_to_fail/03_pudl_create.sql` is excluded — its bucket's dotted name isn't accepted by Zetaris's S3 filestore connector. `sql/known_to_fail/04_foursquare_places_create.sql` is also excluded — its table creates successfully, but `CACHE TABLE` and every query against it fail with a 500 error. `sql/known_to_fail/05_overture_maps_create.sql` is also excluded — its table creates successfully and a plain, bounded `SELECT` works, but `CACHE TABLE` and every analytical query fail or hang. `sql/known_to_fail/07_ookla_speedtest_create.sql` is also excluded — both its `CREATE LIGHTNING FILESTORE TABLE` statements fail with a 500 error, and unlike PUDL its bucket name has no dots to explain it. `sql/known_to_fail/08_gbif_create.sql` is also excluded — its table creates and even caches successfully via the GUI, but every query against it, including the plain filtered verification SELECT, fails with a 500 error. See "Source folders" above and `sql/known_to_fail/ISSUE-03-pudl.md` / `ISSUE-04-foursquare.md` / `ISSUE-05-overture.md` / `ISSUE-07-ookla.md` / `ISSUE-08-gbif.md`.
 
 ---
 
@@ -136,6 +137,7 @@ For every runnable script:
 1. `SELECT COUNT(*) FROM <logical_datasource_name>.<table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a source configuration problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
 2. Spot-check a couple of column values against the schema described in that source's docs (linked in `parquet-csv-data-sources.md`) — this catches a wrong `inferSchema` result (every column coming back as a string, for example).
 3. For the date/version/release-partitioned sources (PUDL, Foursquare, Overture, Ookla, GBIF, AWS Public Blockchain), re-run the bucket-listing command from that script's header comment shortly before you need the source. A path can stop working when a new release replaces an old one.
+4. For a large single-file source, expect uncached queries to be slow — each one re-scans the underlying file over S3. `CACHE TABLE <logical_datasource_name>.<table_name>;` is confirmed to help (see `sql/02_noaa_ghcn_create.sql`, where it's required rather than optional); see [`docs/guides/zetaris-sql-companion.md` section 5](../../docs/guides/zetaris-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses) for what's confirmed about `CACHE TABLE` generally, including its known gaps.
 
 ---
 

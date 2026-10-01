@@ -27,12 +27,22 @@ CREATE LIGHTNING FILESTORE TABLE noaa_ghcn_daily_2025 FROM NOAA_GHCN_S3 FORMAT C
   s3Endpoint "s3.us-east-1.amazonaws.com"
 );
 
+-- Confirmed live: querying this table uncached is slow enough (a full
+-- multi-million-row CSV scan against S3 on every query, the same
+-- underlying cost CACHE TABLE addresses for REST sources -- see the SQL
+-- companion guide section 5) that caching it is necessary, not optional,
+-- before running sql/02_noaa_ghcn_select.sql's analytical queries.
+CACHE TABLE NOAA_GHCN_S3.noaa_ghcn_daily_2025;
+
 -- Note: GHCN-D's by_year CSVs ship without a header row (see the readme
 -- linked above for the 8-column layout: ID, DATE, ELEMENT, DATA_VALUE,
--- M-FLAG, Q-FLAG, S-FLAG, OBS-TIME) -- hence header "false" above. If you
--- want named columns instead of the default col1..col8, rename them after
--- creation with your usual Zetaris column-rename/ALTER workflow, or wrap
--- this table in a view that aliases the columns per the readme.
+-- M-FLAG, Q-FLAG, S-FLAG, OBS-TIME) -- hence header "false" above. Zetaris
+-- names headerless columns after Spark's own default (_c0.._c7); confirm
+-- this with DESCRIBE or the verification query's result columns before
+-- relying on it -- see sql/02_noaa_ghcn_select.sql query 1. If you want
+-- named columns instead, rename them with your usual Zetaris
+-- column-rename/ALTER workflow, or alias them per-query as the select
+-- script does.
 --
 -- Bonus demo (this is why GHCN is in the Parquet catalog despite being CSV-
 -- native): once this table is queryable, converting it to Parquet is exactly
@@ -43,3 +53,4 @@ CREATE LIGHTNING FILESTORE TABLE noaa_ghcn_daily_2025 FROM NOAA_GHCN_S3 FORMAT C
 --   TO 'ghcn_2025.parquet' (FORMAT PARQUET);
 
 -- Next: verify with sql/02_noaa_ghcn_select.sql
+-- Optional cleanup: UNCACHE TABLE NOAA_GHCN_S3.noaa_ghcn_daily_2025;
