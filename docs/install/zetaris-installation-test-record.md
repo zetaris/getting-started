@@ -8,7 +8,7 @@ This file records the tests run against the [installation and configuration guid
 | --- | --- | --- |
 | §3 Path A: local Docker Compose, fresh install on empty volumes | ✅ Passed | 24 Sep 2026 |
 | §5 First login and `SELECT 7 AS seven` | ✅ Passed | 24 Sep 2026 |
-| §6 Parquet/CSV recipe (PUDL energy sources) | ✅ Passed, no AWS credentials needed | 24 Sep 2026 |
+| §6 Parquet/CSV recipe (PUDL energy sources) | ⚠️ Passed at the time, no AWS credentials needed — contradicted by a later run; PUDL is now known to fail (see §6's own update) | 24 Sep 2026 |
 | §6 REST recipe (PokéAPI Pikachu abilities) | ✅ Passed | 24 Sep 2026 |
 | §7 Stop, start, down and up, with data retained | ✅ Passed | 24 Sep 2026 |
 | §4.1–4.3 Path B: AWS cost, sizing and instance choice | ✅ Checked on paper (see [AWS path](#aws-path)); not run on AWS | 24 Sep 2026 |
@@ -52,6 +52,8 @@ This file records the tests run against the [installation and configuration guid
 Signing in with the email and password set in `.env` returned a session token. `SELECT 7 AS seven` returned one row with the value `7`.
 
 ### §6 Parquet/CSV: PUDL
+
+**Update — contradicted by a later run, not yet reconciled.** A later session against `03_pudl_create.sql` (now `sql/known_to_fail/03_pudl_create.sql`) found `CREATE LIGHTNING FILESTORE TABLE` fails against this exact `PATH` — PUDL's bucket name, `pudl.catalyst.coop`, contains dots, and Zetaris's S3 filestore connector does not accept a dotted bucket name, even with `useS3PathStyleAccess "true"` set (the standard client-side fix for this class of problem elsewhere). See [`open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md`](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md) for the full writeup. Whether something changed between this record's original run and the later one (a Zetaris version/connector update, a different deployment or region) or the original result below doesn't reflect what actually happened is unresolved — treat the table immediately below as this record's original, unverified claim, not as current guidance. The [installation guide](updated_zetaris_installation_guide.md)'s Parquet/CSV walkthrough now uses NOAA GHCN-Daily instead, which is confirmed working.
 
 | Step | Result |
 | --- | --- |

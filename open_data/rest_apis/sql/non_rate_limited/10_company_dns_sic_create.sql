@@ -26,7 +26,7 @@
 -- Before running: run the warmup script first. The hosted instance has
 -- been observed to return an empty response, or an HTTP 502, on the
 -- first request after a period of no traffic, then resolve cleanly on an
--- immediate retry (see caveat 1). From open_data/rest_apis/:
+-- immediate retry (see caveat 1). From the repository root:
 --   deno run --allow-net --allow-env scripts/warmup_company_dns.ts
 -- Self-hosted instance: prefix with
 -- COMPANY_DNS_BASE_URL=http://localhost:8000. Re-run the warmup script

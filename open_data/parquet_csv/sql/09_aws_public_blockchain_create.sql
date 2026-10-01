@@ -44,4 +44,28 @@ CREATE LIGHTNING FILESTORE TABLE eth_transactions FROM AWS_BLOCKCHAIN_S3 FORMAT 
   s3Endpoint "s3.us-east-2.amazonaws.com"
 );
 
+-- CACHE TABLE -- confirmed live, with a surprising asymmetry per table AND
+-- per mechanism (SQL statement vs. the Data Explorer GUI's own cache
+-- action). Try both mechanisms if one fails on a given table -- don't
+-- assume a SQL CACHE TABLE failure means that table can't be cached at all:
+--
+--   Table              | CACHE TABLE (SQL)      | GUI cache action
+--   -------------------|-------------------------|--------------------
+--   btc_transactions    | Failed with an error    | Succeeded
+--   eth_transactions    | Succeeded               | Failed
+--
+-- CACHE TABLE AWS_BLOCKCHAIN_S3.btc_transactions;  -- confirmed to fail via SQL -- use the GUI instead
+CACHE TABLE AWS_BLOCKCHAIN_S3.eth_transactions;     -- confirmed to work via SQL
+
+-- Open question (not yet resolved -- see parquet-csv-data-sources.md #9):
+-- all select-script queries against both tables succeeded regardless of
+-- which caching mechanism was used, but the eth queries ran noticeably
+-- faster than the btc queries even though btc was the one successfully
+-- cached (via the GUI) and eth was cached second (via this SQL statement).
+-- Possible explanations, none confirmed: caching eth after btc may have
+-- evicted or otherwise invalidated btc's GUI-created cache entry; the two
+-- caching mechanisms (SQL vs. GUI) may not share the same underlying cache
+-- state at all; or the speed difference may simply reflect the two tables'
+-- different sizes/partition shapes, unrelated to caching order.
+
 -- Next: verify with sql/09_aws_public_blockchain_select.sql

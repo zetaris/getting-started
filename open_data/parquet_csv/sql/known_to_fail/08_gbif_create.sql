@@ -11,6 +11,13 @@
 -- Before running: confirm the current snapshot date and your nearest region --
 --   aws s3 ls --no-sign-request s3://gbif-open-data-us-east-1/occurrence/
 --   (also available in af-south-1, ap-southeast-2, eu-central-1, sa-east-1)
+--
+-- KNOWN TO FAIL -- kept here as-is, not in the main sql/ sequence. The
+-- CREATE LIGHTNING FILESTORE TABLE statement below succeeds, and caching
+-- via the Data Explorer GUI is confirmed to work. DESCRIBE also succeeds.
+-- But the plain filtered verification SELECT and every analytical query
+-- against the table fail with a 500 error. See
+-- sql/known_to_fail/ISSUE-08-gbif.md for the full writeup.
 -- =============================================================================
 --
 -- CAVEAT: this bucket is public/anonymous. The table options below use

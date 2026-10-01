@@ -11,6 +11,12 @@
 --           https://docs.overturemaps.org/getting-data/duckdb/
 -- Before running: confirm the current release folder name (changes monthly) --
 --   aws s3 ls --no-sign-request s3://overturemaps-us-west-2/release/
+--
+-- KNOWN TO FAIL -- kept here as-is, not in the main sql/ sequence. The
+-- CREATE LIGHTNING FILESTORE TABLE statement below succeeds and a plain
+-- SELECT * ... LIMIT works, but CACHE TABLE and every analytical query
+-- against the table fail with a 500 error. See
+-- sql/known_to_fail/ISSUE-05-overture.md for the full writeup.
 -- =============================================================================
 --
 -- CAVEAT: this bucket is public/anonymous. The table options below use

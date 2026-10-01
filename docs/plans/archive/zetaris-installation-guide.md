@@ -45,7 +45,7 @@ Both need to be documented since different readers will want different paths (a 
 ### Shared
 
 - [ ] A short "which path should I use" decision note at the top of the guide (local for iterating quickly and free; AWS free-tier for testing something closer to a real deployment, or when local resources are insufficient)
-- [ ] Cross-link from this guide into `docs/plans/recipes/00-parquet-csv.md` (the first consumer) and from the top-level `README.md`
+- [ ] Cross-link from this guide into `docs/plans/archive/00-parquet-csv.md` (the first consumer) and from the top-level `README.md`
 
 ## Open questions
 

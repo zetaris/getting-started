@@ -20,7 +20,7 @@ The fastest way to see this package's whole pattern — register, cache, flatten
 
 **Note on stability:** this hosted instance can return an empty response or an HTTP 502 on the first request after idle time — see "Troubleshooting / FAQ" below for why, and the warmup script mentioned in step 1 for the fix. If your first query below comes back empty or 502s, just retry once.
 
-1. *(Optional, see note above)* From `open_data/rest_apis/`: `deno run --allow-net --allow-env scripts/warmup_company_dns.ts`.
+1. *(Optional, see note above)* From the repository root: `deno run --allow-net --allow-env scripts/warmup_company_dns.ts`.
 2. Open the Zetaris **SQL Editor** and register the logical database:
    ```sql
    CREATE LIGHTNING DATABASE COMPANY_DNS DESCRIBE BY "company_dns SIC reference data - division, major group, industry group, SIC code";

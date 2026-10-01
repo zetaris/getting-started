@@ -2,7 +2,10 @@
 -- Verification queries for 07_ookla_speedtest_create.sql
 -- Assumes 07_ookla_speedtest_create.sql has already been run.
 --
--- The verification queries run when you execute this file.
+-- KNOWN TO FAIL -- never reached. Both CREATE LIGHTNING FILESTORE TABLE
+-- statements in 07_ookla_speedtest_create.sql fail with a 500 error, so
+-- neither table this file queries was ever successfully created. See
+-- sql/known_to_fail/ISSUE-07-ookla.md for the full writeup.
 -- =============================================================================
 
 -- === Verification ===

@@ -1,6 +1,6 @@
 # REST API work — handoff to next session
 
-> **Archived — superseded.** This is a point-in-time session handoff (2026-09-19). Current, live source status is tracked in [`open_data/rest_apis/rest-api-sources.md`](../../../open_data/rest_apis/rest-api-sources.md) and [`docs/plans/recipes/01-rest-json-apis.md`](../recipes/01-rest-json-apis.md) — read those for the real state, not this doc. Kept here as a historical record.
+> **Archived — superseded.** This is a point-in-time session handoff (2026-09-19). Current, live source status is tracked in [`open_data/rest_apis/rest-api-sources.md`](../../../open_data/rest_apis/rest-api-sources.md) and [`docs/plans/archive/01-rest-json-apis.md`](01-rest-json-apis.md) — read those for the real state, not this doc. Kept here as a historical record.
 
 Scoped context for picking up `open_data/rest_apis/` work without re-deriving what's already been found. Companion to `handoff.md` (the original Cowork → Claude Code handoff for the whole repo, now archived alongside this doc) and `docs/plans/FUTURES.md` (the full category roadmap) — this doc is narrowly about the REST API package.
 
@@ -9,8 +9,8 @@ Scoped context for picking up `open_data/rest_apis/` work without re-deriving wh
 - `open_data/rest_apis/HOWTO.md` — full `CREATE LIGHTNING REST TABLE` / `CREATE SCHEMASTORE VIEW` syntax reference, confirmed gotchas, the JSON-shape taxonomy, and a suggested testing order (§3)
 - `open_data/rest_apis/rest-api-sources.md` — catalog of all 9 candidate sources: license, shape, status, per-source detail
 - `open_data/rest_apis/sql/01_edgar_company_facts_create.sql`/`_select.sql` through `09_abs_data_api_create.sql`/`_select.sql` — a `_create.sql` (DDL) + `_select.sql` (verification/example queries) pair per source
-- `docs/plans/recipes/01-rest-json-apis.md` — the tracked plan and work-items for this category
-- `docs/plans/recipes/00-parquet-csv.md` — the sibling filestore-table package; a couple of findings below apply to both, not just REST
+- `docs/plans/archive/01-rest-json-apis.md` — the tracked plan and work-items for this category
+- `docs/plans/archive/00-parquet-csv.md` — the sibling filestore-table package; a couple of findings below apply to both, not just REST
 
 ## Status as of 2026-09-19
 
