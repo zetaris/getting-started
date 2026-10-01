@@ -36,7 +36,7 @@ import urllib.request
 
 API_BASE = "https://api-open.data.gov.sg/v1/public/api/datasets"
 DEFAULT_DATASET_ID = "d_8b84c4ee58e3cfc0ece0d773c8ca6abc"
-DEFAULT_CACHE_DIR = pathlib.Path(__file__).resolve().parents[3] / "tmp" / "cache" / "datagovsg"
+DEFAULT_CACHE_DIR = pathlib.Path(__file__).resolve().parents[1] / "tmp" / "cache" / "datagovsg"
 USER_AGENT = "zetaris-quickstart-data/1.0"
 
 # Public (unauthenticated) access is capped at 5 requests/minute -- space
