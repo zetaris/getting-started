@@ -11,7 +11,7 @@
 --
 -- Source: Unified Semantic Layer (USL) User Guide, sections 3-11 and
 -- Appendix B (supplied alongside this repo; no dedicated Kbase page found --
--- see docs/guides/zetaris-sql-companion.md section 0).
+-- see docs/guides/zetaris-lightning-sql-companion.md section 0).
 --
 -- Prerequisite: open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql,
 -- Steps 0-1 only (through CACHE TABLE company_dns.sic_codes_raw;), must
@@ -22,13 +22,13 @@
 -- Verification status: see ../usl-sources.md. The lifecycle through
 -- ACTIVATE is confirmed working. The self-consistency check in Step 4 is
 -- confirmed not expressible as a REGISTER DQ rule on this table -- see
--- docs/guides/zetaris-sql-companion.md section 8.6 for why -- and runs
+-- docs/guides/zetaris-lightning-sql-companion.md section 8.6 for why -- and runs
 -- instead as a plain query in 01_sic_usl_select.sql. RUN DQ (the PK
 -- constraint's auto-generated rule) has not yet been confirmed to pass.
 --
 -- Caveats:
 --   1. COMPILE USL IF NOT EXISTS's idempotency on a second run is
---      unconfirmed (docs/guides/zetaris-sql-companion.md section 8.4) --
+--      unconfirmed (docs/guides/zetaris-lightning-sql-companion.md section 8.4) --
 --      comment out the CREATE NAMESPACE / COMPILE USL statements on a
 --      re-run if either turns out not to tolerate being re-run cleanly.
 --   2. The namespace layout in Step 0 is a first draft, not a settled
@@ -75,7 +75,7 @@ UPDATE USL lightning.metastore.usl_demo.sic_usl SET DESCRIPTION 'Baseline USL mo
 -- ---------------------------------------------------------------------------
 -- Step 3: activate -- reuses sql/10's exact flattening query verbatim (same
 -- from_json(to_json(...), 'map<string, struct<...>>') coercion technique,
--- unaffected by the USL wrapper -- see docs/guides/zetaris-sql-companion.md
+-- unaffected by the USL wrapper -- see docs/guides/zetaris-lightning-sql-companion.md
 -- section 3 and section 8.1). This is the schema-validation test: the
 -- SELECT's output columns/types must match the CREATE TABLE above or
 -- ACTIVATE should report a mismatch (per the USL User Guide section 6.1).
@@ -100,7 +100,7 @@ LATERAL VIEW explode(
 -- Step 4: self-consistency check -- does every SIC code under the same
 -- major_group agree on that major_group's description? Not expressible as
 -- a REGISTER DQ rule on this table -- see
--- docs/guides/zetaris-sql-companion.md section 8.6 for the confirmed
+-- docs/guides/zetaris-lightning-sql-companion.md section 8.6 for the confirmed
 -- limitations that rule it out. The check runs instead as a plain
 -- aggregate query in 01_sic_usl_select.sql (the same shape as sql/10
 -- query 8).

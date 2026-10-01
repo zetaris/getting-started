@@ -25,14 +25,14 @@ specification (`docs.yaml`).
 ## 2. Prerequisites
 
 - A Zetaris user account issued by the Datathon organisers.
-- The *Lightning Command Reference* (`hackathon-lightning-commands.md`).
-- Claude Code, with a local workspace that permits the agent to run code. Open the `zetaris-platform` folder (or the folder that holds the driver, `.env.local` and the reference) so relative paths resolve. Add the reference, driver path and `docs.yaml` to the prompt with `@` file mentions, and approve the shell commands the agent asks to run.
+- The *Lightning Command Reference* ([`docs/guides/zetaris-lightning-sql-commands.md`](../guides/zetaris-lightning-sql-commands.md)).
+- The *Zetaris SQL Companion* ([`docs/guides/zetaris-lightning-sql-companion.md`](../guides/zetaris-lightning-sql-companion.md)): confirmed syntax shapes, quoting rules, gotchas and platform limitations. Add it to the prompt alongside the command reference.
+- Claude Code, with a local workspace that permits the agent to run code. Open the folder that holds `.env.local` and the reference so relative paths resolve. Add the reference, driver path and `docs.yaml` to the prompt with `@` file mentions, and approve the shell commands the agent asks to run.
 
 For **JDBC**:
 
 - The Zetaris JDBC driver JAR. The agent will ask you for its location; have the
-  full path ready. For a local instance, `zetaris-platform` includes the driver
-  at `jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar`.
+  full path ready.
 - The driver class, `com.zetaris.lightning.jdbc.LightningDriver`.
 - A Java runtime (JDK 11 or later) on the machine where the agent runs code. The
   driver is a Java JAR and cannot be loaded without one.
@@ -50,7 +50,9 @@ For **REST**:
   local file that is excluded from version control, for example
   `.env.local` containing `ZETARIS_API_KEY=...`. Do not paste the key into the
   prompt.
-- The OpenAPI specification, `docs.yaml`.
+- The OpenAPI specification, `docs.yaml`, which the agent fetches from the
+  instance (section 6.4). This needs `ZETARIS_USERNAME` and `ZETARIS_PASSWORD`
+  in `.env.local`, because the docs route uses Basic authentication.
 
 Allow network access if Claude Code asks to connect to Zetaris Cloud.
 
@@ -131,8 +133,7 @@ Credentials:
 - User ID: {{USER_ID}}
 - Password: {{PASSWORD}}
 
-Ask me for the full path of the Zetaris JDBC driver JAR before connecting. In
-the zetaris-platform folder it is jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar.
+Ask me for the full path of the Zetaris JDBC driver JAR before connecting.
 Use this JAR directly (for example, via JayDeBeApi) and load the specified
 driver class. If Java or JayDeBeApi is missing, tell me what you need to
 install and ask before installing it. Use a virtual environment for Python
@@ -183,8 +184,10 @@ Connect to the Zetaris REST API using:
   GUI; do not create or request another). Never print it, log it, or put it
   in a URL.
 
-Use the supplied OpenAPI specification (docs.yaml) as the reference for
-endpoints. Send these headers on every request:
+Use the OpenAPI specification as the reference for endpoints. Fetch it fresh
+with Basic auth from /redoc/docs.yaml, using ZETARIS_USERNAME and
+ZETARIS_PASSWORD from .env.local (never print them); see section 6.4.
+Send these headers on every request:
 
 - Authorization: Bearer <ZETARIS_API_KEY>
 - X-Request-ID: a new UUID for each request
@@ -216,8 +219,10 @@ Connect to the local Zetaris REST API using:
   GUI; do not create or request another). Never print it, log it, or put it
   in a URL.
 
-Use the supplied OpenAPI specification (docs.yaml) as the reference for
-endpoints. Send these headers on every request:
+Use the OpenAPI specification as the reference for endpoints. Fetch it fresh
+with Basic auth from /redoc/docs.yaml, using ZETARIS_USERNAME and
+ZETARIS_PASSWORD from .env.local (never print them); see section 6.4.
+Send these headers on every request:
 
 - Authorization: Bearer <ZETARIS_API_KEY>
 - X-Request-ID: a new UUID for each request
@@ -238,6 +243,34 @@ and then running the SQL statement:
 
 SELECT 1
 ```
+
+### 6.4 Fetch the OpenAPI specification
+
+The spec is served by the instance itself, so fetch it at the start of a REST
+session rather than relying on a saved copy that may be out of date. The docs
+route does not accept the bearer API key. It uses HTTP Basic authentication
+with your Zetaris user ID and password, so add both to `.env.local` yourself:
+
+```text
+ZETARIS_USERNAME=<your user id>
+ZETARIS_PASSWORD=<your password>
+```
+
+The docs page, `http://localhost:8888/redoc/index.html`,
+names the spec in its `spec-url` attribute, which is `./docs.yaml`. That attribute
+is in the page source, not visible in a browser, and the browser cannot send
+the Basic credentials for you. Fetch the spec with:
+
+```bash
+set -a; . ./.env.local; set +a
+curl -s -u "$ZETARIS_USERNAME:$ZETARIS_PASSWORD" \
+  http://localhost:8888/redoc/docs.yaml -o docs.yaml
+```
+
+Save it outside version control or somewhere disposable, and fetch it again if
+the instance is upgraded. The agent must read the credentials from the
+environment and never print, log or echo them. Local verification: HTTP 200,
+OpenAPI 3.1.0, about 280 paths, with both `bearer` and `basic` security schemes.
 
 ## 7. Verification
 
@@ -265,7 +298,8 @@ the account can see.
 3. **No local Spark.** Do not start Spark or create a SparkSession. Processing
    takes place on the Zetaris instance.
 4. **Statement syntax.** Follow the supplied *Lightning Command Reference* and
-   use qualified names, for example `SELECT ... FROM <source>.<table>`.
+   use qualified names, for example `SELECT ... FROM <source>.<table>`. Consult the *Zetaris SQL Companion*
+   before writing SQL; it records limitations the command reference omits.
 5. **One statement per call.** Execute each Lightning command as one JDBC call
    or one REST request. Do not include a trailing semicolon.
 6. **Secrets.** Keep passwords and the API key out of prompts, source files,
@@ -282,7 +316,7 @@ the account can see.
 | `Unable to locate a Java Runtime` | No JDK installed. Install JDK 11 or later and point `JAVA_HOME` at it. |
 | `externally-managed-environment` on `pip install` | System Python refuses global installs. Use a virtual environment. |
 | JDBC `mismatched input ... expecting` | More than one statement, or a name list, sent in one call. Send one statement per call. |
-| REST `401` | Key missing, wrong, or expired. Create a new key in the GUI and update `.env.local`, then check the `Authorization: Bearer` header and `.env.local`. The interactive docs page (`/redoc/index.html`) can return 401 even when the key is valid; test with `GET /datasource/datasources` instead. |
+| REST `401` | Key missing, wrong, or expired. Create a new key in the GUI and update `.env.local`, then check the `Authorization: Bearer` header and `.env.local`. The docs page (`/redoc/index.html`) and `/redoc/docs.yaml` return 401 for a bearer key because they use Basic authentication (see section 6.4); test the key with `GET /datasource/datasources` instead. |
 | REST `400 Not Allowed` | Wrong `X-Org-ID`. The local instance uses `1`. |
 | REST `400` on a valid request | `X-Request-ID` is missing or not a UUID, or `queryId` is not a UUID. |
 | Table not found | Use the qualified form `<source>.<table>`. REST relation names are upper-case, but SQL accepted lower-case in testing. |

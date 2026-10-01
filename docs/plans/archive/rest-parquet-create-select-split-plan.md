@@ -4,7 +4,7 @@
 
 **Status:** ✅ Done — executed in `4b25da1` (PR #10).
 **Depends on:** `open_data/rest_apis/sql/*.sql`, `open_data/rest_apis/failure_cases/singapore_pm25/04_singapore_pm25.sql`, `open_data/parquet_csv/sql/*.sql`, and every doc that cites them (§5).
-**Out of scope:** `open_data/usl/sql/*.sql` — a different DDL family (`CREATE NAMESPACE`/`CREATE TABLE` against the Iceberg-backed metastore, per `docs/guides/zetaris-sql-companion.md` §7-8) with its own CREATE/INSERT/SELECT shape. Noted as possible future follow-up in §6.
+**Out of scope:** `open_data/usl/sql/*.sql` — a different DDL family (`CREATE NAMESPACE`/`CREATE TABLE` against the Iceberg-backed metastore, per `docs/guides/zetaris-lightning-sql-companion.md` §7-8) with its own CREATE/INSERT/SELECT shape. Noted as possible future follow-up in §6.
 
 ---
 
@@ -83,7 +83,7 @@ A repo-wide search for `sql/0[1-9]` currently matches these 12 files. None of th
 - `docs/plans/archive/00-parquet-csv.md`
 - `docs/plans/archive/01-rest-json-apis.md`
 - `docs/plans/usl-simple-advanced-build-plan.md`
-- `docs/guides/zetaris-sql-companion.md`
+- `docs/guides/zetaris-lightning-sql-companion.md`
 - `handoff.md`
 
 **The line-number-citation risk is the largest correctness risk in this change** — a filename-only find/replace will leave stale line numbers that silently point at the wrong statement (or past end-of-file) in the new, shorter `_create.sql`. Every citation of the form "`sql/NN`, line(s) X-Y" found anywhere in the repo must be re-derived against the split files, not mechanically renamed.

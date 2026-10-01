@@ -5,7 +5,7 @@ This repo's value is in the detail: every source is traceable to a real license,
 ## Before you start
 
 - **Read the package's own docs first.** Each `open_data/*/` package has a `HOWTO.md` (onboarding walkthrough) and a `*-data-sources.md` or `*-sources.md` catalog (per-source license, path, and test status). Match its existing pattern rather than inventing a new one.
-- **`docs/guides/zetaris-sql-companion.md`** is the running list of confirmed Zetaris SQL gotchas and platform limitations. Skim it before writing new SQL — you may be about to rediscover something already documented there.
+- **`docs/guides/zetaris-lightning-sql-companion.md`** is the running list of confirmed Zetaris SQL gotchas and platform limitations. Skim it before writing new SQL — you may be about to rediscover something already documented there.
 - **`docs/plans/FUTURES.md`** is the roadmap and priority order. If you're picking up a new category, check it first; don't start on a lower-priority item on the assumption a higher one is done without confirming its live-test status.
 
 ## Adding a new data source
@@ -71,7 +71,7 @@ Also grep for bare (non-link) references to the old path in `.sql`, `.ts`, `.py`
 
 ## Adding a confirmed SQL gotcha or platform limitation
 
-If you hit a real, reproducible Zetaris behavior that isn't already in `docs/guides/zetaris-sql-companion.md` — a syntax limitation, an unexpected error shape, a caching quirk — add it there rather than letting it live only in a commit message or your own notes. Say what you confirmed live versus what's still a hypothesis, and link back to the script or `ISSUE-NN-*.md` that demonstrates it.
+If you hit a real, reproducible Zetaris behavior that isn't already in `docs/guides/zetaris-lightning-sql-companion.md` — a syntax limitation, an unexpected error shape, a caching quirk — add it there rather than letting it live only in a commit message or your own notes. Say what you confirmed live versus what's still a hypothesis, and link back to the script or `ISSUE-NN-*.md` that demonstrates it.
 
 ## Scripts in `scripts/`
 
