@@ -28,8 +28,8 @@ Each CREATE file has a matching `_select.sql` file with verification and example
 
 These scripts download data to the local cache. They do not register a table in Zetaris.
 
-- [`open_data/parquet_csv/scripts/fetch_datagovsg.py`](../../../open_data/parquet_csv/scripts/fetch_datagovsg.py) downloads a data.gov.sg dataset and prints the SODL attribution. The file must be moved to storage Zetaris can access before a SQL pair can be written.
-- [`open_data/parquet_csv/scripts/fetch_openfoodfacts.py`](../../../open_data/parquet_csv/scripts/fetch_openfoodfacts.py) downloads the Open Food Facts export or a small sample and prints its ODbL attribution. The export is tab-separated; a Zetaris registration needs a reachable file and confirmed delimiter handling.
+- [`scripts/fetch_datagovsg.py`](../../../scripts/fetch_datagovsg.py) downloads a data.gov.sg dataset and prints the SODL attribution. The file must be moved to storage Zetaris can access before a SQL pair can be written. Moved here from `open_data/parquet_csv/scripts/` in a later session, alongside the repo's other helper scripts.
+- [`scripts/fetch_openfoodfacts.py`](../../../scripts/fetch_openfoodfacts.py) downloads the Open Food Facts export or a small sample and prints its ODbL attribution. The export is tab-separated; a Zetaris registration needs a reachable file and confirmed delimiter handling. Moved here from `open_data/parquet_csv/scripts/` in a later session, alongside the repo's other helper scripts.
 - A Sentinel-2 GeoParquet STAC index on Source Cooperative is a candidate. Confirm its current path and license treatment before adding scripts.
 
 ## Current requirements and open work

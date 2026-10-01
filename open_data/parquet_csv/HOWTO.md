@@ -72,8 +72,7 @@ The catalog may show a browser or download URL for a source. The runnable SQL sc
 
 ## 3. Sources that need a local fetch step first
 
-These fetchers prepare local files only. They do not create Zetaris tables, and neither source has an onboarding SQL pair yet.
-Run the commands from `open_data/parquet_csv/`.
+These fetchers prepare local files only. They do not create Zetaris tables, and neither source has an onboarding SQL pair yet. They live in the repo's top-level [`scripts/`](../../scripts/) directory alongside the Zetaris API helpers, not under this package — run the commands from the repository root.
 
 ### `scripts/fetch_datagovsg.py` — a data.gov.sg CSV dataset (Singapore)
 
@@ -83,7 +82,7 @@ data.gov.sg doesn't serve a static file per dataset. It hands back a **presigned
 python3 scripts/fetch_datagovsg.py
 ```
 
-- Calls the `initiate-download` / `poll-download` API (no key needed for casual use) and saves the result to `../../tmp/cache/datagovsg/<dataset_id>.csv` (i.e. `tmp/cache/datagovsg/` at the repo root — gitignored, never commit what lands there).
+- Calls the `initiate-download` / `poll-download` API (no key needed for casual use) and saves the result to `tmp/cache/datagovsg/<dataset_id>.csv` at the repo root — gitignored, never commit what lands there.
 - Default dataset: `d_8b84c4ee58e3cfc0ece0d773c8ca6abc` — "Resale flat prices based on registration date from Jan-2017 onwards." Live-tested: a real, comma-separated, header-included CSV, ~24 MB / ~240k rows.
 - The API may return the download URL directly (`code: 0`) or require a separate poll (`code: 201`). The script handles both responses.
 - Prints the required Singapore Open Data Licence (SODL) v1.0 attribution line on completion — copy it into whatever you publish.
@@ -99,7 +98,7 @@ python3 scripts/fetch_openfoodfacts.py                    # full export, ~0.9 GB
 python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstart-sized sample
 ```
 
-- Downloads `https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz` (nightly-generated) to `tmp/cache/openfoodfacts/`.
+- Downloads `https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz` (nightly-generated) to `tmp/cache/openfoodfacts/` at the repo root.
 - `--sample-rows N` streams a small `sample_<N>rows.csv` out of the gzip without a full decompress first — useful since the full export is ~9 GB uncompressed, far more than a quickstart demo needs.
 - **Important:** despite the `.csv` extension, this export is **tab-separated**, not comma-separated. Whatever reads it downstream needs to know that.
 - Prints the required ODbL attribution + share-alike note on completion.
