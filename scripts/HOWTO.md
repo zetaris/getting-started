@@ -1,10 +1,12 @@
-# Zetaris API scripts
+# Repository scripts
 
-These scripts connect to Zetaris through the local web UI's API proxy. The connection check confirms that your account can list its visible Lightning databases, and the query script runs SQL as your Zetaris account. Use Deno 2.9 or later and run the commands below from the repository root.
+Helpers for talking to Zetaris and PostgreSQL directly from the command line, plus two standalone data-fetching scripts for the Parquet/CSV package. The Zetaris/PostgreSQL helpers are available in both Deno/TypeScript and Python — both versions load `.env`, preserve values already exported in the shell, use the same environment variables, and provide the same checks and query behavior. Run every command below from the repository root.
 
 ## Configure access
 
-Add these settings from [`../.env.example`](../.env.example) to the repository's `.env` file. If `.env` already exists, add the settings without replacing its other values.
+Add the settings you need from [`../.env.example`](../.env.example) to the repository's `.env` file. If `.env` already exists, add the settings without replacing its other values. `.env` is gitignored — do not commit it.
+
+For the Zetaris scripts:
 
 ```dotenv
 ZETARIS_BASE_URL=http://localhost:3000
@@ -16,9 +18,22 @@ ZETARIS_QUERY_LIMIT=1000
 ZETARIS_ENGINE_ID=
 ```
 
-Replace `123` with your actual numeric organization ID. The example number is not a working assignment. Set either `ZETARIS_API_TOKEN` or both username and password. When a token is set, the scripts use it directly. Otherwise, they log in with `POST /api/auth/login` and use the returned access token. Keep credentials in `.env`; do not commit that file.
+Replace `123` with your numeric organization ID. Set either `ZETARIS_API_TOKEN` or both username and password. When a token is set, the scripts use it directly. Otherwise, they log in with `POST /api/auth/login` and use the returned access token.
 
 `ZETARIS_BASE_URL` is the web UI origin. The default `http://localhost:3000` is for the local setup. The scripts use the UI's `/api/proxy/...` routes, so a raw Zetaris API address such as port 8888 is not a drop-in replacement.
+
+For the PostgreSQL connection check:
+
+```dotenv
+PGHOST=
+PGPORT=5432
+PGDATABASE=
+PGUSER=
+PGPASSWORD=
+PGSSLMODE=disable
+```
+
+Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwords containing spaces or `#`. Set `PGSSLMODE=verify-full` if your server uses TLS with a trusted certificate matching the host; the default, `disable`, is for servers without TLS. Exported environment variables take precedence over `.env` values.
 
 ## Find your organization ID
 
@@ -41,40 +56,108 @@ Use your installed runtime. Python users first install `scripts/requirements.txt
 
 ## How a request works
 
-Each script loads `.env` from the repository root. The shared [`zetaris_api.ts`](zetaris_api.ts) helper checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_TOKEN` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds.
+Each script loads `.env` from the repository root. The shared helper (`zetaris_api.ts` or `zetaris_api.py`) checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_TOKEN` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds. Both language versions enforce the same validation and timeouts.
 
-## Check the connection
+## Check the Zetaris connection
 
 ```sh
 ./scripts/check_zetaris.ts
+python3 scripts/check_zetaris.py
 ```
 
 This calls the Lightning database list endpoint and reports how many databases are visible to your account. It does not submit SQL.
 
-## Run a query
+## Run a Zetaris query
 
 Pass SQL in quotes:
 
 ```sh
 ./scripts/query_zetaris.ts "SELECT 1"
+python3 scripts/query_zetaris.py "SELECT 1"
 ```
 
 Or pass a SQL file:
 
 ```sh
 ./scripts/query_zetaris.ts --file path/to/query.sql
+python3 scripts/query_zetaris.py --file path/to/query.sql
 ```
 
-The script accepts SQL text as one quoted argument or reads the entire file after `--file`. It sends that text in one request to Zetaris and prints the JSON response. It does not split a file into separate statements. `ZETARIS_QUERY_LIMIT` caps returned rows at 1000 by default. Set `ZETARIS_ENGINE_ID` when you want to choose a compute engine. Use a file containing one complete command. Multi-statement recipe files are not a supported automatic onboarding workflow here: execution may be rejected or stop partway through, and there is no helper-managed rollback. Preserve a complete USL compile payload as one command; do not split its internal table definitions.
+The script accepts SQL text as one quoted argument or reads the entire file after `--file`. It sends that text in one request to Zetaris and prints the JSON response (`headers`, `data`, `total`, `timeUsed`). It does not split a file into separate statements and does not manage transaction rollback. Use one complete command per file/request, and resume partial setup only after inspecting existing objects. Keep each USL compile payload intact. `ZETARIS_QUERY_LIMIT` caps returned rows at 1000 by default. Set `ZETARIS_ENGINE_ID` when you want to choose a compute engine. SQL runs with your Zetaris account's permissions, so review a file before passing it to the command.
 
-## What the scripts send
+For the TypeScript versions: each script's first line supplies the Deno flags, including `.env` loading and network permission, and uses `--no-config` to avoid loading the separate PostgreSQL driver. If direct execution is unavailable, run `deno run --no-config --env-file=.env --allow-net --allow-env='ZETARIS*' scripts/check_zetaris.ts` instead.
 
-[`check_zetaris.ts`](check_zetaris.ts) calls `/api/proxy/lightning-database/databases`. [`query_zetaris.ts`](query_zetaris.ts) posts the SQL, row limit, and optional engine ID to `/api/proxy/sql-editor/sqls/run-query`. Both use [`zetaris_api.ts`](zetaris_api.ts) for login, request headers, error handling, and the 30-second timeout.
+## What the Zetaris scripts send
 
-SQL runs with your Zetaris account's permissions. Review the query before running it. If a request returns 404, check that `ZETARIS_BASE_URL` points to the web UI and that it exposes the proxy routes.
+`check_zetaris.*` calls `/api/proxy/lightning-database/databases`. `query_zetaris.*` posts the SQL, row limit, and optional engine ID to `/api/proxy/sql-editor/sqls/run-query`. Both use the shared `zetaris_api.*` helper for login, request headers, error handling, and the 30-second timeout.
 
-## Use a real result in a chart
+If a request returns 404, check that `ZETARIS_BASE_URL` points to the web UI and that it exposes the proxy routes.
 
-The [PUDL chart example](../examples/pudl-chart/README.md) runs one aggregate query through these helpers, saves its response locally, and renders an HTML chart without putting credentials in browser code. Use your assigned team database and inspect the response before rendering.
+API contract: [Zetaris API reference](http://localhost:8888/redoc/index.html#tag/SQL-Editor). The UI on port 3000 proxies the documented `/api/v1.0/...` endpoints under `/api/proxy/...`.
 
-For errors and partial setup, see [troubleshooting](../docs/guides/troubleshooting.md).
+## Check a PostgreSQL connection
+
+```sh
+deno task ping:postgres
+python3 scripts/ping_postgres.py
+```
+
+The script authenticates and runs `SELECT 1`, reports elapsed time, then closes the connection. It exits with code 1 on failure. Connection and server-side query timeouts are 10 seconds. This checks database access, not ICMP ping. It uses the [Postgres.js driver](https://github.com/porsager/postgres) (TypeScript) or Psycopg (Python).
+
+## Running the Deno/TypeScript scripts
+
+Use [Deno](https://deno.com/agents.md) 2.9 or later. Check your installation with `deno --version`. Deno downloads script dependencies on first use; `deno.lock` pins their versions.
+
+```sh
+deno task check
+deno task lint
+deno task ping:postgres
+deno task warmup:company-dns
+```
+
+Or invoke a script directly, as shown in the sections above — each one's shebang line carries its own `--env-file`/permission flags.
+
+## Running the Python scripts
+
+Python 3.9 or later is required. Install the environment-file loader and the Psycopg PostgreSQL driver with:
+
+```sh
+python3 -m pip install -r scripts/requirements.txt
+```
+
+Then run any of `check_zetaris.py`, `query_zetaris.py`, or `ping_postgres.py` as shown above.
+
+## Warm up company_dns
+
+[`warmup_company_dns.ts`](warmup_company_dns.ts) is unrelated to the Zetaris API scripts above — it talks to `company_dns` directly, not to Zetaris, and has no Python equivalent. Its hosted instance (`https://company-dns.mediumroast.io`) can return an empty response or an HTTP 502 on the first request after a period of no traffic; this script polls its `/health` endpoint until the service is warm, then pre-hits the SIC bulk endpoint so Zetaris's own `CREATE LIGHTNING REST TABLE` request lands on an already-warm backend. Run it before `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql` — see that file's own header and `open_data/rest_apis/HOWTO.md`'s Fast Start.
+
+```sh
+deno run --allow-net --allow-env scripts/warmup_company_dns.ts
+```
+
+For a self-hosted instance, set the URL and grant access to its host explicitly:
+
+```sh
+COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --allow-net --allow-env=COMPANY_DNS_BASE_URL scripts/warmup_company_dns.ts
+```
+
+Or use the pinned-permission Deno task instead of raw flags:
+
+```sh
+deno task warmup:company-dns
+```
+
+## Fetch local data files for the Parquet/CSV package
+
+[`fetch_datagovsg.py`](fetch_datagovsg.py) and [`fetch_openfoodfacts.py`](fetch_openfoodfacts.py) are also unrelated to the Zetaris API scripts above — they're plain stdlib-only Python downloaders for two `open_data/parquet_csv/` candidate sources that don't have a Zetaris SQL registration yet (see that package's [HOWTO.md section 3](../open_data/parquet_csv/HOWTO.md#3-sources-that-need-a-local-fetch-step-first)), and have no TypeScript equivalent. Both save into `tmp/cache/<source>/` at the repo root — gitignored, never commit what lands there. Run them from the repository root with any Python 3.8+:
+
+```sh
+python3 scripts/fetch_datagovsg.py
+python3 scripts/fetch_openfoodfacts.py --sample-rows 5000
+```
+
+Each script prints the attribution line its source's license requires (SODL for data.gov.sg, ODbL for Open Food Facts) on completion — copy it into whatever you publish. See each script's own module docstring and the Parquet/CSV HOWTO for full usage, caveats, and current limitations (neither source has a Zetaris table registration yet).
+
+## Render a saved result
+
+The [PUDL chart example](../examples/pudl-chart/README.md) is retained as a conditional example for an already verified PUDL table. PUDL registration is currently known to fail; do not use it as the default starter. See [troubleshooting](../docs/guides/troubleshooting.md) for connection and partial-setup recovery.

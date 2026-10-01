@@ -36,7 +36,7 @@ import sys
 import urllib.request
 
 DEFAULT_EXPORT_URL = "https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz"
-DEFAULT_CACHE_DIR = pathlib.Path(__file__).resolve().parents[3] / "tmp" / "cache" / "openfoodfacts"
+DEFAULT_CACHE_DIR = pathlib.Path(__file__).resolve().parents[1] / "tmp" / "cache" / "openfoodfacts"
 USER_AGENT = "zetaris-quickstart-data/1.0 (quickstart demo; contact via repo issues)"
 
 

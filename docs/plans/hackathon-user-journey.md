@@ -39,3 +39,12 @@ Implemented on `codex/hackathon-user-journey`.
 No platform installation, account provisioning, live SQL, real HTTP response compatibility, DQ, or materialization was verified during this change. Those acceptance steps need the actual event deployment and participant permissions. Existing recorded platform tests remain in their original documents.
 
 The existing EDGAR/PUDL/NOAA guide and local USL HOWTO link are included unchanged so the delivered branch contains the advanced example it links to. No adjacent repository assets were copied. Original registration scripts and query helpers retain their behavior.
+
+
+## Merge with main, 2 October 2026
+
+Merged local main `822ecbf` while retaining the participant journey and shared-instance guidance. Main adds full Lightning commands, expanded JDBC/direct-REST coding-assistant guides, moved fetch/warmup scripts, current USL CREATE/SELECT pairs and DQ evidence, and updated file-source failure records.
+
+PUDL is now known to fail, so the default starter is the minimal PokéAPI subset. The PUDL chart and EDGAR/PUDL/NOAA guide remain available only with an explicit requirement for a working registration verified on the target instance. The earlier PUDL run and present failure remain unreconciled. Historical verification notes above describe the branch before this merge.
+
+Repaired moved-file references and removed a pasted connection-document block from main's .gitignore while preserving its ignore rules. Merge verification: 402 local Markdown links/anchors resolved, Deno type checks and lint passed, Python helper/example syntax passed, and no conflict markers remain. No live platform queries were run.

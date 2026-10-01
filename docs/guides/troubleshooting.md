@@ -1,6 +1,6 @@
 # Troubleshooting and reruns
 
-Return to [Start here](../../START-HERE.md). Use this guide to decide the next check before changing registrations. The [SQL companion](zetaris-sql-companion.md) records deeper platform limitations.
+Return to [Start here](../../START-HERE.md). Use this guide to decide the next check before changing registrations. The [SQL companion](zetaris-lightning-sql-companion.md) records deeper platform limitations.
 
 ## Errors and next steps
 
@@ -17,6 +17,7 @@ Return to [Start here](../../START-HERE.md). Use this guide to decide the next c
 | CREATE succeeded but SELECT is empty | Check the path, actual source response, schema, server outbound access, and selected object | Resume only after a real bounded query returns plausible rows. Do not treat metadata as data proof. |
 | HTTP 429 / source rate limit | Stop repeated queries, wait according to the source guidance, and review caching in the selected recipe | REST views may refetch the upstream source. Avoid running every example at once. |
 | HTTP 502 / transport exception | Inspect the selected source's diagnostics. company_dns has a documented cold start; warm it using `deno task warmup:company-dns` from the repo root and retry once | Do not classify every 502 as cold start. Singapore PM2.5 is known to fail. Escalate persistent failures with a redacted record. |
+| PUDL registration fails | Check the [current PUDL issue](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md); its earlier successful run has not been reconciled with the current failure | Use the PokéAPI starter. Do not assume the old public-bucket example still works. |
 | File exists on the laptop but cannot be queried | Check whether Zetaris can reach the file's storage location | A local download does not create a platform table or a usable remote PATH. |
 | Chart example rejects a response | Save the real query response locally and compare it with the example's documented schema | Do not invent header fields or silently chart a wrapper/error response. |
 

@@ -1,24 +1,25 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env
 //
-// Warms up the company_dns service before running sql/10_company_dns_sic.sql.
+// Warms up the company_dns service before running
+// open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql.
 //
-// Why: during planning (docs/plans/edgar-sic-enrichment-plan.md §4, §7), the
-// hosted instance (https://company-dns.mediumroast.io) was observed to return
-// an empty response on a cold first request, resolving on retry ~10s later --
-// consistent with a scale-to-zero host. Running CREATE LIGHTNING REST TABLE
-// straight into a cold instance risks Zetaris seeing that same empty/slow
-// response and either failing outright or registering a table with no rows.
-// This script polls /health until the service is warm, then pre-hits the
-// one bulk SIC endpoint (plan §4.4, §8.2) sql/10_company_dns_sic.sql is
-// about to register as a REST table, so Zetaris's own request lands on an
-// already-warm backend. (Earlier versions of this script and that SQL file
-// warmed/fetched 4 endpoints -- confirmed 2026-09-21 that the other 3 are
-// fully redundant with this one for this use case, see the SQL file's
+// Why: during planning (docs/plans/archive/edgar-sic-enrichment-plan.md §4,
+// §7), the hosted instance (https://company-dns.mediumroast.io) was observed
+// to return an empty response on a cold first request, resolving on retry
+// ~10s later -- consistent with a scale-to-zero host. Running CREATE
+// LIGHTNING REST TABLE straight into a cold instance risks Zetaris seeing
+// that same empty/slow response and either failing outright or registering
+// a table with no rows. This script polls /health until the service is
+// warm, then pre-hits the one bulk SIC endpoint (plan §4.4, §8.2) that SQL
+// file is about to register as a REST table, so Zetaris's own request lands
+// on an already-warm backend. (Earlier versions of this script and that SQL
+// file warmed/fetched 4 endpoints -- confirmed 2026-09-21 that the other 3
+// are fully redundant with this one for this use case, see the SQL file's
 // caveat 1a -- trimmed to match.)
 //
-// Usage:
-//   deno run --allow-net --allow-env warmup_company_dns.ts
-//   COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --allow-net --allow-env warmup_company_dns.ts   (self-hosted)
+// Usage (from the repository root):
+//   deno run --allow-net --allow-env scripts/warmup_company_dns.ts
+//   COMPANY_DNS_BASE_URL=http://localhost:8000 deno run --allow-net --allow-env scripts/warmup_company_dns.ts   (self-hosted)
 //
 // Exit code 0 means the service is warm and the bulk endpoint responded
 // (regardless of whether its row count matched expectations -- that's
@@ -32,7 +33,7 @@ const HEALTH_POLL_INTERVAL_MS = 2_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 
 // Expected row count confirmed live 2026-09-21 against the hosted instance
-// (see docs/plans/edgar-sic-enrichment-plan.md §4.4). Not a hard requirement
+// (see docs/plans/archive/edgar-sic-enrichment-plan.md §4.4). Not a hard requirement
 // -- the SIC list could grow -- but a big shortfall is worth a loud warning
 // rather than a silent pass, since it's also how the EDGAR truncation bug
 // (sql/01_edgar_company_facts.sql, caveat 4) was originally noticed.
@@ -112,7 +113,7 @@ async function main() {
   if (!ok) {
     throw new Error("the sic_codes bulk endpoint failed outright -- see warning above");
   }
-  console.log("[warmup] done -- company_dns should now be warm for sql/10_company_dns_sic.sql.");
+  console.log("[warmup] done -- company_dns should now be warm for 10_company_dns_sic_create.sql.");
 }
 
 main().catch((err) => {

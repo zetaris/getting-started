@@ -1,5 +1,8 @@
 # Create an EDGAR, PUDL, and NOAA Unified Semantic Layer
 
+**Current prerequisite warning:** PUDL registration is now [known to fail](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md). The earlier successful run is retained as historical evidence and has not been reconciled with the current failure. Do not use this example as default onboarding; first obtain a working registration verified on your target instance.
+
+
 This guide reproduces the model created and queried through the local Zetaris JDBC endpoint in this session on 2026-10-01. It is written for humans executing SQL and AI agents operating a JDBC client.
 
 Start with [Connecting Codex to Zetaris](../connections/codex-connection.md). Connect and get a row containing `1` from `SELECT 1;` before registering sources or compiling the USL. The connection check does not depend on a sample database already existing.
@@ -91,7 +94,7 @@ Use the namespace and USL name shown in this guide for a fresh model. If `edgar_
 
 ## 3. Register the required sources
 
-These are the minimal registrations used by the successful model. The repo's [PUDL script](../../open_data/parquet_csv/sql/03_pudl_create.sql), [EDGAR script](../../open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql), and [NOAA script](../../open_data/parquet_csv/sql/02_noaa_ghcn_create.sql) provide the underlying registration patterns. You do not need to register all of their example tables.
+These are the minimal registrations used by the successful model. The repo's [PUDL script](../../open_data/parquet_csv/sql/known_to_fail/03_pudl_create.sql), [EDGAR script](../../open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql), and [NOAA script](../../open_data/parquet_csv/sql/02_noaa_ghcn_create.sql) provide the underlying registration patterns. You do not need to register all of their example tables.
 
 ### 3.1 SEC EDGAR revenue facts
 
@@ -270,7 +273,7 @@ CACHE TABLE NOAA_GHCN_S3.noaa_sc_airport;
 
 All three commands completed in the successful attempt. The first cache load took about 107 seconds. A slow initial load is not evidence that the subsequent query has failed.
 
-Cache completion and query correctness are separate checks. Verify by running step 6. Cache persistence across reconnects and server restarts was not established in this exercise; do not treat caching as durable materialization. Keep the same JDBC connection open where possible, and warm the sources again when required by your deployment. `SHOW CACHE TABLES` is not used here as proof of explicit-cache membership; the repo's [SQL companion](zetaris-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses) records limitations with that status command.
+Cache completion and query correctness are separate checks. Verify by running step 6. Cache persistence across reconnects and server restarts was not established in this exercise; do not treat caching as durable materialization. Keep the same JDBC connection open where possible, and warm the sources again when required by your deployment. `SHOW CACHE TABLES` is not used here as proof of explicit-cache membership; the repo's [SQL companion](zetaris-lightning-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses) records limitations with that status command.
 
 ## 6. Read the cached weather data and assess its period
 

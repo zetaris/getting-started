@@ -1,4 +1,4 @@
-# Connecting Cursor to Zetaris
+# Connecting Claude Code to Zetaris
 
 ## Contents
 
@@ -14,10 +14,10 @@
 
 ## 1. Purpose
 
-This document describes how to connect Cursor to a Zetaris instance at the
+This document describes how to connect Claude Code to a Zetaris instance at the
 start of a Datathon session, using either of the two supported protocols:
 **JDBC** and the **REST API**. Submit the relevant prompt from section 5 or 6 as
-the first instruction of the session. After Cursor verifies the connection, it
+the first instruction of the session. After Claude Code verifies the connection, it
 can execute Zetaris Lightning SQL from the supplied *Lightning Command Reference*,
 and, over REST, call the endpoints described in the supplied OpenAPI
 specification (`docs.yaml`).
@@ -34,7 +34,7 @@ The direct REST API described below uses its own API key and OpenAPI contract. T
 
 - A Zetaris user account issued by the Datathon organisers.
 - The *Lightning Command Reference* ([`zetaris-lightning-sql-commands.md`](../guides/zetaris-lightning-sql-commands.md)).
-- Cursor, with a local workspace that permits the agent to run code. Open the `zetaris-platform` folder as the Cursor workspace so relative paths resolve. Attach the reference and `docs.yaml` to the prompt with `@` file mentions, and allow the agent to run terminal commands.
+- Claude Code, with a local workspace that permits the agent to run code. Open the `zetaris-platform` folder (or the folder that holds the driver, `.env.local` and the reference) so relative paths resolve. Add the reference, driver path and `docs.yaml` to the prompt with `@` file mentions, and approve the shell commands the agent asks to run.
 
 For **JDBC**:
 
@@ -60,7 +60,7 @@ For **REST**:
   prompt.
 - The OpenAPI specification, `docs.yaml`.
 
-Allow network access if Cursor asks to connect to Zetaris Cloud.
+Allow network access if Claude Code asks to connect to Zetaris Cloud.
 
 ## 3. Choosing a protocol
 

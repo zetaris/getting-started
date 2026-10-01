@@ -1,6 +1,6 @@
 # HOWTO: onboard these REST API sources into Zetaris
 
-For first-time onboarding, start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md). That guide uses PUDL as the common starter and a minimal PokéAPI subset as the JSON alternative. This HOWTO explains the full REST patterns after that starter. On the shared event instance, use assigned team database/container names and update every reference consistently.
+For first-time onboarding, start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md). That guide uses a minimal PokéAPI subset as the common starter; PUDL is currently known to fail. This HOWTO explains the full REST patterns after that starter. On the shared event instance, use assigned team database/container names and update every reference consistently.
 
 **File naming:** each numbered source is split into two files sharing a prefix: `NN_<name>_create.sql` (every `CREATE`/`DROP`/`CACHE` DDL statement) and `NN_<name>_select.sql` (verification and, where present, example queries). Select and execute each needed complete CREATE command separately, then verify with its matching select script — the verification queries there are commented out by default so a bulk run of the file doesn't silently fire read queries.
 
@@ -20,7 +20,7 @@ After the minimal starter, this recipe demonstrates register, cache, flatten, an
 
 **Note on stability:** this hosted instance can return an empty response or an HTTP 502 on the first request after idle time — see "Troubleshooting / FAQ" below for why, and the warmup script mentioned in step 1 for the fix. If your first query below comes back empty or 502s, just retry once.
 
-1. *(Optional, see note above)* From `open_data/rest_apis/`: `deno run --allow-net --allow-env scripts/warmup_company_dns.ts`.
+1. *(Optional, see note above)* From the repository root: `deno run --allow-net --allow-env scripts/warmup_company_dns.ts`.
 2. Open the Zetaris **SQL Editor** and register the logical database:
    ```sql
    CREATE LIGHTNING DATABASE COMPANY_DNS DESCRIBE BY "company_dns SIC reference data - division, major group, industry group, SIC code";
@@ -217,7 +217,7 @@ A second, distinct cause of the "HTTP 502" symptom above: not every 502 is rate-
 
 This can surface two different ways depending on *which* statement hits the cold instance:
 - If it happens on `CREATE LIGHTNING REST TABLE` itself, Zetaris reports it as a plain HTTP 502, same as the Singapore case.
-- If it happens on a later `SELECT` (remember: a Lightning REST table re-fetches on every query, not just at `CREATE` time — see `docs/guides/zetaris-sql-companion.md` section 5 and the next entry below), Zetaris can instead report it as a client-side `java.sql.SQLException: org.apache.thrift.transport.TTransportException`, sometimes bundled as `Multiple exceptions were thrown (3), first java.sql.SQLException: ...` — the "(3)" reflects a connection pool retrying the same failing request across a few pooled connections. Don't assume this wrapped exception means a structural problem (oversized payload, too-wide inferred schema, etc.) just because the message looks like a low-level transport failure — check whether the *next* attempt, made immediately, succeeds before investigating anything else. A `DESCRIBE` on the same table succeeding (schema-only, no live re-fetch) alongside a manual `curl` against the exact same URL succeeding points at cold-start timing, not payload size or schema width.
+- If it happens on a later `SELECT` (remember: a Lightning REST table re-fetches on every query, not just at `CREATE` time — see `docs/guides/zetaris-lightning-sql-companion.md` section 5 and the next entry below), Zetaris can instead report it as a client-side `java.sql.SQLException: org.apache.thrift.transport.TTransportException`, sometimes bundled as `Multiple exceptions were thrown (3), first java.sql.SQLException: ...` — the "(3)" reflects a connection pool retrying the same failing request across a few pooled connections. Don't assume this wrapped exception means a structural problem (oversized payload, too-wide inferred schema, etc.) just because the message looks like a low-level transport failure — check whether the *next* attempt, made immediately, succeeds before investigating anything else. A `DESCRIBE` on the same table succeeding (schema-only, no live re-fetch) alongside a manual `curl` against the exact same URL succeeding points at cold-start timing, not payload size or schema width.
 
 **Fix:** run (or re-run) a warm-up request immediately before the statement that's about to touch the real data, and retry immediately if a 502-flavored error appears — don't wait, and don't assume a redesign (chunking the request, changing the schema) is needed before ruling out cold start first.
 
@@ -241,7 +241,7 @@ CACHE TABLE <logical_datasource_name>.<raw_table_name>;
 ```
 This loads the table into memory once so later queries read the cached copy instead of re-fetching. Against `company_dns.sic_codes_raw`, an uncached `SELECT COUNT(*)` took `Query Time: 49.685s` (Zetaris's own UI-reported figure — the HTTP round-trip to the live endpoint dominates this); after `CACHE TABLE company_dns.sic_codes_raw;`, the identical query dropped to a stable ~1.2s across repeated runs — roughly a 40x improvement. Whether caching the raw table also speeds up a `SCHEMASTORE VIEW` built on top of it hasn't been separately tested — check the same way (time a `SELECT` against the view before and after caching the underlying raw table) if that matters for your use. Release a cached table with `UNCACHE TABLE <same_name>;` when done.
 
-This is Zetaris's "Explicit Caching," and it's the same statement as Spark's own `CACHE TABLE` — not a separate command like "CACHE OFFSITE TABLE," which doesn't exist. The Zetaris SQL Manual documents only the bare form shown above, identical to [Spark's `CACHE TABLE`](https://spark.apache.org/docs/latest/sql-ref-syntax-aux-cache-cache-table.html). The Kbase does name a second, distinct feature, "Adaptive Cache," but it's video-only with no written spec, so its mechanics remain unconfirmed. This is why plain `CACHE TABLE` has no TTL/storage option and why `SHOW CACHE TABLES` doesn't reflect it — see [`docs/guides/zetaris-sql-companion.md` section 5](../../docs/guides/zetaris-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses) for the full picture and a Zetaris-native alternative worth testing instead: `INSERT INTO FUSIONDB.<table> SELECT ...` (Materialization), which writes a real persistent copy rather than a volatile session cache.
+This is Zetaris's "Explicit Caching," and it's the same statement as Spark's own `CACHE TABLE` — not a separate command like "CACHE OFFSITE TABLE," which doesn't exist. The Zetaris SQL Manual documents only the bare form shown above, identical to [Spark's `CACHE TABLE`](https://spark.apache.org/docs/latest/sql-ref-syntax-aux-cache-cache-table.html). The Kbase does name a second, distinct feature, "Adaptive Cache," but it's video-only with no written spec, so its mechanics remain unconfirmed. This is why plain `CACHE TABLE` has no TTL/storage option and why `SHOW CACHE TABLES` doesn't reflect it — see [`docs/guides/zetaris-lightning-sql-companion.md` section 5](../../docs/guides/zetaris-lightning-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses) for the full picture and a Zetaris-native alternative worth testing instead: `INSERT INTO FUSIONDB.<table> SELECT ...` (Materialization), which writes a real persistent copy rather than a volatile session cache.
 
 If `CACHE TABLE` doesn't help, the practical fallback is to space out or reduce the number of queries run against a rate-limited source in one sitting, and to prefer a source's free registered API key over its anonymous/demo access when iterating on queries. NASA sources share one `DEMO_KEY` quota — register a free key directly at [api.nasa.gov](https://api.nasa.gov/) (first name, last name, email — key emailed back immediately, no approval wait), which raises the limit from DEMO_KEY's 30 req/hour (50/day) to 1,000 req/hour. The limit resets on a rolling basis per key, not a fixed clock hour — if `DEMO_KEY` is exhausted, the wait is up to an hour from your first request in the current window, not a short pause.
 
@@ -251,11 +251,11 @@ Not reliably — see "Removing a source" above. `DROP VIEW` works; `DROP TABLE` 
 
 ### `CREATE SCHEMASTORE CONTAINER` failed with a parse exception
 
-This means the container name already exists — `CREATE SCHEMASTORE CONTAINER` has no `IF NOT EXISTS` form. Comment out that statement in the script and continue; see `docs/guides/zetaris-sql-companion.md` section 5.
+This means the container name already exists — `CREATE SCHEMASTORE CONTAINER` has no `IF NOT EXISTS` form. Comment out that statement in the script and continue; see `docs/guides/zetaris-lightning-sql-companion.md` section 5.
 
 ### `CREATE LIGHTNING DATABASE ... DESCRIBE BY "..."` failed with "Description is invalid"
 
-The `DESCRIBE BY` string only accepts letters, digits, spaces, and `_ . - ,` — nothing else (see `docs/guides/zetaris-sql-companion.md` section 5). The error text names `_`, `.`, `-`, and `,` explicitly but doesn't mention that plain spaces are fine (they are — every live-tested script's own `DESCRIBE BY` uses them). It's punctuation like parentheses, slashes, or colons that fails, e.g. `"... (division/major group)"` — rewrite as `"... - division, major group"` (hyphen and comma instead of parens and slash) and it passes. This check runs before Zetaris does anything else with the statement — the REST endpoint isn't even contacted, so don't waste time debugging the `endpoint`/`HEADER`/`BODY` clauses on this error, it's purely the description text.
+The `DESCRIBE BY` string only accepts letters, digits, spaces, and `_ . - ,` — nothing else (see `docs/guides/zetaris-lightning-sql-companion.md` section 5). The error text names `_`, `.`, `-`, and `,` explicitly but doesn't mention that plain spaces are fine (they are — every live-tested script's own `DESCRIBE BY` uses them). It's punctuation like parentheses, slashes, or colons that fails, e.g. `"... (division/major group)"` — rewrite as `"... - division, major group"` (hyphen and comma instead of parens and slash) and it passes. This check runs before Zetaris does anything else with the statement — the REST endpoint isn't even contacted, so don't waste time debugging the `endpoint`/`HEADER`/`BODY` clauses on this error, it's purely the description text.
 
 ### How do I query a table once it's inside a Virtual Data Mart?
 
@@ -289,7 +289,7 @@ CREATE LIGHTNING REST TABLE <raw_table_name> FROM <logical_datasource_name> REQU
 ) BODY ();
 
 -- Step 2: a SCHEMASTORE container to hold flattened views (see
--- companion guide sec 5 (docs/guides/zetaris-sql-companion.md) -- this can only be created ONCE per name).
+-- companion guide sec 5 (docs/guides/zetaris-lightning-sql-companion.md) -- this can only be created ONCE per name).
 CREATE SCHEMASTORE CONTAINER <container_name>;
 
 -- Step 3: flatten the raw JSON into a queryable view.
@@ -308,7 +308,7 @@ LATERAL VIEW explode(<array_field>) AS fact;
 
 ## 6. Known limitations
 
-The platform-wide known limitations that apply to this package — `CREATE SCHEMASTORE CONTAINER`'s no-`IF NOT EXISTS` behavior, teardown (`DROP VIEW`/`DROP TABLE`/`DROP DATASOURCE`), the "a REST table re-fetches on every query" behavior and the `CACHE TABLE` workaround (including what `CACHE TABLE` actually is — see "Troubleshooting / FAQ" above), the JSON-POST-body gap, `DESCRIBE BY`'s restricted character set, and the row-count under-reporting issue — live in [`docs/guides/zetaris-sql-companion.md` section 5](../../docs/guides/zetaris-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses), alongside the same limitations for the Parquet/CSV and USL packages. Read that section before running any script — these are hard limits observed in the current Zetaris version, not suggestions.
+The platform-wide known limitations that apply to this package — `CREATE SCHEMASTORE CONTAINER`'s no-`IF NOT EXISTS` behavior, teardown (`DROP VIEW`/`DROP TABLE`/`DROP DATASOURCE`), the "a REST table re-fetches on every query" behavior and the `CACHE TABLE` workaround (including what `CACHE TABLE` actually is — see "Troubleshooting / FAQ" above), the JSON-POST-body gap, `DESCRIBE BY`'s restricted character set, and the row-count under-reporting issue — live in [`docs/guides/zetaris-lightning-sql-companion.md` section 5](../../docs/guides/zetaris-lightning-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses), alongside the same limitations for the Parquet/CSV and USL packages. Read that section before running any script — these are hard limits observed in the current Zetaris version, not suggestions.
 
 Two items stay here because they're specific to this package's source list, not a platform limitation:
 
@@ -319,7 +319,7 @@ Two items stay here because they're specific to this package's source list, not 
 
 ## 7. Understanding JSON response shapes
 
-The general technique — which shape needs `explode()`, plain dot-access, or the dynamic-key decode trick, and the identifier-quoting/numeric-string gotchas that go with it — is explained once in the companion guide; read [`docs/guides/zetaris-sql-companion.md` section 2](../../docs/guides/zetaris-sql-companion.md#2-rest-tables-the-shape-you-must-plan-for-before-writing-sql) and [section 3](../../docs/guides/zetaris-sql-companion.md#3-decoding-dynamic-key-map-shaped-json) before writing a new script's `SELECT` rather than re-deriving it here.
+The general technique — which shape needs `explode()`, plain dot-access, or the dynamic-key decode trick, and the identifier-quoting/numeric-string gotchas that go with it — is explained once in the companion guide; read [`docs/guides/zetaris-lightning-sql-companion.md` section 2](../../docs/guides/zetaris-lightning-sql-companion.md#2-rest-tables-the-shape-you-must-plan-for-before-writing-sql) and [section 3](../../docs/guides/zetaris-lightning-sql-companion.md#3-decoding-dynamic-key-map-shaped-json) before writing a new script's `SELECT` rather than re-deriving it here.
 
 What's specific to this package is which source lands in which shape bucket, so you know what you're dealing with before opening a script:
 
@@ -335,4 +335,4 @@ Not yet hit in this package: a **parallel-arrays** shape (separate `times: [...]
 
 ## 8. Everything else
 
-For license details and per-source docs links, see `rest-api-sources.md` in this package. For which onboarding pattern (`CREATE LIGHTNING REST TABLE` vs. `CREATE LIGHTNING FILESTORE TABLE` vs. `CREATE DATASOURCE`) fits a source you're adding, see [`docs/guides/zetaris-sql-companion.md` section 1](../../docs/guides/zetaris-sql-companion.md#1-the-two-onboarding-patterns-this-repo-has-proven). For every other category (Kafka, filestore Parquet/CSV, logs, SQL RDBMS, PDFs, and the government open-data sections), see the roadmap in `../../docs/plans/FUTURES.md` and its per-category `docs/plans/recipes/*.md` files — the original research behind them is archived at `../../docs/plans/archive/quickstart-data-manifest.md`.
+For license details and per-source docs links, see `rest-api-sources.md` in this package. For which onboarding pattern (`CREATE LIGHTNING REST TABLE` vs. `CREATE LIGHTNING FILESTORE TABLE` vs. `CREATE DATASOURCE`) fits a source you're adding, see [`docs/guides/zetaris-lightning-sql-companion.md` section 1](../../docs/guides/zetaris-lightning-sql-companion.md#1-the-two-onboarding-patterns-this-repo-has-proven). For every other category (Kafka, filestore Parquet/CSV, logs, SQL RDBMS, PDFs, and the government open-data sections), see the roadmap in `../../docs/plans/FUTURES.md` and its per-category `docs/plans/recipes/*.md` files — the original research behind them is archived at `../../docs/plans/archive/quickstart-data-manifest.md`.

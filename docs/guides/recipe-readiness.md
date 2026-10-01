@@ -6,7 +6,6 @@ Use the [small starter](first-dataset.md) first. This index distinguishes record
 
 | Source | Run first | Recorded evidence | Leave for later |
 |---|---|---|---|
-| PUDL Parquet | Logical database and `pudl_eia_energy_sources`, then a bounded SELECT | [Installation test record](../install/zetaris-installation-test-record.md), 24 September 2026 | Larger generator history and joins |
 | PokéAPI REST | Database/container, Pikachu raw table and abilities view, then its verification | [Installation test record](../install/zetaris-installation-test-record.md), 24 September 2026 | Types, stats, Charizard, and union views |
 
 Use assigned team names on the shared event instance. Source availability still needs checking from the Zetaris server during your run.
@@ -14,8 +13,8 @@ Use assigned team names on the shared event instance. Source availability still 
 ## Active source catalogs
 
 - [REST catalog](../../open_data/rest_apis/rest-api-sources.md) is the per-source readiness record: 11 pairs, with nine marked Verified, NASA DONKI Unverified, and Singapore PM2.5 Known to fail. “Verified” describes a recorded run, not a guarantee on your instance. Dates and caveats, where recorded, are in the script headers and source notes; a missing date must not be invented.
-- [Parquet/CSV catalog](../../open_data/parquet_csv/parquet-csv-data-sources.md) lists seven current pairs. It explicitly states that license colors do not indicate runtime verification. The documented PUDL small-table run does not verify every PUDL table or the other six sources.
-- [USL package](../../open_data/usl/HOWTO.md) is a separate advanced track with fixes applied and final confirmation pending. The [EDGAR/PUDL/NOAA guide](create-edgar-pudl-noaa-usl.md) records its own joined-result evidence and separate DQ limitation.
+- [Parquet/CSV catalog](../../open_data/parquet_csv/parquet-csv-data-sources.md) lists seven current pairs. It explicitly states that license colors do not indicate runtime verification. Only NOAA and AWS Public Blockchain are active file pairs; five pairs are under `known_to_fail`, including PUDL. The earlier PUDL success and current registration failure are unresolved; follow the current catalog rather than treating the old run as current readiness.
+- [USL package](../../open_data/usl/HOWTO.md) records verified SIC and SIC/EDGAR lifecycle steps, an observed FK DQ failure, and still-open comparison/materialization questions; consult the current model catalog. The [EDGAR/PUDL/NOAA guide](create-edgar-pudl-noaa-usl.md) records its own joined-result evidence and separate DQ limitation.
 
 Do not run the entire catalog as onboarding. Select one source, inspect its prerequisites, rate limits, schema, data volume, attribution notes, and statement dependencies, then verify the actual subset you created.
 
@@ -23,6 +22,7 @@ Do not run the entire catalog as onboarding. Select one source, inspect its prer
 
 | Material | Why it is excluded |
 |---|---|
+| PUDL, Foursquare, Overture, Ookla, and GBIF file recipes | Current known-to-fail registrations or queries; see the per-source issue records |
 | Singapore PM2.5 | Known-to-fail source; retained as a documented issue, not a starter fallback |
 | NASA DONKI | Unverified shape/connector behavior |
 | Local Singapore housing and Open Food Facts bulk fetchers | They download files but have no SQL onboarding pair. The file must be placed on storage reachable by Zetaris; bulk delimiter support also needs confirmation. |
@@ -34,4 +34,4 @@ The [roadmap](../plans/FUTURES.md) is for future work. It is not a menu of capab
 
 ## When a source fails
 
-Use [troubleshooting](troubleshooting.md). If PUDL cannot be read, try the minimal PokéAPI path after confirming outbound API access. If both fail, stop and resolve connectivity/configuration. Do not hide a failure by substituting synthetic rows.
+Use [troubleshooting](troubleshooting.md). If the minimal PokéAPI path fails, stop and resolve source connectivity/configuration or select a different verified REST source with its prerequisites understood. Do not hide a failure by substituting synthetic rows. PUDL is not a fallback.

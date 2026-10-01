@@ -1,5 +1,8 @@
 # A query-to-chart example
 
+**Current prerequisite warning:** PUDL registration is now [known to fail](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md). The earlier successful run is retained as historical evidence and has not been reconciled with the current failure. Do not use this example as default onboarding; first obtain a working registration verified on your target instance.
+
+
 Use this after [the first-dataset guide](../../docs/guides/first-dataset.md) returns real rows. It uses the existing query helper, then renders its saved JSON as a local HTML chart. No new runtime dependencies or hosting account are required.
 
 The chart counts **reference codes by fuel unit**. It does not measure generation or consumption. The SQL and renderer were checked locally; this example still needs acceptance against a real response from your deployment.

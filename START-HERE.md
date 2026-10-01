@@ -2,7 +2,7 @@
 
 This repo helps you make data queryable in Zetaris and turn a query into a project. You choose the question and the result you want to build.
 
-It contains recipes, connection helpers, and documentation. It does **not** include a running platform, the platform distribution, an issued account, registry credentials, a JDBC driver, or the complete platform SQL manual. A [recipe command reference](docs/connections/lightning-recipe-reference.md) is included for this repo’s starter commands. Check access before running SQL.
+It contains recipes, connection helpers, and documentation. It does **not** include a running platform, the platform distribution, an issued account, registry credentials, a JDBC driver, or the direct-REST OpenAPI specification. A [recipe command reference](docs/connections/lightning-recipe-reference.md) and [full Lightning command reference](docs/guides/zetaris-lightning-sql-commands.md) are included. Check access before running SQL.
 
 ## 1. Check your prerequisites
 
@@ -35,17 +35,17 @@ Keep the platform bundle's `.env` separate from this repo's optional client `.en
 
 Use the **SQL Editor** for the shortest manual path. Select one complete statement and execute it, then wait for its result before the next dependent statement.
 
-For agent-driven work, use [Cursor](docs/connections/cursor-connection.md) or [Codex](docs/connections/codex-connection.md) over JDBC after obtaining the required driver and reference. For application work, use the [HTTP helpers](scripts/HOWTO.md).
+For agent-driven work, use [Cursor](docs/connections/cursor-connection.md), [Codex](docs/connections/codex-connection.md), or [Claude Code](docs/connections/claude-code-connection.md) over JDBC or direct REST after obtaining the protocol-specific prerequisites. For application work, use the [HTTP helpers](scripts/HOWTO.md).
 
 The helpers' `--file` option sends the entire file in one request. It does not split SQL or roll back a partially completed recipe. Use one-statement files. A `COMPILE USL ... DDL` payload containing several table definitions is one command and must stay intact.
 
 ## 3. Get your first real rows
 
-Follow [your first dataset](docs/guides/first-dataset.md). The default uses only the small PUDL energy-source code table. A small PokéAPI JSON alternative is included if you want to learn REST flattening or the PUDL source is unavailable.
+Follow [your first dataset](docs/guides/first-dataset.md). The default uses a small PokéAPI JSON subset. PUDL is currently known to fail and is retained only as a historical, conditional example. NOAA CSV is a documented later file-source option, with explicit caching and size caveats.
 
 Success means nonempty rows with the expected fields and values. A login, `SELECT 1`, a visible registration, or a successful CREATE alone does not establish that the external data works.
 
-These recipes register access to remote data. They do not necessarily make a durable copy. REST queries may fetch again; cache and materialization are separate steps with the limits in the [SQL companion](docs/guides/zetaris-sql-companion.md).
+These recipes register access to remote data. They do not necessarily make a durable copy. REST queries may fetch again; cache and materialization are separate steps with the limits in the [SQL companion](docs/guides/zetaris-lightning-sql-companion.md).
 
 ## 4. Choose your direction
 
