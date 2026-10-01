@@ -1,0 +1,34 @@
+# Organizer checklist
+
+Confirmed for this journey: support both a participant's local installation and access to an existing platform; the event instance is shared; the objective is open-ended.
+
+This repo supplies a participant path through [Start here](../../START-HERE.md). The following items require an actual organizer/administrator decision or provisioning step. Documentation cannot create access or validate an unknown deployment.
+
+## Before participants begin
+
+- [ ] Supply the shared instance's actual UI URL and user access through a private channel.
+- [ ] Assign each team a unique object prefix and allowed database/container/namespace scope. Provision query/create/read permissions; names alone do not isolate teams.
+- [ ] Decide which sources are centrally provisioned read-only and which teams may register themselves. Record their definitions and ownership.
+- [ ] Confirm the shared server can reach the starter source and optional fallback. Run the small starter with the **participant role**, not only an administrator.
+- [ ] For local installation, confirm how participants obtain the separate distribution, matching configuration, registry access, and entitlement.
+- [ ] For JDBC users, supply the endpoint, matching driver JAR, driver class, and any version-specific command reference needed beyond the included starter reference.
+- [ ] For HTTP users, confirm supported UI proxy routes and how the numeric org ID is obtained. Do not circulate a shared administrator token.
+- [ ] Confirm compute selection, allowed data volumes, and shared-instance cache/cleanup rules with the administrator.
+
+## Unresolved event details
+
+| Decision | Current state |
+|---|---|
+| Support destination | Unresolved. Discord is a possible future channel; no link/channel has been supplied. |
+| Submission destination and deadline | Unresolved |
+| Judging criteria / required deliverables | Unresolved. [Demo template](demo-template.md) is a suggested reproducibility record, not an event rule. |
+| Actual access/driver distribution details | Must be supplied for the event; not embedded in this repo |
+| Per-team prefixes, permissions, and shared source ownership | Must be assigned and verified by the administrator |
+
+## Verify the handout
+
+- [ ] Check a fresh participant can follow README → Start here → connection → first dataset without an adjacent repository.
+- [ ] Exercise both access branches where they will be offered; a local recorded test does not validate the shared deployment.
+- [ ] Check the advanced EDGAR/PUDL/NOAA guide is included in the delivered snapshot, and preserve its stated DQ/data limitations.
+- [ ] Confirm any application example against a real query response from the event deployment before calling it live-tested.
+- [ ] Publish actual support/submission details here and in participant instructions once decided. Keep secrets out of Git.

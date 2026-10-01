@@ -14,21 +14,20 @@
 This document describes how to connect Codex to a Zetaris instance over JDBC
 at the start of a Datathon session. Submit the relevant prompt in section 4 as
 the first instruction. After Codex verifies the connection, it can execute
-Zetaris Lightning SQL from the supplied *Lightning Command Reference*.
+Zetaris Lightning SQL using the included [recipe command reference](lightning-recipe-reference.md). For advanced commands, obtain a version-compatible platform reference or follow the linked model guide.
 
 ## 2. Prerequisites
 
-- A Zetaris user account issued by the Datathon organisers.
+- A confirmed Zetaris user account with the required permissions. This repo does not issue one.
 - The JDBC URL of the Zetaris Cloud endpoint, or a local instance.
-- The Zetaris JDBC driver JAR and *Lightning Command Reference*.
-- Codex, with a local workspace that permits the agent to run code.
+- The matching Zetaris JDBC driver JAR, obtained separately. The [recipe command reference](lightning-recipe-reference.md) is included for starter commands.
+- Codex, with an execution environment that can run a Java-compatible JDBC client and reach the actual endpoint. Confirm these prerequisites before installing anything.
 
-For the local instance, `zetaris-platform` includes the driver at
-`jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar`. Open the `zetaris-platform`
-folder in Codex so the relative JAR path in the local prompt resolves correctly.
+For the separate local distribution described in the installation guide, the documented driver path is
+`jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar`. This repo does not contain that JAR. Obtain it and use its actual absolute path in the prompt; do not assume another workspace is present.
 The driver class is `com.zetaris.lightning.jdbc.LightningDriver`.
 
-Add the driver and reference to the Codex prompt with `@` file mentions. Allow
+Add the actual driver and repository recipe reference to the Codex prompt with file context. Allow
 network access if Codex asks to connect to Zetaris Cloud.
 
 ## 3. Connection parameters
@@ -36,15 +35,14 @@ network access if Codex asks to connect to Zetaris Cloud.
 | Placeholder | Description |
 |---|---|
 | `{{JDBC_URL}}` | Zetaris Cloud JDBC URL supplied by the organisers. |
-| `{{USER_ID}}` | Zetaris user ID, normally an email address. |
-| `{{PASSWORD}}` | Zetaris user password. |
+| `{{ABSOLUTE_DRIVER_PATH}}` | Absolute path of the matching driver you actually obtained. |
+| Local credential configuration | Your issued account credentials, supplied to the client privately; variable names depend on the client. |
 
-Replace each placeholder before submitting the prompt. Do not save credentials
-in source files or commit them to a repository.
+Replace the endpoint/driver placeholders before submitting the prompt. Supply credentials through a local execution environment rather than saving them in this prompt, source files, or reports. The event instance is shared: confirm your assigned team prefix and object permissions before creating anything. The included [Cursor prompt](cursor-connection.md) expresses these same execution and ownership rules in one reusable prompt.
 
 ## 4. Connection prompts
 
-Use the prompt for the target instance.
+Use the prompt for the target instance. The local endpoint below is an example for your own installation, not the shared instance. localhost means the machine executing the client.
 
 ### 4.1 Zetaris Cloud
 
@@ -53,11 +51,9 @@ Establish a JDBC connection to Zetaris Cloud using:
 
 JDBC URL: {{JDBC_URL}}
 
-Credentials:
-- User ID: {{USER_ID}}
-- Password: {{PASSWORD}}
+Use credentials configured in my local execution environment. Stop if they are unavailable; do not print them.
 
-Use the supplied JDBC driver and command reference. Use the JDBC endpoint
+Use the matching JDBC driver at {{ABSOLUTE_DRIVER_PATH}} and docs/connections/lightning-recipe-reference.md from this repo. Use the JDBC endpoint
 directly. Although the connection uses the Hive JDBC protocol, queries must be
 executed using Zetaris Lightning SQL, not Spark SQL or Hive SQL.
 
@@ -73,17 +69,14 @@ SELECT 1;
 ```text
 Establish a JDBC connection to the local Zetaris instance using:
 
-- Driver JAR: jdbc/ndp-jdbc-driver-2.4.3.1-7eff043-driver.jar
+- Driver JAR: {{ABSOLUTE_DRIVER_PATH}}
 - Driver class: com.zetaris.lightning.jdbc.LightningDriver
 - JDBC URL: jdbc:zetaris:lightning@localhost:10000
 
-Credentials:
-- User ID: {{USER_ID}}
-- Password: {{PASSWORD}}
+Use credentials configured in my local execution environment. Stop if they are unavailable; do not print them.
 
 Use this JAR directly (for example, via JayDeBeApi) and load the specified
-driver class. Use the JDBC endpoint directly and follow the supplied Lightning
-Command Reference. Do not substitute a Hive or Spark driver.
+driver class. Use the JDBC endpoint directly and follow this repository's docs/connections/lightning-recipe-reference.md. Do not substitute a Hive or Spark driver.
 
 Write Zetaris Lightning SQL, one statement per JDBC call.
 
@@ -108,12 +101,14 @@ access.
 
 ## 6. Usage rules
 
-1. **Protocol.** Use the URL format expected by the supplied Zetaris driver.
+1. **Protocol.** Use the URL format expected by the matching Zetaris driver.
    The driver included with `zetaris-platform` uses
    `jdbc:zetaris:lightning@<host>:<port>` for local instances.
    Write every statement in Zetaris Lightning SQL.
 2. **No local Spark.** Do not start Spark or create a SparkSession. Processing
    takes place on the Zetaris instance.
-3. **Statement syntax.** Follow the supplied *Lightning Command Reference* and
+3. **Statement syntax.** Follow the included [recipe reference](lightning-recipe-reference.md) for starter commands and
    use qualified names, for example `SELECT ... FROM <source>.<table>`.
 4. **One statement per call.** Execute each Lightning command as one JDBC call.
+
+After connection succeeds, follow [your first dataset](../guides/first-dataset.md). A connection check alone does not verify external data.

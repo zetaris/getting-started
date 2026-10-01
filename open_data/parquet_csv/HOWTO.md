@@ -1,5 +1,7 @@
 # HOWTO: onboard these Parquet/CSV sources into Zetaris
 
+Start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md), which uses only the small PUDL energy-code table. This guide covers later file-source work. On the shared event instance, replace sample database names and every dependent reference with your assigned team names.
+
 This guide covers the seven current CREATE/SELECT SQL pairs in `sql/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
 
 ---
@@ -105,7 +107,7 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstar
 
 ## 4. Running the scripts
 
-Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Run the CREATE file first. The primary verification query runs when you execute the SELECT file; queries for optional tables and examples remain commented until those tables are created.
+Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Select and execute only the needed complete CREATE statements, one at a time; the small starter does not require every optional table. The primary verification query runs when you execute the SELECT file; queries for optional tables and examples remain commented until those tables are created.
 
 1. Open the Zetaris **SQL Editor** ([SQL Editor overview](https://kbase.zetaris.com/knowledge/sql-editor-overview), [How to Save and Re-use SQL](https://kbase.zetaris.com/knowledge/how-to-save-and-re-use-sql)).
 2. Choose a source from the [catalog](parquet-csv-data-sources.md), then:
@@ -115,7 +117,7 @@ Each current source has two files sharing a numeric prefix: `sql/NN_<name>_creat
    - Open and run the matching `_select.sql` verification query.
 3. Once created, a table shows up in Zetaris's Schema Browser and is queryable from the Query Builder UI as well as the SQL Editor.
 
-Suggested order — cleanest license first, in case you want to stop partway through:
+Optional later-source order by the catalog’s licensing notes. These notes are not runtime verification badges; check [readiness](../../docs/guides/recipe-readiness.md) before choosing:
 
 | Order | Script | Why here |
 |---|---|---|
@@ -133,7 +135,7 @@ Suggested order — cleanest license first, in case you want to stop partway thr
 
 For every runnable script:
 
-1. `SELECT COUNT(*) FROM <logical_datasource_name>.<table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a source configuration problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
+1. Begin with a bounded sample such as `SELECT * FROM <logical_datasource_name>.<table_name> LIMIT 10;`. For the small starter, inspect fields and expected values. A full count is optional for larger datasets after checking their volume and query scope: `SELECT COUNT(*) FROM <logical_datasource_name>.<table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a source configuration problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
 2. Spot-check a couple of column values against the schema described in that source's docs (linked in `parquet-csv-data-sources.md`) — this catches a wrong `inferSchema` result (every column coming back as a string, for example).
 3. For the date/version/release-partitioned sources (PUDL, Foursquare, Overture, Ookla, GBIF, AWS Public Blockchain), re-run the bucket-listing command from that script's header comment shortly before you need the source. A path can stop working when a new release replaces an old one.
 
