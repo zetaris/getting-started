@@ -15,12 +15,13 @@ That `*_create.sql` / `*_select.sql` split (setup DDL vs. verification/example q
 | Doc | What it's for |
 |---|---|
 | [Installation Guide](docs/install/updated_zetaris_installation_guide.md) | Installing and configuring Zetaris (local or AWS); the [installation test record](docs/install/zetaris-installation-test-record.md) has what's been tested |
-| [Connecting to Coding Harnesses](docs/connections/codex-connection.md) | Connecting a coding harness (Codex today; Cursor and Grok Build to follow) to Zetaris over JDBC |
+| Connecting to Coding Harnesses | Connecting a coding harness to Zetaris over JDBC or REST: [Claude Code](docs/connections/claude-code-connection.md), [Codex](docs/connections/codex-connection.md), [Cursor](docs/connections/cursor-connection.md) |
+| [Lightning SQL Command Reference](docs/guides/zetaris-lightning-sql-commands.md) | Lightning SQL command reference to hand to a coding harness |
 | [REST API Howto](open_data/rest_apis/HOWTO.md) | Onboarding REST/JSON API sources — see also the [source catalog](open_data/rest_apis/rest-api-sources.md) |
 | [Parquet/CSV Howto](open_data/parquet_csv/HOWTO.md) | Onboarding Parquet/CSV file sources — see also the [source catalog](open_data/parquet_csv/parquet-csv-data-sources.md) |
 | [USL Howto](open_data/usl/HOWTO.md) | Unified Semantic Layer contrast builds — data products already built elsewhere in this repo, rebuilt with USL instead |
 | [Scripts Howto](scripts/HOWTO.md) | TypeScript and Python helpers for the Zetaris HTTP API, a PostgreSQL connection check, and local data fetchers |
-| [Zetaris SQL Companion](docs/guides/zetaris-sql-companion.md) | SQL reference: shapes, quoting, gotchas, and confirmed platform limitations — read alongside the Zetaris Kbase while writing your own SQL |
+| [Zetaris SQL Companion](docs/guides/zetaris-lightning-sql-companion.md) | SQL reference: shapes, quoting, gotchas, and confirmed platform limitations — read alongside the Zetaris Kbase while writing your own SQL |
 | [Roadmap](docs/plans/FUTURES.md) | The full data-source roadmap, priority order, and status per category |
 
 ## Repo layout

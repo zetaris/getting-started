@@ -5,7 +5,7 @@ This repo's value is in the detail: every source is traceable to a real license,
 ## Before you start
 
 - **Read the package's own docs first.** Each `open_data/*/` package has a `HOWTO.md` (onboarding walkthrough) and a `*-data-sources.md` or `*-sources.md` catalog (per-source license, path, and test status). Match its existing pattern rather than inventing a new one.
-- **`docs/guides/zetaris-sql-companion.md`** is the running list of confirmed Zetaris SQL gotchas and platform limitations. Skim it before writing new SQL — you may be about to rediscover something already documented there.
+- **`docs/guides/zetaris-lightning-sql-companion.md`** is the running list of confirmed Zetaris SQL gotchas and platform limitations. Skim it before writing new SQL — you may be about to rediscover something already documented there.
 - **`docs/plans/FUTURES.md`** is the roadmap and priority order. If you're picking up a new category, check it first; don't start on a lower-priority item on the assumption a higher one is done without confirming its live-test status.
 
 ## Adding a new data source
@@ -17,7 +17,8 @@ This repo's value is in the detail: every source is traceable to a real license,
    - **Verified** — the create script's statements and the select script's queries, including the analytical ones, actually ran successfully against a live instance.
    - **Unverified** — written and believed correct, but not yet run live. This is the default for a new, untested source — don't mark something Verified because the SQL looks right.
    - **Known to fail** — it was run and hit a real blocking issue. See the next section.
-5. **Update the package's `HOWTO.md`** if the new source needs anything the existing walkthrough doesn't already cover (a new auth pattern, a new storage option, etc.).
+5. **Register it in `open_data/manifest.json`.** One entry per create script: `id`, `kind` (`rest`, `filestore` or `usl`), `script`, `status` (matching the catalog), a one-line `summary`, and `requires`, the ids of any sources that must exist first (for example a USL model lists the sources it activates from, and a source that reuses another's database lists that source). Run `python3 scripts/onboard.py --check`; it fails on a missing script, an unknown or circular dependency, or a create script that isn't listed. This is the one place dependency order is recorded, so don't repeat it in prose.
+6. **Update the package's `HOWTO.md`** if the new source needs anything the existing walkthrough doesn't already cover (a new auth pattern, a new storage option, etc.).
 
 ## Documenting a source that doesn't work
 
@@ -71,7 +72,7 @@ Also grep for bare (non-link) references to the old path in `.sql`, `.ts`, `.py`
 
 ## Adding a confirmed SQL gotcha or platform limitation
 
-If you hit a real, reproducible Zetaris behavior that isn't already in `docs/guides/zetaris-sql-companion.md` — a syntax limitation, an unexpected error shape, a caching quirk — add it there rather than letting it live only in a commit message or your own notes. Say what you confirmed live versus what's still a hypothesis, and link back to the script or `ISSUE-NN-*.md` that demonstrates it.
+If you hit a real, reproducible Zetaris behavior that isn't already in `docs/guides/zetaris-lightning-sql-companion.md` — a syntax limitation, an unexpected error shape, a caching quirk — add it there rather than letting it live only in a commit message or your own notes. Say what you confirmed live versus what's still a hypothesis, and link back to the script or `ISSUE-NN-*.md` that demonstrates it.
 
 ## Scripts in `scripts/`
 
@@ -83,7 +84,7 @@ Keep the Deno/TypeScript and Python versions of a helper in sync — same enviro
 
 ## Secrets and generated data
 
-- Never commit `.env`, API tokens, or real credentials. `.env.example` documents the variables a script needs; `.env` itself is gitignored.
+- Never commit `.env.local`, API tokens, or real credentials. `.env.example` documents the variables a script needs; `.env.local` is the one env file the scripts read, and it is gitignored.
 - Don't commit anything written to `tmp/cache/` — it's gitignored precisely because fetch scripts write real downloaded data there.
 - A test-mode or public-bucket credential is fine to document in a script's own comments (e.g. "no AWS credentials needed, this bucket is public"); a live token or password is never fine to commit.
 

@@ -1,3 +1,4 @@
+import "./load_env.ts";
 import postgres from "postgres";
 
 async function main(): Promise<void> {
@@ -6,7 +7,7 @@ async function main(): Promise<void> {
   const username = Deno.env.get("PGUSER");
   const password = Deno.env.get("PGPASSWORD");
   if (!host || !database || !username || !password) {
-    throw new Error("Set PGHOST, PGDATABASE, PGUSER, and PGPASSWORD in .env.");
+    throw new Error("Set PGHOST, PGDATABASE, PGUSER, and PGPASSWORD in .env.local.");
   }
 
   const port = Number(Deno.env.get("PGPORT") ?? "5432");

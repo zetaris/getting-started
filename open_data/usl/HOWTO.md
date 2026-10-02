@@ -72,6 +72,8 @@ Both scripts here **reuse raw REST tables already registered by the `rest_apis` 
 
 This is deliberate: the point of the contrast is that USL's `ACTIVATE ... AS SELECT` clause can do the same flattening/joining work a `SCHEMASTORE VIEW` does, landing in a different (constraint-checked, DQ-capable, materializable) destination — not that USL needs a different set of raw sources.
 
+**Instance requirements.** `lightning.metastore` must exist before `CREATE NAMESPACE IF NOT EXISTS lightning.metastore.usl_demo` can succeed; on an instance where it did not, the statement failed with "parent namespace : metastore is not existing" over REST. After a clean instance reset it worked over both JDBC and REST. A `COMPILE USL` with more than one table (`sic_edgar_usl`) must be sent as one statement: the SQL Workspace editor and any runner that splits on `;` will break it apart, so send it whole over JDBC or REST, or use the GUI's Unified Semantic Layer → New USL screen.
+
 ## 2. Models in this package
 
 See [`usl-sources.md`](usl-sources.md) for the full catalog (tables, what each tests, current verification status). In short:
@@ -93,11 +95,11 @@ FROM edgar.all_companies_profile_table
 WHERE sic_description_edgar <> sic_description_reference;
 ```
 
-USL's `FOREIGN KEY` constraint auto-generates a DQ rule — but a foreign key only proves **referential existence** (a `sic` code named by a company actually exists in `sic_code`), not **value equality between two independently-sourced description columns**. `sic_edgar_usl`'s equivalent check (`open_data/usl/sql/02_sic_edgar_usl_select.sql`) tests this directly, as a plain join rather than a `REGISTER DQ` rule — two attempts to register it as a `REGISTER DQ` rule failed live (see [`docs/guides/zetaris-sql-companion.md` section 8.6](../../docs/guides/zetaris-sql-companion.md#86-register-dq-confirmed-limitations-live-tested)). The FK rule's own `RUN DQ` result is confirmed (see [`usl-sources.md`](usl-sources.md)); comparing it against the plain query's result is still open. See `docs/plans/archive/usl-build-plan.md` section 4, step V6.
+USL's `FOREIGN KEY` constraint auto-generates a DQ rule — but a foreign key only proves **referential existence** (a `sic` code named by a company actually exists in `sic_code`), not **value equality between two independently-sourced description columns**. `sic_edgar_usl`'s equivalent check (`open_data/usl/sql/02_sic_edgar_usl_select.sql`) tests this directly, as a plain join rather than a `REGISTER DQ` rule — two attempts to register it as a `REGISTER DQ` rule failed live (see [`docs/guides/zetaris-lightning-sql-companion.md` section 8.6](../../docs/guides/zetaris-lightning-sql-companion.md#86-register-dq-confirmed-limitations-live-tested)). The FK rule's own `RUN DQ` result is confirmed (see [`usl-sources.md`](usl-sources.md)), and the comparison has been run: the plain `INNER JOIN` query drops IBM and returns 5 wording-only description differences, while the FK rule flags IBM. They are complementary. See `docs/plans/archive/usl-build-plan.md` section 4, step V6.
 
 ## 4. Known open items in this package
 
-Moved to [`docs/guides/zetaris-sql-companion.md` section 8.5](../../docs/guides/zetaris-sql-companion.md#85-known-open-items-in-this-repos-usl-package-specifically), alongside the rest of the general and USL-specific platform-limitation reference — cross-USL foreign keys (untested), `MATERIALIZE USL TABLE`'s SQL-form gap around `Valid Records Only`, and the `cik` format sidestep. `REGISTER DQ`'s own confirmed limitations are in section 8.6. Read both before treating either script's output as fully settled.
+Moved to [`docs/guides/zetaris-lightning-sql-companion.md` section 8.5](../../docs/guides/zetaris-lightning-sql-companion.md#85-known-open-items-in-this-repos-usl-package-specifically), alongside the rest of the general and USL-specific platform-limitation reference — cross-USL foreign keys (untested), `MATERIALIZE USL TABLE`'s SQL-form gap around `Valid Records Only`, and the `cik` format sidestep. `REGISTER DQ`'s own confirmed limitations are in section 8.6. Read both before treating either script's output as fully settled.
 
 ## 5. Teardown
 
@@ -105,4 +107,4 @@ Both scripts include a commented-out `TEARDOWN` block using `REMOVE USL` and `DR
 
 ## 6. Everything else
 
-For the REST/SchemaStore/VDM version of this same data product, see `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql`, `open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql`, and `docs/plans/archive/edgar-sic-enrichment-plan.md`. For the general USL reference material this package is built against, see `docs/guides/zetaris-sql-companion.md` section 8. For the build-and-verify tracking, see `docs/plans/archive/usl-build-plan.md`.
+For the REST/SchemaStore/VDM version of this same data product, see `open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql`, `open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql`, and `docs/plans/archive/edgar-sic-enrichment-plan.md`. For the general USL reference material this package is built against, see `docs/guides/zetaris-lightning-sql-companion.md` section 8. For the build-and-verify tracking, see `docs/plans/archive/usl-build-plan.md`.

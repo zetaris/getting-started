@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --no-config --env-file=.env --allow-net --allow-env=ZETARIS* --allow-read
+#!/usr/bin/env -S deno run --no-config --allow-net --allow-env=ZETARIS* --allow-read
 // Run inline SQL or read SQL text from a file with --file. Sends the full text
 // in one request to Zetaris and prints the JSON response.
 import { zetarisRequest } from "./zetaris_api.ts";
