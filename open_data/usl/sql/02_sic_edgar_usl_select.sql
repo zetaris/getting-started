@@ -22,7 +22,10 @@ SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.company;    -- e
 SELECT c.entity_name, c.sic, c.sic_description_edgar, sc.description AS sic_description_reference
 FROM lightning.metastore.usl_demo.sic_edgar_usl.company c
 JOIN lightning.metastore.usl_demo.sic_edgar_usl.sic_code sc ON sc.sic_code = c.sic
-WHERE c.sic_description_edgar <> sc.description;   -- expect zero rows back
+WHERE c.sic_description_edgar <> sc.description;
+-- Confirmed live: returns 5 rows (Ford, Oracle, Target, Tesla, Walmart), not zero. They are wording
+-- differences, not real disagreements -- '&' vs 'and' (Ford, Tesla) and EDGAR's 'Retail-' / 'Services-'
+-- prefix (Oracle, Target, Walmart). Apple matches exactly; IBM is excluded by the INNER JOIN (see above).
 
 -- Referential diagnostic: which company's sic doesn't match any sic_code
 -- row at all. This is exactly what the auto-generated FK rule below

@@ -39,6 +39,36 @@ Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwor
 
 Each script loads `.env` from the repository root. The shared helper (`zetaris_api.ts` or `zetaris_api.py`) checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_KEY` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds. Both language versions enforce the same validation and timeouts.
 
+## Check readiness and run SQL scripts (REST or JDBC)
+
+`preflight.py` and `run_sql.py` use the documented REST API (`ZETARIS_REST_URL`, default `http://localhost:8888/api/v1.0`) or JDBC, not the UI proxy used by the scripts below. They read `.env.local` first, then `.env`, in the repository root and, inside a git worktree, in the top-level checkout. Standard library only; JDBC also needs a JDK and `jaydebeapi` (`python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt`). They hop into `.venv` automatically for JDBC.
+
+```sh
+python3 scripts/preflight.py            # env, REST, instance state
+python3 scripts/preflight.py --jdbc --jar /path/to/driver.jar
+python3 scripts/run_sql.py --dry-run open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql
+python3 scripts/run_sql.py open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql
+python3 scripts/run_sql.py --channel jdbc -e "SELECT 1"
+```
+
+- **`preflight.py`** is read-only and exits 1 if anything fails. It checks credentials are set (never printing them), REST (`GET /datasource/datasources` and `SELECT 1`), optionally JDBC (port, JDK, `jaydebeapi`, driver JAR), and lists what is on the instance, including Lightning databases and USL namespaces that `SHOW DATASOURCES` omits. It installs nothing.
+- **`run_sql.py`** splits a script into statements (quote- and comment-aware), sends them one at a time, and stops at the first error. A multi-table `COMPILE USL` is kept whole. It replaces the `YOUR_APP_NAME YOUR_CONTACT_EMAIL` placeholder with `ZETARIS_USER_AGENT` and refuses to send the placeholder. `--skip-exists` makes re-runs safe by skipping "already exists" errors. `--dry-run` prints the statements without connecting. The create scripts change the instance, so dry-run first if unsure.
+- **JDBC driver JAR:** pass `--jar` or set `ZETARIS_JDBC_JAR`. The scripts never guess a location. JDBC reuses `ZETARIS_USERNAME` and `ZETARIS_PASSWORD`. On macOS the `java` on `PATH` can be a stub, so they look for a Homebrew JDK (for example `brew install openjdk@17`, which needs no `sudo`).
+
+### Onboard sources with their dependencies
+
+`onboard.py` reads `open_data/manifest.json`, where each source and USL model declares the sources it `requires`, and runs create scripts in dependency order. The same mechanism covers any source or USL model; add a new one to the manifest and it works the same way.
+
+```sh
+python3 scripts/onboard.py --list                          # every source, status, dependencies
+python3 scripts/onboard.py --check                         # validate the manifest against the repo
+python3 scripts/onboard.py plan sic_edgar_usl              # the resolved order, dependencies first
+python3 scripts/onboard.py run sic_edgar_usl --dry-run     # plan plus statement counts, nothing sent
+python3 scripts/onboard.py run company_dns pokeapi         # run several; shared dependencies run once
+```
+
+Dependencies that already exist are satisfied: a duplicate "already exists" error on a dependency is skipped. The sources you name only skip duplicates with `--skip-exists`. It stops at the first real error and says which source and statement. A source marked `known_to_fail` needs `--allow-known-to-fail`. `--channel jdbc` and `--jar` work as in `run_sql.py`. USL models re-run less predictably than REST sources (re-running `ACTIVATE USL TABLE` is not verified), so run a USL model once and use `REMOVE USL` first if you need to rebuild it.
+
 ## Check the Zetaris connection
 
 ```sh

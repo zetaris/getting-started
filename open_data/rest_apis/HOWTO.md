@@ -259,9 +259,9 @@ If `CACHE TABLE` doesn't help, the practical fallback is to space out or reduce 
 
 Not reliably — see "Removing a source" above. `DROP VIEW` works; `DROP TABLE` and `DROP DATASOURCE` do not. Use the Zetaris Data Explorer to remove the underlying registration.
 
-### `CREATE SCHEMASTORE CONTAINER` failed with a parse exception
+### `CREATE SCHEMASTORE CONTAINER` failed with "A container named ... already exists"
 
-This means the container name already exists — `CREATE SCHEMASTORE CONTAINER` has no `IF NOT EXISTS` form. Comment out that statement in the script and continue; see `docs/guides/zetaris-lightning-sql-companion.md` section 5.
+This means the container name already exists — `CREATE SCHEMASTORE CONTAINER` has no `IF NOT EXISTS` form (older versions reported it as a parse exception). Re-running the script with `python3 scripts/run_sql.py --skip-exists FILE` skips every "already exists" error (database, table, container and view), or comment out that statement and continue; see `docs/guides/zetaris-lightning-sql-companion.md` section 5.
 
 ### `CREATE LIGHTNING DATABASE ... DESCRIBE BY "..."` failed with "Description is invalid"
 
