@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --no-config --env-file=.env --allow-net --allow-env=ZETARIS*
+#!/usr/bin/env -S deno run --no-config --allow-net --allow-env=ZETARIS* --allow-read
 // Check authenticated API access by listing the Lightning databases visible to
 // this account. Prints the count and does not submit SQL.
 import { zetarisRequest } from "./zetaris_api.ts";

@@ -35,26 +35,46 @@ class ZetarisError(RuntimeError):
 
 
 def _top_level_checkout() -> Path | None:
-    """The main checkout when running inside a git worktree, else None."""
+    """The main checkout when ROOT is a git worktree, else None.
+
+    A worktree's `.git` is a file reading `gitdir: <top>/.git/worktrees/<name>`.
+    """
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            cwd=ROOT, capture_output=True, text=True, check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+        text = (ROOT / ".git").read_text(encoding="utf-8")
+    except OSError:
+        return None  # a normal checkout has a .git directory, not a file
+    match = re.match(r"gitdir:\s*(.+)", text)
+    if not match:
         return None
-    top = (ROOT / out).resolve().parent
-    return top if top != ROOT else None
+    gitdir = Path(match.group(1).strip())
+    if not gitdir.is_absolute():
+        gitdir = (ROOT / gitdir).resolve()
+    top = gitdir.parent.parent.parent  # <top>/.git/worktrees/<name> -> <top>
+    return top if top.is_dir() and top != ROOT else None
+
+
+ENV_FILE_NAME = ".env.local"
 
 
 def env_file_candidates() -> list[Path]:
+    """.env.local is the only supported file. It is gitignored, so a git
+    worktree does not have one; look in the top-level checkout too."""
     dirs = [ROOT] + ([top] if (top := _top_level_checkout()) else [])
-    return [d / name for d in dirs for name in (".env.local", ".env")]
+    return [d / ENV_FILE_NAME for d in dirs]
+
+
+def stray_env_hint() -> str:
+    """Advice when a legacy .env exists but .env.local does not."""
+    for d in [ROOT] + ([top] if (top := _top_level_checkout()) else []):
+        if (d / ".env").is_file():
+            return f"found {d / '.env'}, but only {ENV_FILE_NAME} is read; rename or copy it to {d / ENV_FILE_NAME}"
+    return ""
 
 
 def load_env(env_file: str | None = None) -> Path | None:
-    """Load the first env file found into os.environ without overriding
-    variables that are already set. Returns the file used, or None."""
+    """Load the first .env.local found (repo root, then the top-level checkout
+    for a worktree) into os.environ without overriding variables that are
+    already set. Returns the file used, or None."""
     paths = [Path(env_file)] if env_file else env_file_candidates()
     for path in paths:
         if not path.is_file():
@@ -75,7 +95,7 @@ def load_env(env_file: str | None = None) -> Path | None:
 def require(*names: str) -> None:
     missing = [n for n in names if not os.environ.get(n)]
     if missing:
-        raise ZetarisError("Missing in the environment or .env.local: " + ", ".join(missing))
+        raise ZetarisError("Missing in the environment or .env.local: " + ", ".join(missing) + (f" ({hint})" if (hint := stray_env_hint()) else ""))
 
 
 # --- SQL splitting ---------------------------------------------------------

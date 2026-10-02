@@ -1,10 +1,12 @@
 # Repository scripts
 
-Helpers for talking to Zetaris and PostgreSQL directly from the command line, plus two standalone data-fetching scripts for the Parquet/CSV package. The Zetaris/PostgreSQL helpers are available in both Deno/TypeScript and Python — both versions load `.env`, preserve values already exported in the shell, use the same environment variables, and provide the same checks and query behavior. Run every command below from the repository root.
+Helpers for talking to Zetaris and PostgreSQL directly from the command line, plus two standalone data-fetching scripts for the Parquet/CSV package. The Zetaris/PostgreSQL helpers are available in both Deno/TypeScript and Python — both versions load `.env.local`, preserve values already exported in the shell, use the same environment variables, and provide the same checks and query behavior. Run every command below from the repository root.
 
 ## Configure access
 
-Add the settings you need from [`../.env.example`](../.env.example) to the repository's `.env` file. If `.env` already exists, add the settings without replacing its other values. `.env` is gitignored — do not commit it.
+Copy the settings you need from [`../.env.example`](../.env.example) into `.env.local` in the repository root. `.env.local` is the only env file the scripts read, and it is gitignored — do not commit it. If you have an older `.env`, rename it. If `.env.local` already exists, add the settings without replacing its other values.
+
+**Git worktrees.** A gitignored file is not copied into a worktree, so you do not need a copy there: every script (Python and Deno) looks for `.env.local` in the repository root first and then in the top-level checkout the worktree belongs to. Variables already exported in your shell win over the file.
 
 For the Zetaris scripts:
 
@@ -37,11 +39,11 @@ Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwor
 
 ## How a request works
 
-Each script loads `.env` from the repository root. The shared helper (`zetaris_api.ts` or `zetaris_api.py`) checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_KEY` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds. Both language versions enforce the same validation and timeouts.
+Each script loads `.env.local` (repository root, or the top-level checkout from a worktree). The shared helper (`zetaris_api.ts` or `zetaris_api.py`) checks the base URL and numeric organization ID, then gets an access token. It uses `ZETARIS_API_KEY` when set; otherwise it sends the username and password to the UI login route with a fresh `X-Request-ID`. Authenticated proxy requests include the bearer token, `X-Org-ID`, and another fresh `X-Request-ID`. Requests time out after 30 seconds. Both language versions enforce the same validation and timeouts.
 
 ## Check readiness and run SQL scripts (REST or JDBC)
 
-`preflight.py` and `run_sql.py` use the documented REST API (`ZETARIS_REST_URL`, default `http://localhost:8888/api/v1.0`) or JDBC, not the UI proxy used by the scripts below. They read `.env.local` first, then `.env`, in the repository root and, inside a git worktree, in the top-level checkout. Standard library only; JDBC also needs a JDK and `jaydebeapi` (`python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt`). They hop into `.venv` automatically for JDBC.
+`preflight.py` and `run_sql.py` use the documented REST API (`ZETARIS_REST_URL`, default `http://localhost:8888/api/v1.0`) or JDBC, not the UI proxy used by the scripts below. They read `.env.local` the same way. Standard library only; JDBC also needs a JDK and `jaydebeapi` (`python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt`). They hop into `.venv` automatically for JDBC.
 
 ```sh
 python3 scripts/preflight.py            # env, REST, instance state
@@ -96,7 +98,7 @@ python3 scripts/query_zetaris.py --file path/to/query.sql
 
 The script accepts SQL text as one quoted argument or reads the entire file after `--file`. It sends that text in one request to Zetaris and prints the JSON response (`headers`, `data`, `total`, `timeUsed`). It does not split a file into separate statements — if the API rejects a file with multiple statements, pass one statement at a time. `ZETARIS_QUERY_LIMIT` caps returned rows at 1000 by default. Set `ZETARIS_ENGINE_ID` when you want to choose a compute engine. SQL runs with your Zetaris account's permissions, so review a file before passing it to the command.
 
-For the TypeScript versions: each script's first line supplies the Deno flags, including `.env` loading and network permission, and uses `--no-config` to avoid loading the separate PostgreSQL driver. If direct execution is unavailable, run `deno run --no-config --env-file=.env --allow-net --allow-env='ZETARIS*' scripts/check_zetaris.ts` instead.
+For the TypeScript versions: each script's first line supplies the Deno flags, including network and read permission (the scripts load `.env.local` themselves through `load_env.ts`), and uses `--no-config` to avoid loading the separate PostgreSQL driver. If direct execution is unavailable, run `deno run --no-config --allow-net --allow-env='ZETARIS*' --allow-read scripts/check_zetaris.ts` instead.
 
 ## What the Zetaris scripts send
 
@@ -126,7 +128,7 @@ deno task ping:postgres
 deno task warmup:company-dns
 ```
 
-Or invoke a script directly, as shown in the sections above — each one's shebang line carries its own `--env-file`/permission flags.
+Or invoke a script directly, as shown in the sections above — each one's shebang line carries its own permission flags.
 
 ## Running the Python scripts
 

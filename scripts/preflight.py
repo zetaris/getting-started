@@ -32,7 +32,7 @@ def report(ok: bool | None, label: str, detail: str = "") -> None:
 
 def check_env(args) -> None:
     env = z.load_env(args.env_file)
-    report(env is not None, "env file", str(env) if env else "none found (looked in: " + ", ".join(map(str, z.env_file_candidates())) + ")")
+    report(env is not None, "env file", str(env) if env else "no .env.local found (looked in: " + ", ".join(map(str, z.env_file_candidates())) + ")" + (f". {h}" if (h := z.stray_env_hint()) else ""))
     for name, why in (
         ("ZETARIS_API_KEY", "REST bearer key, created in the Zetaris GUI"),
         ("ZETARIS_USERNAME", "spec fetch and JDBC"),

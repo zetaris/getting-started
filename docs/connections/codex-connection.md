@@ -35,11 +35,26 @@ For **JDBC**:
   full path ready.
 - The driver class, `com.zetaris.lightning.jdbc.LightningDriver`.
 - A Java runtime (JDK 11 or later) on the machine where the agent runs code. The
-  driver is a Java JAR and cannot be loaded without one.
+  driver is a Java JAR and cannot be loaded without one. On macOS, `java` on the
+  `PATH` can be a stub that reports "Unable to locate a Java Runtime" even when a
+  JDK is installed. Check `/usr/libexec/java_home` and Homebrew's
+  `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`, and set
+  `JAVA_HOME` to the JDK you find. If there is none, install one with
+  `brew install openjdk@17`. Prefer that to the `temurin` cask, which needs
+  `sudo`; an agent cannot enter your password.
 - Python with the `jaydebeapi` package, or another way to load a JDBC driver.
-  Install it in a virtual environment (`python3 -m venv`), because system
-  Python installations commonly refuse global `pip install`.
+  Install it in a virtual environment, because system Python installations
+  commonly refuse global `pip install`:
+  `python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt`.
+  The repository's own scripts use that `.venv` automatically.
 - The JDBC URL of the endpoint.
+- Your Zetaris user ID and password. If you keep them in `.env.local` as
+  `ZETARIS_USERNAME` and `ZETARIS_PASSWORD`, the agent can read them in the
+  shell without them appearing in the prompt. Optionally set `ZETARIS_JDBC_JAR`
+  to the driver path there too.
+
+To check all of this at once, run `python3 scripts/preflight.py --jdbc --jar <path>`.
+It is read-only, reports what is missing, and installs nothing.
 
 For **REST**:
 
@@ -104,7 +119,10 @@ Credentials:
 Ask me for the full path of the Zetaris JDBC driver JAR before connecting, and
 use that JAR directly (for example, via JayDeBeApi) with the driver class
 com.zetaris.lightning.jdbc.LightningDriver. If Java or JayDeBeApi is missing,
-tell me what you need to install and ask before installing it.
+tell me what you need to install and ask before installing it. On macOS, java
+on the PATH can be a stub even when a Homebrew JDK is installed: look for one
+(for example /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home)
+and set JAVA_HOME before concluding Java is missing.
 
 Use the JDBC endpoint directly and follow the supplied Lightning Command
 Reference. Although the connection uses the Hive JDBC protocol, queries must be
@@ -116,9 +134,15 @@ semicolon. Do not print my credentials back to me.
 
 Do not initialize Spark or create a SparkSession.
 
-Once connected, verify the connection by executing:
+Once connected, verify the connection by executing these statements, one per
+call:
 
 SELECT 1
+SHOW LIGHTNING DATABASES
+
+SHOW DATASOURCES does not list the REST and file sources registered with
+CREATE LIGHTNING DATABASE, so use SHOW LIGHTNING DATABASES to see those. An
+empty result is normal on a clean instance.
 ```
 
 ### 5.2 Local instance
@@ -136,8 +160,11 @@ Credentials:
 Ask me for the full path of the Zetaris JDBC driver JAR before connecting.
 Use this JAR directly (for example, via JayDeBeApi) and load the specified
 driver class. If Java or JayDeBeApi is missing, tell me what you need to
-install and ask before installing it. Use a virtual environment for Python
-packages.
+install and ask before installing it. On macOS, java on the PATH can be a stub
+even when a Homebrew JDK is installed: look for one (for example
+/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home) and set
+JAVA_HOME before concluding Java is missing. Use a virtual environment for
+Python packages.
 
 Use the JDBC endpoint directly and follow the supplied Lightning Command
 Reference. Do not substitute a Hive or Spark driver.
@@ -147,9 +174,15 @@ semicolon. Do not print my credentials back to me.
 
 Do not initialize Spark or create a SparkSession.
 
-Once connected, verify the connection by executing:
+Once connected, verify the connection by executing these statements, one per
+call:
 
 SELECT 1
+SHOW LIGHTNING DATABASES
+
+SHOW DATASOURCES does not list the REST and file sources registered with
+CREATE LIGHTNING DATABASE, so use SHOW LIGHTNING DATABASES to see those. An
+empty result is normal on a clean instance.
 ```
 
 ## 6. REST connection prompts
@@ -203,9 +236,14 @@ Use read-only requests unless I ask for a change. Do not initialize Spark or
 create a SparkSession.
 
 Once connected, verify the connection by calling GET /datasource/datasources
-and then running the SQL statement:
+and then running these SQL statements, one per request:
 
 SELECT 1
+SHOW LIGHTNING DATABASES
+
+GET /datasource/datasources and SHOW DATASOURCES do not list the REST and file
+sources registered with CREATE LIGHTNING DATABASE, so use SHOW LIGHTNING
+DATABASES to see those. An empty result is normal on a clean instance.
 ```
 
 ### 6.3 Local instance
@@ -239,9 +277,14 @@ an internal login route and is not part of this connection. Do not initialize
 Spark or create a SparkSession.
 
 Once connected, verify the connection by calling GET /datasource/datasources
-and then running the SQL statement:
+and then running these SQL statements, one per request:
 
 SELECT 1
+SHOW LIGHTNING DATABASES
+
+GET /datasource/datasources and SHOW DATASOURCES do not list the REST and file
+sources registered with CREATE LIGHTNING DATABASE, so use SHOW LIGHTNING
+DATABASES to see those. An empty result is normal on a clean instance.
 ```
 
 ### 6.4 Fetch the OpenAPI specification
@@ -285,8 +328,20 @@ driver loaded and the endpoint accepts queries.
 2. `POST {{REST_URL}}/sql-editor/sqls/run` with `SELECT 1` returns
    `{"headers":["1"],"data":[["1"]],...}`.
 
-Optionally, `SHOW DATASOURCES` run through either protocol lists the datasources
-the account can see.
+**What is on the instance.** `SHOW DATASOURCES` lists only the datasources
+registered with `CREATE DATASOURCE`, such as the `TPCH` sample or a JDBC source.
+It does **not** list sources registered with `CREATE LIGHTNING DATABASE`, which is
+how every REST and file source in this repository is onboarded, so it can look
+empty after a successful onboarding. Check these through either protocol:
+
+| Statement | Lists |
+|---|---|
+| `SHOW DATASOURCES` | Datasources, for example `TPCH` |
+| `SHOW LIGHTNING DATABASES` | Lightning databases: the REST and file sources you onboarded, for example `COMPANY_DNS` and `SEC_DATA` |
+| `SHOW NAMESPACES OR TABLES IN lightning.metastore` | USL namespaces and USLs (`SHOW NAMESPACES` alone is disabled) |
+
+An empty list is normal on a clean instance. To confirm a source loaded, query a
+row count from its view, as that source's `_select.sql` does.
 
 ## 8. Usage rules
 
@@ -313,7 +368,9 @@ the account can see.
 
 | Symptom | Likely cause |
 |---|---|
-| `Unable to locate a Java Runtime` | No JDK installed. Install JDK 11 or later and point `JAVA_HOME` at it. |
+| `Unable to locate a Java Runtime` | No JDK is visible. On macOS `java` on the `PATH` can be a stub even when a Homebrew JDK exists: find it (`/usr/libexec/java_home`, or `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`) and set `JAVA_HOME`. Otherwise install JDK 11 or later with `brew install openjdk@17`; the `temurin` cask needs `sudo`. |
+| `SHOW DATASOURCES` does not list a source I just onboarded | It omits Lightning-registered (REST and file) sources. Use `SHOW LIGHTNING DATABASES`, and query a row count to confirm the data. |
+| Driver JAR not found, or `ClassNotFoundException` for `LightningDriver` | The JAR path is wrong or the file is not the Zetaris driver. Ask for the full path; do not guess a location. |
 | `externally-managed-environment` on `pip install` | System Python refuses global installs. Use a virtual environment. |
 | JDBC `mismatched input ... expecting` | More than one statement, or a name list, sent in one call. Send one statement per call. |
 | REST `401` | Key missing, wrong, or expired. Create a new key in the GUI and update `.env.local`, then check the `Authorization: Bearer` header and `.env.local`. The docs page (`/redoc/index.html`) and `/redoc/docs.yaml` return 401 for a bearer key because they use Basic authentication (see section 6.4); test the key with `GET /datasource/datasources` instead. |

@@ -9,7 +9,7 @@ Before running anything, read the connection guide for your harness in `docs/con
 - **JDBC:** ask the user for the full path to the driver JAR. Do not assume where it is.
 - **REST:** the key is `ZETARIS_API_KEY` in `.env.local`, created by the user in the Zetaris GUI. Never create, request, print, log or put it in a URL.
 - **OpenAPI spec:** fetch it fresh from `/redoc/docs.yaml` using Basic auth (`ZETARIS_USERNAME` and `ZETARIS_PASSWORD` from `.env.local`), not the bearer key. See section 6.4 of the connection guide.
-- **Finding `.env.local`:** it is gitignored. In a git worktree it will not exist, so look in the top-level checkout (the parent of `git rev-parse --git-common-dir`).
+- **Finding `.env.local`:** it is the only env file; do not use `.env`. It is gitignored, so a git worktree has none. Every script in `scripts/` (Python and Deno) already looks in the repo root and then the top-level checkout. For your own shell commands, use the snippet in the preflight section.
 
 ## Preflight check
 

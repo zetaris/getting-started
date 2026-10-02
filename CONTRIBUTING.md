@@ -84,7 +84,7 @@ Keep the Deno/TypeScript and Python versions of a helper in sync — same enviro
 
 ## Secrets and generated data
 
-- Never commit `.env`, API tokens, or real credentials. `.env.example` documents the variables a script needs; `.env` itself is gitignored.
+- Never commit `.env.local`, API tokens, or real credentials. `.env.example` documents the variables a script needs; `.env.local` is the one env file the scripts read, and it is gitignored.
 - Don't commit anything written to `tmp/cache/` — it's gitignored precisely because fetch scripts write real downloaded data there.
 - A test-mode or public-bucket credential is fine to document in a script's own comments (e.g. "no AWS credentials needed, this bucket is public"); a live token or password is never fine to commit.
 
