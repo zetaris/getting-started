@@ -71,6 +71,24 @@ python3 scripts/onboard.py run company_dns pokeapi         # run several; shared
 
 Dependencies that already exist are satisfied: a duplicate "already exists" error on a dependency is skipped. The sources you name only skip duplicates with `--skip-exists`. It stops at the first real error and says which source and statement. A source marked `known_to_fail` needs `--allow-known-to-fail`. `--channel jdbc` and `--jar` work as in `run_sql.py`. USL models re-run less predictably than REST sources (re-running `ACTIVATE USL TABLE` is not verified), so run a USL model once and use `REMOVE USL` first if you need to rebuild it.
 
+### Tear down and start over
+
+`teardown` reverses an onboarding. It derives the drops from each create script, so there is nothing extra to maintain in the manifest: `DROP VIEW` for each schemastore view, `UNCACHE TABLE` for each cache, and `REMOVE USL` for each USL. It also tears down every source that `requires` the ones you name, dependents first, because dropping `company_dns` would otherwise leave a USL pointing at nothing.
+
+```sh
+python3 scripts/onboard.py teardown sic_edgar_usl                 # plan only, nothing sent
+python3 scripts/onboard.py teardown sic_edgar_usl --verbose       # plan plus every statement
+python3 scripts/onboard.py teardown sic_edgar_usl --yes --channel jdbc --jar <jar>
+python3 scripts/onboard.py teardown company_dns --no-dependents   # only the named source
+python3 scripts/onboard.py teardown sic_edgar_usl --drop-namespace --yes   # also DROP NAMESPACE ... CASCADE
+```
+
+- Nothing is sent without `--yes`. Show the plan to the user and wait for a go-ahead first.
+- Drops are idempotent: an object that is already gone is reported as `absent`, not as a failure.
+- The USL namespace (`lightning.metastore.usl_demo`) is left alone unless you pass `--drop-namespace`, which removes every USL inside it.
+- SQL cannot remove REST and file tables, Lightning databases or schemastore containers. The command lists them at the end; remove them in the Zetaris Data Explorer, then re-onboard with `run <id>... --skip-exists`. If you leave them in place, `--skip-exists` is what lets a re-run proceed.
+- Statements are derived from the create script's statement shapes. If you add a new statement type to a create script, check the `teardown <id> --verbose` plan still covers it.
+
 ## Check the Zetaris connection
 
 ```sh
