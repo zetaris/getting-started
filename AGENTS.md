@@ -4,9 +4,9 @@ This repo is a set of tested onboarding material for Zetaris: install guide, `op
 
 ## Connect first
 
-Before running anything, read the connection guide for your harness in `docs/connections/` (`claude-code-connection.md`, `codex-connection.md`, `cursor-connection.md`) and follow its prompt for the target instance: local or Zetaris Cloud, JDBC or REST. Confirm the connection with `SELECT 1` before doing anything else. Over REST, also call `GET /datasource/datasources`.
+The user's first prompt names a protocol (JDBC or REST) and a goal. Which instance you talk to is set in `.env.local` (`ZETARIS_REST_URL`, `ZETARIS_JDBC_URL` and the rest; local is the default), not in the prompt. Before running anything else, read the connection guide for your harness in `docs/connections/` (`claude-code-connection.md`, `codex-connection.md`, `cursor-connection.md`) for the settings table and troubleshooting, run the preflight below, and confirm the connection with `SELECT 1` and `SHOW LIGHTNING DATABASES`. Over REST, also call `GET /datasource/datasources`. Then work on the user's goal.
 
-- **JDBC:** ask the user for the full path to the driver JAR. Do not assume where it is.
+- **JDBC:** use `ZETARIS_JDBC_JAR` if set; otherwise ask the user for the full path to the driver JAR. Do not assume or search for it.
 - **REST:** the key is `ZETARIS_API_KEY` in `.env.local`, created by the user in the Zetaris GUI. Never create, request, print, log or put it in a URL.
 - **OpenAPI spec:** fetch it fresh from `/redoc/docs.yaml` using Basic auth (`ZETARIS_USERNAME` and `ZETARIS_PASSWORD` from `.env.local`), not the bearer key. See section 6.4 of the connection guide.
 - **Finding `.env.local`:** it is the only env file; do not use `.env`. It is gitignored, so a git worktree has none. Every script in `scripts/` (Python and Deno) already looks in the repo root and then the top-level checkout. For your own shell commands, use the snippet in the preflight section.
