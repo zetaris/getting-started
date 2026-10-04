@@ -15,6 +15,6 @@ This is a small repository reference based on the supplied SQL recipes and guide
 | Cache your own raw REST table when needed | `CACHE TABLE TEAM_07_REST.raw_table;` using the actual registered name. It is not a durable data snapshot. |
 | Release your own cache | `UNCACHE TABLE TEAM_07_REST.raw_table;` |
 
-Execute one command per JDBC request or one-statement HTTP file. A semicolon inside a string is not a command boundary. A USL compile payload with several `CREATE TABLE` definitions is also one command; follow its guide without splitting it.
+The single-query helpers execute one full request. For multi-command files use `run_sql.py`, and use `onboard.py` with the manifest for dependency planning; inspect dry-run output before real execution. A semicolon inside a string is not a command boundary. A USL compile payload with several `CREATE TABLE` definitions is also one command; follow its guide without splitting it.
 
 For full JSON shaping, VDM/USL, verification, and recorded platform limitations, use the [SQL companion](../guides/zetaris-lightning-sql-companion.md). For removal and partial setup, use [troubleshooting](../guides/troubleshooting.md). Do not use DROP commands as a general recovery step.

@@ -24,6 +24,10 @@ The platform distribution and driver are not in this repository. Obtain them fro
 
 ## HTTP helpers
 
-Follow [scripts/HOWTO.md](../../scripts/HOWTO.md) for `.env`, authentication, organization ID, execution, and errors. The `.env` here configures clients; it does not bootstrap or change accounts in the running platform.
+Follow [scripts/HOWTO.md](../../scripts/HOWTO.md) for `.env.local`, authentication, organization ID, execution, and errors. The `.env.local` here configures clients; it does not bootstrap or change accounts in the running platform.
 
 Only the HTTP route needs `ZETARIS_ORG_ID`. If you cannot obtain it yet, the SQL Editor route can still be used once platform access is verified.
+
+## Multi-command onboarding
+
+Use the [manifest](../../open_data/manifest.json) with `python3 scripts/onboard.py --list` and `plan <id>...` to inspect dependencies. `run_sql.py` is the multi-command runner; the older query helper still sends one full text. Follow [scripts/HOWTO.md](../../scripts/HOWTO.md), run dry-run first, and inspect team names before any real execution.

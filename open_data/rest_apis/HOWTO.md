@@ -2,7 +2,8 @@
 
 For first-time onboarding, start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md). That guide uses a minimal PokéAPI subset as the common starter; PUDL is currently known to fail. This HOWTO explains the full REST patterns after that starter. On the shared event instance, use assigned team database/container names and update every reference consistently.
 
-**File naming:** each numbered source is split into two files sharing a prefix: `NN_<name>_create.sql` (every `CREATE`/`DROP`/`CACHE` DDL statement) and `NN_<name>_select.sql` (verification and, where present, example queries). Select and execute each needed complete CREATE command separately, then verify with its matching select script — the verification queries there are commented out by default so a bulk run of the file doesn't silently fire read queries.
+
+**File naming:** each numbered source is split into two files sharing a prefix: `NN_<name>_create.sql` (every `CREATE`/`DROP`/`CACHE` DDL statement) and `NN_<name>_select.sql` (verification and, where present, example queries). Run the create script first, then verify with its matching select script — the verification queries there are commented out by default so a bulk run of the file doesn't silently fire read queries.
 
 **Source folders:** each source's script pair lives in one of three folders under `sql/`, based on whether the source API enforces a rate limit:
 
@@ -14,9 +15,9 @@ For first-time onboarding, start with [Start here](../../START-HERE.md) and [you
 
 ---
 
-## 0. Optional next recipe: `company_dns` end to end
+## 0. Fast start: `company_dns` end to end in about 5 minutes
 
-After the minimal starter, this recipe demonstrates register, cache, flatten, and verify on a SIC reference source. The names in its sample SQL must be replaced with your assigned team names before execution. This uses `company_dns` (`sql/non_rate_limited/10_company_dns_sic_create.sql` / `_select.sql`), a SIC industry-classification hierarchy.
+The fastest way to see this package's whole pattern — register, cache, flatten, verify — working on a real, live, stable source, before reading anything else. This uses `company_dns` (`sql/non_rate_limited/10_company_dns_sic_create.sql` / `_select.sql`), a SIC industry-classification hierarchy.
 
 **Note on stability:** this hosted instance can return an empty response or an HTTP 502 on the first request after idle time — see "Troubleshooting / FAQ" below for why, and the warmup script mentioned in step 1 for the fix. If your first query below comes back empty or 502s, just retry once.
 
@@ -69,14 +70,14 @@ After the minimal starter, this recipe demonstrates register, cache, flatten, an
    ORDER BY sic_code;
    ```
 
-That's the whole pattern. `sql/non_rate_limited/10_company_dns_sic_select.sql` has 8 more example queries against this same table if you want to keep exploring it before moving on. Everything below explains this pattern in more depth — how to run it against another source in this package (`1. Running the scripts`), how to check your results are trustworthy (`2. Verifying data`), what to do when something doesn't go as smoothly as it did here, and the full syntax/shape/limitations reference.
+That's the whole pattern. `sql/non_rate_limited/10_company_dns_sic_select.sql` has 8 more example queries against this same table if you want to keep exploring it before moving on. Everything below explains this pattern in more depth — how to run it against any of the other 8 sources in this package (`1. Running the scripts`), how to check your results are trustworthy (`2. Verifying data`), what to do when something doesn't go as smoothly as it did here, and the full syntax/shape/limitations reference.
 
 ---
 
 ## 1. Running the scripts
 
 1. Open the Zetaris **SQL Editor**.
-2. For one chosen source in `sql/`, using the [catalog verification status](rest-api-sources.md):
+2. For each source in `sql/`, in order:
    - Read the `_create.sql` header comment and every numbered caveat.
    - Run the `CREATE LIGHTNING DATABASE` statement (Step 0).
    - Run the `CREATE SCHEMASTORE CONTAINER` statement **once** (Step 1) — skip it if the container already exists in your environment (see "Known limitations" below).
@@ -84,11 +85,21 @@ That's the whole pattern. `sql/non_rate_limited/10_company_dns_sic_select.sql` h
    - Run each `CREATE LIGHTNING REST TABLE` + `CREATE SCHEMASTORE VIEW` pair in `_create.sql`.
    - Open the matching `_select.sql`, uncomment its verification query (see "Verifying data" below), and run it before trusting the result.
 
-Choose later sources from the [readiness index](../../docs/guides/recipe-readiness.md) and current catalog, rather than running them all in order. PokéAPI is the no-key JSON starter; company_dns is a useful next dynamic-key example, with a documented warmup requirement. EDGAR needs a real application/contact User-Agent, and rate-limited sources need deliberate query spacing and cache planning.
+Suggested order — lowest-risk / simplest shape first, so a failure on a harder source doesn't block confirming the basic pattern works at all (see "Understanding JSON response shapes" below):
 
-NASA DONKI is unverified and Singapore PM2.5 is known to fail; neither belongs in the default starter path. The remaining sources marked Verified in the catalog have recorded live-run evidence, not a guarantee that every current request will succeed. Do not retain old shape-risk guesses as the current verification status for Eurostat or ABS; use their catalog notes.
+| Order | Script | Why here |
+|---|---|---|
+| 1 | `non_rate_limited/10_company_dns_sic_create.sql` | Already walked through above (Fast Start) — confirms your environment works before trying anything new. |
+| 2 | `rate_limited/01_edgar_company_facts_create.sql` | Live-tested and working — confirms the baseline array-of-structs pattern end to end. |
+| 3 | `rate_limited/08_statcan_wds_create.sql` | Simplest shape investigated (flat array-of-structs, one level, GET-only) — good smoke test if something else is failing. |
+| 4 | `non_rate_limited/02_pokeapi_create.sql` | Array-of-structs with one extra level of nested struct — tests whether two-level dot-access through an exploded field works. |
+| 5 | `rate_limited/03_open_food_facts_live_create.sql` | Array-of-structs with sparse/optional fields across entries — tests schema-inference tolerance for inconsistent struct shapes. |
+| 6 | `rate_limited/05_nasa_neows_create.sql` | Array-of-structs with deep nesting (3 levels) and a nested array-within-array (`close_approach_data`) — tests indexing (`[0]`) vs. a second `explode()`. |
+| 7 | `rate_limited/06_nasa_donki_create.sql` | Higher risk: top-level JSON array, not object — untested whether `CREATE LIGHTNING REST TABLE` even accepts this at all. |
+| 8 | `non_rate_limited/07_eurostat_create.sql` | Metadata path confirmed working; JSON-stat format needs the dynamic-key coercion technique (see "Understanding JSON response shapes" below) to decode actual values. |
+| 9 | `non_rate_limited/09_abs_data_api_create.sql` | Higher risk: SDMX-JSON with doubly-compound dynamic keys — same risk class as Eurostat, likely drop candidate. |
 
-The HTTP helper does not split multi-statement files. Use [the execution route guide](../../docs/connections/README.md) and [rerun guidance](../../docs/guides/troubleshooting.md) before submitting scripts through it.
+**Not in this sequence:** `sql/known_to_fail/04_singapore_pm25_create.sql` is excluded — it hit a blocking connector-or-API issue during testing (an HTTP 502 on its first statement). See "Known limitations" below and `sql/known_to_fail/README.md`.
 
 ---
 
@@ -249,9 +260,9 @@ If `CACHE TABLE` doesn't help, the practical fallback is to space out or reduce 
 
 Not reliably — see "Removing a source" above. `DROP VIEW` works; `DROP TABLE` and `DROP DATASOURCE` do not. Use the Zetaris Data Explorer to remove the underlying registration.
 
-### `CREATE SCHEMASTORE CONTAINER` failed with a parse exception
+### `CREATE SCHEMASTORE CONTAINER` failed with "A container named ... already exists"
 
-This means the container name already exists — `CREATE SCHEMASTORE CONTAINER` has no `IF NOT EXISTS` form. Comment out that statement in the script and continue; see `docs/guides/zetaris-lightning-sql-companion.md` section 5.
+This means the container name already exists — `CREATE SCHEMASTORE CONTAINER` has no `IF NOT EXISTS` form (older versions reported it as a parse exception). Re-running the script with `python3 scripts/run_sql.py --skip-exists FILE` skips every "already exists" error (database, table, container and view), or comment out that statement and continue; see `docs/guides/zetaris-lightning-sql-companion.md` section 5.
 
 ### `CREATE LIGHTNING DATABASE ... DESCRIBE BY "..."` failed with "Description is invalid"
 

@@ -32,7 +32,7 @@ The event instance is shared. A name prefix is a collision-avoidance convention,
 5. Execute one statement at a time and record the last successful step. If a later statement fails, inspect persisted objects and resume only the missing/failed step after diagnosing it. There is no assumed transaction rollback for a whole recipe.
 6. Cache only your own approved raw tables. Do not uncache, alter, or remove a shared object without its owner's permission.
 
-`CREATE SCHEMASTORE CONTAINER` does not support `IF NOT EXISTS` in the recorded behavior, and the repo documents no container-removal path. Avoid repeatedly creating new containers as a troubleshooting tactic.
+`run_sql.py --skip-exists` can skip duplicate errors, but it does not verify matching definitions or authorize access to another team's objects. Inspect ownership and definition first. `CREATE SCHEMASTORE CONTAINER` does not support `IF NOT EXISTS` in the recorded behavior, and the repo documents no container-removal path. Avoid repeatedly creating new containers as a troubleshooting tactic.
 
 ## Cleanup
 

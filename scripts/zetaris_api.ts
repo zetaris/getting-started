@@ -1,11 +1,13 @@
 // Shared Zetaris API client for the scripts in this folder. It resolves
 // credentials and organization settings, then sends authenticated proxy calls.
+import "./load_env.ts";
+
 const baseUrl = (Deno.env.get("ZETARIS_BASE_URL") ?? "http://localhost:3000")
   .replace(/\/$/, "");
 const orgId = Deno.env.get("ZETARIS_ORG_ID");
 
 if (!orgId || !/^\d+$/.test(orgId)) {
-  throw new Error("Set ZETARIS_ORG_ID to the numeric organization ID.");
+  throw new Error("Set ZETARIS_ORG_ID to the numeric organization ID in .env.local.");
 }
 if (!/^https?:\/\/[^/]+$/.test(baseUrl)) {
   throw new Error("ZETARIS_BASE_URL must be an HTTP(S) origin without a path.");
@@ -53,13 +55,13 @@ export async function zetarisRequest(
   method = "GET",
   body?: unknown,
 ): Promise<unknown> {
-  let token = Deno.env.get("ZETARIS_API_TOKEN");
+  let token = Deno.env.get("ZETARIS_API_KEY");
   if (!token) {
     const username = Deno.env.get("ZETARIS_USERNAME");
     const password = Deno.env.get("ZETARIS_PASSWORD");
     if (!username || !password) {
       throw new Error(
-        "Set ZETARIS_API_TOKEN or both ZETARIS_USERNAME and ZETARIS_PASSWORD.",
+        "Set ZETARIS_API_KEY or both ZETARIS_USERNAME and ZETARIS_PASSWORD.",
       );
     }
     let response: Response;

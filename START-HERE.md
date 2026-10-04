@@ -29,15 +29,15 @@ This path works only once access is confirmed. This repo does not grant access t
 
 Follow the [installation guide](docs/install/updated_zetaris_installation_guide.md), starting with obtaining the separate distribution and registry access. It covers machine requirements, configuration, startup, `verify.sh`, first login, and teardown. The [test record](docs/install/zetaris-installation-test-record.md) records a local fresh-install run. AWS is an optional documented path whose steps have not been live-tested in that record.
 
-Keep the platform bundle's `.env` separate from this repo's optional client `.env`. Configure the initial account before the bundle's first startup; later edits do not recreate existing accounts.
+Keep the platform bundle's `.env` separate from this repo's client `.env.local`. Configure the initial account before the bundle's first startup; later edits do not recreate existing accounts.
 
 ## 2. Choose how to execute SQL
 
 Use the **SQL Editor** for the shortest manual path. Select one complete statement and execute it, then wait for its result before the next dependent statement.
 
-For agent-driven work, use [Cursor](docs/connections/cursor-connection.md), [Codex](docs/connections/codex-connection.md), or [Claude Code](docs/connections/claude-code-connection.md) over JDBC or direct REST after obtaining the protocol-specific prerequisites. For application work, use the [HTTP helpers](scripts/HOWTO.md).
+For agent-driven work, use [Cursor](docs/connections/cursor-connection.md), [Codex](docs/connections/codex-connection.md), or [Claude Code](docs/connections/claude-code-connection.md) over JDBC or direct REST after obtaining the protocol-specific prerequisites. For application work, use the [HTTP helpers](scripts/HOWTO.md). Clients now read only `.env.local`; do not use the older client `.env`. The platform bundle's own `.env` remains separate.
 
-The helpers' `--file` option sends the entire file in one request. It does not split SQL or roll back a partially completed recipe. Use one-statement files. A `COMPILE USL ... DDL` payload containing several table definitions is one command and must stay intact.
+The single-query helpers' `--file` option sends the entire file in one request and does not split SQL or roll back partial setup. The new `run_sql.py` runner splits multi-command scripts while preserving USL compile payloads. Plan dependencies with `onboard.py` using `open_data/manifest.json`. Run dry-run first and inspect the selected commands and team names before real execution. A `COMPILE USL ... DDL` payload containing several table definitions is one command and must stay intact.
 
 ## 3. Get your first real rows
 

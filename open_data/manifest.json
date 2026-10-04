@@ -1,0 +1,174 @@
+{
+  "_comment": "Onboarding manifest. Each source's create script, the sources that must exist first ('requires'), and its status. Add a source here when you add its create script; scripts/onboard.py reads this to resolve the order. kind: rest | filestore | usl. status: verified | unverified | known_to_fail.",
+  "version": 1,
+  "sources": [
+    {
+      "id": "company_dns",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/non_rate_limited/10_company_dns_sic_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "SIC industry-classification hierarchy (1,005 codes) from company_dns"
+    },
+    {
+      "id": "edgar_facts",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "SEC EDGAR XBRL revenue facts for 7 companies; creates the SEC_DATA database and edgar container"
+    },
+    {
+      "id": "edgar_profiles",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql",
+      "status": "verified",
+      "requires": [
+        "edgar_facts",
+        "company_dns"
+      ],
+      "summary": "EDGAR company profiles enriched with the SIC hierarchy"
+    },
+    {
+      "id": "pokeapi",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/non_rate_limited/02_pokeapi_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "PokeAPI game data (nested JSON example)"
+    },
+    {
+      "id": "open_food_facts",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/rate_limited/03_open_food_facts_live_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "Open Food Facts live single-product API"
+    },
+    {
+      "id": "nasa_neows",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/rate_limited/05_nasa_neows_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "NASA near-Earth-object catalog (DEMO_KEY quota applies)"
+    },
+    {
+      "id": "nasa_donki",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/rate_limited/06_nasa_donki_create.sql",
+      "status": "unverified",
+      "requires": [],
+      "summary": "NASA DONKI space-weather CMEs (top-level JSON array; not yet verified)"
+    },
+    {
+      "id": "eurostat",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/non_rate_limited/07_eurostat_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "Eurostat statistics (JSON-stat, dynamic keys)"
+    },
+    {
+      "id": "statcan_wds",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/rate_limited/08_statcan_wds_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "Statistics Canada changed-cube list"
+    },
+    {
+      "id": "abs_data_api",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/non_rate_limited/09_abs_data_api_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "Australian Bureau of Statistics CPI (SDMX-JSON)"
+    },
+    {
+      "id": "singapore_pm25",
+      "kind": "rest",
+      "script": "open_data/rest_apis/sql/known_to_fail/04_singapore_pm25_create.sql",
+      "status": "known_to_fail",
+      "requires": [],
+      "summary": "Singapore PM2.5 real-time API (HTTP 502 on create)"
+    },
+    {
+      "id": "noaa_ghcn",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/02_noaa_ghcn_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "NOAA GHCN-Daily climate CSV on public S3"
+    },
+    {
+      "id": "aws_public_blockchain",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/09_aws_public_blockchain_create.sql",
+      "status": "verified",
+      "requires": [],
+      "summary": "AWS Public Blockchain Parquet on public S3"
+    },
+    {
+      "id": "pudl",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/known_to_fail/03_pudl_create.sql",
+      "status": "known_to_fail",
+      "requires": [],
+      "summary": "Catalyst Cooperative PUDL energy data"
+    },
+    {
+      "id": "foursquare_places",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/known_to_fail/04_foursquare_places_create.sql",
+      "status": "known_to_fail",
+      "requires": [],
+      "summary": "Foursquare Open Source Places"
+    },
+    {
+      "id": "overture_maps",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/known_to_fail/05_overture_maps_create.sql",
+      "status": "known_to_fail",
+      "requires": [],
+      "summary": "Overture Maps GeoParquet"
+    },
+    {
+      "id": "ookla_speedtest",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/known_to_fail/07_ookla_speedtest_create.sql",
+      "status": "known_to_fail",
+      "requires": [],
+      "summary": "Ookla Speedtest performance Parquet"
+    },
+    {
+      "id": "gbif",
+      "kind": "filestore",
+      "script": "open_data/parquet_csv/sql/known_to_fail/08_gbif_create.sql",
+      "status": "known_to_fail",
+      "requires": [],
+      "summary": "GBIF species occurrences"
+    },
+    {
+      "id": "sic_usl",
+      "kind": "usl",
+      "script": "open_data/usl/sql/01_sic_usl_create.sql",
+      "status": "verified",
+      "requires": [
+        "company_dns"
+      ],
+      "summary": "Single-table USL over the SIC hierarchy (lifecycle verified; self-consistency check runs as a plain query)"
+    },
+    {
+      "id": "sic_edgar_usl",
+      "kind": "usl",
+      "script": "open_data/usl/sql/02_sic_edgar_usl_create.sql",
+      "status": "verified",
+      "requires": [
+        "company_dns",
+        "edgar_profiles"
+      ],
+      "summary": "Two-table, FK-related USL: EDGAR companies and the SIC hierarchy"
+    }
+  ]
+}

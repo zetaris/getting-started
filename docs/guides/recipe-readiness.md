@@ -10,11 +10,13 @@ Use the [small starter](first-dataset.md) first. This index distinguishes record
 
 Use assigned team names on the shared event instance. Source availability still needs checking from the Zetaris server during your run.
 
-## Active source catalogs
+## Manifest and active source catalogs
+
+The [manifest](../../open_data/manifest.json) now declares runnable IDs, statuses, and dependencies. Use `python3 scripts/onboard.py --list`, `--check`, and `plan <id>...` before full recipe execution. The runner refuses a known-to-fail target without an explicit override; that override does not make the source safe or verified. Detailed catalogs retain source-specific evidence.
 
 - [REST catalog](../../open_data/rest_apis/rest-api-sources.md) is the per-source readiness record: 11 pairs, with nine marked Verified, NASA DONKI Unverified, and Singapore PM2.5 Known to fail. “Verified” describes a recorded run, not a guarantee on your instance. Dates and caveats, where recorded, are in the script headers and source notes; a missing date must not be invented.
 - [Parquet/CSV catalog](../../open_data/parquet_csv/parquet-csv-data-sources.md) lists seven current pairs. It explicitly states that license colors do not indicate runtime verification. Only NOAA and AWS Public Blockchain are active file pairs; five pairs are under `known_to_fail`, including PUDL. The earlier PUDL success and current registration failure are unresolved; follow the current catalog rather than treating the old run as current readiness.
-- [USL package](../../open_data/usl/HOWTO.md) records verified SIC and SIC/EDGAR lifecycle steps, an observed FK DQ failure, and still-open comparison/materialization questions; consult the current model catalog. The [EDGAR/PUDL/NOAA guide](create-edgar-pudl-noaa-usl.md) records its own joined-result evidence and separate DQ limitation.
+- [USL package](../../open_data/usl/HOWTO.md) records verified SIC and SIC/EDGAR lifecycle steps, an observed FK DQ failure, a completed comparison showing complementary checks, and still-open materialization questions; consult the current model catalog. The [EDGAR/PUDL/NOAA guide](create-edgar-pudl-noaa-usl.md) records its own joined-result evidence and separate DQ limitation.
 
 Do not run the entire catalog as onboarding. Select one source, inspect its prerequisites, rate limits, schema, data volume, attribution notes, and statement dependencies, then verify the actual subset you created.
 

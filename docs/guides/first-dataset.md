@@ -4,7 +4,7 @@ Return to [Start here](../../START-HERE.md) if platform access or query executio
 
 ## Default: PokéAPI abilities
 
-This minimal subset has recorded real-row verification. Use the [PokéAPI CREATE file](../../open_data/rest_apis/sql/non_rate_limited/02_pokeapi_create.sql). Read its caveats and copy the following complete statements into a working SQL file. Replace `POKEAPI_REST` and `pokeapi_rest` with your assigned team database, and replace the SchemaStore container `pokeapi` consistently with your assigned team container. The original fixed names are unsuitable for independent teams on a shared instance. Run one statement at a time:
+This minimal subset has recorded real-row verification. `onboard.py plan pokeapi` shows the complete recipe, not this minimal subset. The manifest is the source of dependency ordering. For team-specific minimal execution, copy only the complete commands below to your own file, substitute all team names, inspect it with `run_sql.py --dry-run`, and obtain approval before real writes. Use the [PokéAPI CREATE file](../../open_data/rest_apis/sql/non_rate_limited/02_pokeapi_create.sql). Read its caveats and copy the following complete statements into a working SQL file. Replace `POKEAPI_REST` and `pokeapi_rest` with your assigned team database, and replace the SchemaStore container `pokeapi` consistently with your assigned team container. The original fixed names are unsuitable for independent teams on a shared instance. Run one statement at a time:
 
 1. `CREATE LIGHTNING DATABASE POKEAPI_REST`, if absent.
 2. `CREATE SCHEMASTORE CONTAINER pokeapi`, if absent.

@@ -10,7 +10,7 @@
 
 -- 1. Row count -- same expected count as sql/10's sic_codes_table (1005) --
 -- if this differs, the row-count under-reporting bug flagged in
--- docs/guides/zetaris-sql-companion.md section 5 is a candidate
+-- docs/guides/zetaris-lightning-sql-companion.md section 5 is a candidate
 -- explanation, but check independently (curl against company_dns) before
 -- assuming that.
 SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_usl.sic_code;   -- expect 1005
@@ -86,7 +86,7 @@ ORDER BY division;
 -- major_group agree on that major_group's description? Same shape as
 -- sql/10 query 8 -- run here as a plain aggregate query, since this check
 -- is confirmed not expressible as a REGISTER DQ rule on this table (see
--- docs/guides/zetaris-sql-companion.md section 8.6). Expect zero rows
+-- docs/guides/zetaris-lightning-sql-companion.md section 8.6). Expect zero rows
 -- back.
 SELECT major_group, COUNT(DISTINCT major_group_desc) AS distinct_descriptions
 FROM lightning.metastore.usl_demo.sic_usl.sic_code

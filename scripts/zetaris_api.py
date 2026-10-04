@@ -8,10 +8,9 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from dotenv import load_dotenv
+import zetaris_sql
 
-
-load_dotenv()
+zetaris_sql.load_env()  # .env.local, repo root or top-level checkout
 
 BASE_URL = os.environ.get("ZETARIS_BASE_URL", "http://localhost:3000").removesuffix(
     "/"
@@ -19,7 +18,7 @@ BASE_URL = os.environ.get("ZETARIS_BASE_URL", "http://localhost:3000").removesuf
 ORG_ID = os.environ.get("ZETARIS_ORG_ID")
 
 if not ORG_ID or not re.fullmatch(r"[0-9]+", ORG_ID):
-    raise RuntimeError("Set ZETARIS_ORG_ID to the numeric organization ID.")
+    raise RuntimeError("Set ZETARIS_ORG_ID to the numeric organization ID in .env.local.")
 if not re.fullmatch(r"https?://[^/]+", BASE_URL):
     raise RuntimeError("ZETARIS_BASE_URL must be an HTTP(S) origin without a path.")
 
@@ -66,13 +65,13 @@ def _request(path: str, token: str, method: str = "GET", body: Any = None) -> An
 def zetaris_request(path: str, method: str = "GET", body: Any = None) -> Any:
     """Make an authenticated request to the Zetaris UI proxy API."""
 
-    token = os.environ.get("ZETARIS_API_TOKEN")
+    token = os.environ.get("ZETARIS_API_KEY")
     if not token:
         username = os.environ.get("ZETARIS_USERNAME")
         password = os.environ.get("ZETARIS_PASSWORD")
         if not username or not password:
             raise RuntimeError(
-                "Set ZETARIS_API_TOKEN or both ZETARIS_USERNAME and "
+                "Set ZETARIS_API_KEY or both ZETARIS_USERNAME and "
                 "ZETARIS_PASSWORD."
             )
 

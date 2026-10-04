@@ -48,3 +48,10 @@ Merged local main `822ecbf` while retaining the participant journey and shared-i
 PUDL is now known to fail, so the default starter is the minimal PokéAPI subset. The PUDL chart and EDGAR/PUDL/NOAA guide remain available only with an explicit requirement for a working registration verified on the target instance. The earlier PUDL run and present failure remain unreconciled. Historical verification notes above describe the branch before this merge.
 
 Repaired moved-file references and removed a pasted connection-document block from main's .gitignore while preserving its ignore rules. Merge verification: 402 local Markdown links/anchors resolved, Deno type checks and lint passed, Python helper/example syntax passed, and no conflict markers remain. No live platform queries were run.
+
+
+## Scheduled synchronization with origin/main `353d651`
+
+The recurring update fetched origin and merged the incoming environment loader, manifest/dependency planner, preflight, and multi-command runner while retaining shared-instance scope and the participant entry path. Client configuration now uses only `.env.local`; the platform bundle’s `.env` remains separate. Single-query helpers still send one full text, while `run_sql.py` handles multi-command files and atomic USL compile payloads. The source USL evidence now records the completed FK-versus-description comparison as complementary, not unresolved.
+
+Validation: manifest check and dependency plan passed; 404 local documentation links/anchors resolved; Python script syntax and Deno checks/lint passed. No live platform queries or source registrations were executed in this scheduled run.

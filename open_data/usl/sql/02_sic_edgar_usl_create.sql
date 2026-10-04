@@ -15,7 +15,7 @@
 --
 -- Source: Unified Semantic Layer (USL) User Guide, sections 4, 6, 8, 10-11
 -- and Appendix B (supplied alongside this repo; no dedicated Kbase page
--- found -- see docs/guides/zetaris-sql-companion.md section 0).
+-- found -- see docs/guides/zetaris-lightning-sql-companion.md section 0).
 --
 -- Prerequisite: open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql,
 -- Step 0 and the seven CREATE LIGHTNING REST TABLE <company>_submissions_raw
@@ -32,7 +32,7 @@
 -- is confirmed working (after a null-handling fix, commit 8f18f4f). The
 -- description-agreement check in Step 5 is not registered as a REGISTER DQ
 -- rule -- two attempts failed live (see
--- docs/guides/zetaris-sql-companion.md section 8.6) -- and runs instead as
+-- docs/guides/zetaris-lightning-sql-companion.md section 8.6) -- and runs instead as
 -- a plain join query in 02_sic_edgar_usl_select.sql.
 --
 -- Caveats:
@@ -141,7 +141,7 @@ LATERAL VIEW explode(
 -- involved -- see sql/11's own header note that the submissions endpoint is
 -- a flat top-level object for the fields used here -- so this does not hit
 -- the MISSING_ATTRIBUTES self-join class of error that affects UNION ALL
--- of explode()-based views (docs/guides/zetaris-sql-companion.md
+-- of explode()-based views (docs/guides/zetaris-lightning-sql-companion.md
 -- section 4).
 -- ---------------------------------------------------------------------------
 ACTIVATE USL TABLE lightning.metastore.usl_demo.sic_edgar_usl.company AS
@@ -173,7 +173,7 @@ FROM (
 -- description-agreement check (do the two independently-sourced SIC
 -- description strings actually agree, not just does the code exist, which
 -- is all a bare FK proves) is not registered as a REGISTER DQ rule here --
--- see docs/guides/zetaris-sql-companion.md section 8.6 for why -- and runs
+-- see docs/guides/zetaris-lightning-sql-companion.md section 8.6 for why -- and runs
 -- instead as a plain join query in 02_sic_edgar_usl_select.sql.
 -- ---------------------------------------------------------------------------
 

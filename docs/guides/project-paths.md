@@ -22,7 +22,7 @@ Choose a second source and describe the join key, row grain, and missing-match b
 Existing paths:
 
 - [VDM and USL in the SQL companion](zetaris-lightning-sql-companion.md): concepts, consumption, and known limits. VDM creation is described as GUI work; a queryable table is not itself a VDM.
-- [EDGAR+SIC USL contrast](../../open_data/usl/HOWTO.md): simple lifecycle followed by relationships and DQ. The current USL catalog records verified lifecycle steps, an observed FK DQ failure, and separate unresolved comparisons/materialization.
+- [EDGAR+SIC USL contrast](../../open_data/usl/HOWTO.md): simple lifecycle followed by relationships and DQ. The current USL catalog records verified lifecycle steps, an observed FK DQ failure, a completed comparison showing complementary checks, and unresolved materialization.
 - [EDGAR/PUDL/NOAA walkthrough](create-edgar-pudl-noaa-usl.md): source registration, schema/key checks, caching, compile, activation, and a joined query. Its recorded weather window is partial and its DQ result is unverified. Its PUDL prerequisite is now known to fail; resolve that before using the historical guide.
 
 These guides use fixed sample names. On the shared instance, replace databases, SchemaStore containers, namespaces, model names, and **all** references consistently with your assigned names. Use an existing shared source only when the administrator confirms its definition and your read permissions. Do not execute cleanup blocks on shared objects.
