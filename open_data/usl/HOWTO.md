@@ -1,5 +1,7 @@
 # HOWTO: onboard these USL models into Zetaris
 
+On the shared event instance, use assigned team namespaces/model names and replace every dependent reference consistently. Execute one complete command at a time; keep each USL compile payload intact. For the separate historical [EDGAR/PUDL/NOAA walkthrough](../../docs/guides/create-edgar-pudl-noaa-usl.md), note that its PUDL prerequisite is currently known to fail and must be resolved before execution.
+
 The general walkthrough for this package's `sql/` scripts — read this once before running any of them. Each model here rebuilds a data product already built elsewhere in this repo (currently, `open_data/rest_apis/`'s REST+SchemaStore+VDM version of the EDGAR+SIC data product) using the Unified Semantic Layer instead, as a contrast, not a replacement — so the two approaches can be run side by side and compared.
 
 **File naming:** each model is split into two files sharing a prefix: `NN_<name>_create.sql` (namespace, `COMPILE USL`, `ACTIVATE`, `RUN DQ`, and a commented-out `MATERIALIZE`/teardown) and `NN_<name>_select.sql` (verification and contrast queries). Run the create script first, then verify with its matching select script.

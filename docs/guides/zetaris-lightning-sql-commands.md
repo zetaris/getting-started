@@ -3789,4 +3789,3 @@ Any signed-in user. Results are limited to the objects assigned to the user.
 ```sql
 SHOW SERVER VERSION
 ```
-

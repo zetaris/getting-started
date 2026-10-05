@@ -1,5 +1,7 @@
 # HOWTO: onboard these Parquet/CSV sources into Zetaris
 
+Begin with [Start here](../../START-HERE.md) and the [PokéAPI starter](../../docs/guides/first-dataset.md). On the shared event instance, use assigned team database names and update all references consistently. File-source work is a later optional path.
+
 This guide covers the seven current CREATE/SELECT SQL pairs in `sql/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
 
 **Source folders:** two of the seven pairs live directly in `sql/`. Five live in `sql/known_to_fail/`: PUDL and Ookla both fail to register at all (`CREATE LIGHTNING FILESTORE TABLE` itself fails) for different reasons — PUDL's bucket's dotted name (`pudl.catalyst.coop`) isn't accepted by Zetaris's S3 filestore connector, Ookla's bucket has no dots and its 500 error's cause is unconfirmed; Foursquare's table creates successfully but its `CACHE TABLE` and every query fail with a 500 error; Overture's table creates successfully and its plain, bounded `SELECT` works, but its `CACHE TABLE` and every analytical query fail or hang; and GBIF's table creates and even caches successfully via the GUI, but every query against it — including the plain filtered verification SELECT — fails with a 500 error. All five are kept as documented, reproducible examples rather than deleted; none is part of the main sequence below. See `sql/known_to_fail/README.md` and its per-source `ISSUE-NN-<name>.md` files.
@@ -108,7 +110,7 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000  # + a small quickstar
 
 ## 4. Running the scripts
 
-Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Run the CREATE file first. The primary verification query runs when you execute the SELECT file; queries for optional tables and examples remain commented until those tables are created.
+Each current source has two files sharing a numeric prefix: `sql/NN_<name>_create.sql` (setup DDL) and `sql/NN_<name>_select.sql` (verification and example queries). Select only the required complete CREATE statements and execute them separately. The primary verification query runs when you execute the SELECT file; queries for optional tables and examples remain commented until those tables are created.
 
 1. Open the Zetaris **SQL Editor** ([SQL Editor overview](https://kbase.zetaris.com/knowledge/sql-editor-overview), [How to Save and Re-use SQL](https://kbase.zetaris.com/knowledge/how-to-save-and-re-use-sql)).
 2. Choose a source from the [catalog](parquet-csv-data-sources.md), then:
@@ -133,7 +135,7 @@ Suggested order — confirmed-working, simplest license first, in case you want 
 
 For every runnable script:
 
-1. `SELECT COUNT(*) FROM <logical_datasource_name>.<table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a source configuration problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
+1. Begin with a bounded sample (`SELECT * FROM <logical_datasource_name>.<table_name> LIMIT 10;`). Whole-source counts are opt-in after checking volume and query scope: `SELECT COUNT(*) FROM <logical_datasource_name>.<table_name>;` — a zero count with no error usually means an empty `PATH` match, wrong prefix, or a source configuration problem that didn't hard-fail. Check row count, not just that `CREATE TABLE` succeeded.
 2. Spot-check a couple of column values against the schema described in that source's docs (linked in `parquet-csv-data-sources.md`) — this catches a wrong `inferSchema` result (every column coming back as a string, for example).
 3. For the date/version/release-partitioned sources (PUDL, Foursquare, Overture, Ookla, GBIF, AWS Public Blockchain), re-run the bucket-listing command from that script's header comment shortly before you need the source. A path can stop working when a new release replaces an old one.
 4. For a large single-file source, expect uncached queries to be slow — each one re-scans the underlying file over S3. `CACHE TABLE <logical_datasource_name>.<table_name>;` is confirmed to help (see `sql/02_noaa_ghcn_create.sql`, where it's required rather than optional); see [`docs/guides/zetaris-lightning-sql-companion.md` section 5](../../docs/guides/zetaris-lightning-sql-companion.md#5-operational-limitations-confirmed-live-not-documentation-guesses) for what's confirmed about `CACHE TABLE` generally, including its known gaps.

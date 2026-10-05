@@ -4,7 +4,7 @@ Helpers for talking to Zetaris and PostgreSQL directly from the command line, pl
 
 ## Configure access
 
-Copy the settings you need from [`../.env.example`](../.env.example) into `.env.local` in the repository root. `.env.local` is the only env file the scripts read, and it is gitignored — do not commit it. If you have an older `.env`, rename it. If `.env.local` already exists, add the settings without replacing its other values.
+Copy the settings you need from [`../.env.example`](../.env.example) into `.env.local` in the repository root. `.env.local` is the only env file the scripts read, and it is gitignored — do not commit it. If you have an older client `.env`, migrate its settings into `.env.local` without replacing an existing file. The platform bundle’s `.env` is separate. If `.env.local` already exists, add the settings without replacing its other values.
 
 **Git worktrees.** A gitignored file is not copied into a worktree, so you do not need a copy there: every script (Python and Deno) looks for `.env.local` in the repository root first and then in the top-level checkout the worktree belongs to. Variables already exported in your shell win over the file.
 
@@ -35,7 +35,26 @@ PGPASSWORD=
 PGSSLMODE=disable
 ```
 
-Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwords containing spaces or `#`. Set `PGSSLMODE=verify-full` if your server uses TLS with a trusted certificate matching the host; the default, `disable`, is for servers without TLS. Exported environment variables take precedence over `.env` values.
+Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwords containing spaces or `#`. Set `PGSSLMODE=verify-full` if your server uses TLS with a trusted certificate matching the host; the default, `disable`, is for servers without TLS. Exported environment variables take precedence over `.env.local` values.
+
+## Find your organization ID
+
+Ask the instance administrator for the numeric organization ID associated with your participant account. Do not infer it from the organization name or use the example number above.
+
+If you are already signed in and the UI can make a successful data request, you can also open your browser's developer tools, use the Network panel, and inspect that request's headers. If it includes `X-Org-ID`, copy only that numeric value into your local `.env.local`. Do not copy or share Authorization/Cookie headers, tokens, or the full request. A request for a different organization is not a valid value for your account.
+
+The repo does not document a guaranteed UI screen for this ID. If the header is absent or access is not confirmed, ask the administrator. Do not guess an API endpoint to obtain it. Only HTTP helpers require this field; you can use the SQL Editor while this is unresolved.
+
+## Verify SQL execution
+
+After configuration, run one of:
+
+```sh
+./scripts/query_zetaris.ts "SELECT 1"
+python3 scripts/query_zetaris.py "SELECT 1"
+```
+
+Use your installed runtime. Python users first install `scripts/requirements.txt` as described in README. Require a result row containing `1`. The database-list check below verifies authenticated metadata access only. Next, follow [your first dataset](../docs/guides/first-dataset.md) to verify external rows.
 
 ## How a request works
 
@@ -54,7 +73,7 @@ python3 scripts/run_sql.py --channel jdbc -e "SELECT 1"
 ```
 
 - **`preflight.py`** is read-only and exits 1 if anything fails. It checks credentials are set (never printing them), REST (`GET /datasource/datasources` and `SELECT 1`), optionally JDBC (port, JDK, `jaydebeapi`, driver JAR), and lists what is on the instance, including Lightning databases and USL namespaces that `SHOW DATASOURCES` omits. It installs nothing.
-- **`run_sql.py`** splits a script into statements (quote- and comment-aware), sends them one at a time, and stops at the first error. A multi-table `COMPILE USL` is kept whole. It replaces the `YOUR_APP_NAME YOUR_CONTACT_EMAIL` placeholder with `ZETARIS_USER_AGENT` and refuses to send the placeholder. `--skip-exists` makes re-runs safe by skipping "already exists" errors. `--dry-run` prints the statements without connecting. The create scripts change the instance, so dry-run first if unsure.
+- **`run_sql.py`** splits a script into statements (quote- and comment-aware), sends them one at a time, and stops at the first error. A multi-table `COMPILE USL` is kept whole. It replaces the `YOUR_APP_NAME YOUR_CONTACT_EMAIL` placeholder with `ZETARIS_USER_AGENT` and refuses to send the placeholder. `--skip-exists` skips "already exists" errors; inspect ownership and matching definitions first, especially on a shared instance. `--dry-run` prints the statements without connecting. The create scripts change the instance, so dry-run first if unsure.
 - **JDBC driver JAR:** pass `--jar` or set `ZETARIS_JDBC_JAR`. The scripts never guess a location. JDBC reuses `ZETARIS_USERNAME` and `ZETARIS_PASSWORD`. On macOS the `java` on `PATH` can be a stub, so they look for a Homebrew JDK (for example `brew install openjdk@17`, which needs no `sudo`).
 
 ### Onboard sources with their dependencies
@@ -114,7 +133,7 @@ Or pass a SQL file:
 python3 scripts/query_zetaris.py --file path/to/query.sql
 ```
 
-The script accepts SQL text as one quoted argument or reads the entire file after `--file`. It sends that text in one request to Zetaris and prints the JSON response (`headers`, `data`, `total`, `timeUsed`). It does not split a file into separate statements — if the API rejects a file with multiple statements, pass one statement at a time. `ZETARIS_QUERY_LIMIT` caps returned rows at 1000 by default. Set `ZETARIS_ENGINE_ID` when you want to choose a compute engine. SQL runs with your Zetaris account's permissions, so review a file before passing it to the command.
+The script accepts SQL text as one quoted argument or reads the entire file after `--file`. It sends that text in one request to Zetaris and prints the JSON response (`headers`, `data`, `total`, `timeUsed`). It does not split a file into separate statements and does not manage transaction rollback. Use one complete command per file/request with this helper. For multi-command files, use the separate `run_sql.py` runner described above; it keeps USL compile payloads intact. Resume partial setup only after inspecting existing objects. `ZETARIS_QUERY_LIMIT` caps returned rows at 1000 by default. Set `ZETARIS_ENGINE_ID` when you want to choose a compute engine. SQL runs with your Zetaris account's permissions, so review a file before passing it to the command.
 
 For the TypeScript versions: each script's first line supplies the Deno flags, including network and read permission (the scripts load `.env.local` themselves through `load_env.ts`), and uses `--no-config` to avoid loading the separate PostgreSQL driver. If direct execution is unavailable, run `deno run --no-config --allow-net --allow-env='ZETARIS*' --allow-read scripts/check_zetaris.ts` instead.
 
@@ -188,3 +207,7 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000
 ```
 
 Each script prints the attribution line its source's license requires (SODL for data.gov.sg, ODbL for Open Food Facts) on completion — copy it into whatever you publish. See each script's own module docstring and the Parquet/CSV HOWTO for full usage, caveats, and current limitations (neither source has a Zetaris table registration yet).
+
+## Render a saved result
+
+The [PUDL chart example](../examples/pudl-chart/README.md) is retained as a conditional example for an already verified PUDL table. PUDL registration is currently known to fail; do not use it as the default starter. See [troubleshooting](../docs/guides/troubleshooting.md) for connection and partial-setup recovery.

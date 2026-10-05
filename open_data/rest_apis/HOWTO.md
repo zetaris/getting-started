@@ -1,6 +1,7 @@
 # HOWTO: onboard these REST API sources into Zetaris
 
-The general walkthrough for the `sql/` scripts in this package — read this once before running any of them.
+For first-time onboarding, start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md). That guide uses a minimal PokéAPI subset as the common starter; PUDL is currently known to fail. This HOWTO explains the full REST patterns after that starter. On the shared event instance, use assigned team database/container names and update every reference consistently.
+
 
 **File naming:** each numbered source is split into two files sharing a prefix: `NN_<name>_create.sql` (every `CREATE`/`DROP`/`CACHE` DDL statement) and `NN_<name>_select.sql` (verification and, where present, example queries). Run the create script first, then verify with its matching select script — the verification queries there are commented out by default so a bulk run of the file doesn't silently fire read queries.
 

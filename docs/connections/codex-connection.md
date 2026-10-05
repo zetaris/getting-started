@@ -28,6 +28,14 @@ and then create and activate a Unified Semantic Layer (USL) over them, using
 Lightning SQL from the *Lightning Command Reference*, and over REST it can call
 the endpoints in the instance's OpenAPI specification (section 6.4).
 
+## Repository and shared-instance scope
+
+Start with [Start here](../../START-HERE.md) and the [connection choices](README.md). The instance/account, matching JDBC JAR, and fresh direct-REST OpenAPI specification are external prerequisites; do not assume another checkout or platform bundle is present. This repo includes both a [starter recipe reference](lightning-recipe-reference.md) and the [full Lightning reference](../guides/zetaris-lightning-sql-commands.md).
+
+The event instance is shared. Obtain an assigned team prefix and query/create permissions before creating objects. Inspect matching existing registrations and do not alter or remove another team's objects. Credentials stay in your local execution environment and out of saved prompts and reports.
+
+The direct REST API described below uses its own API key and OpenAPI contract. The repository's [HTTP helpers](../../scripts/HOWTO.md) use the UI proxy, `ZETARIS_API_KEY` or login, and `.env.local`. The same configured API key may be read by both clients, but the raw API origin and UI proxy origin still have different routes. Follow the settings table instead of substituting URLs.
+
 ## 2. Prerequisites
 
 - A Zetaris user account issued by the Datathon organisers.
