@@ -1,32 +1,29 @@
-# Project demo template
+# Prepare your demo
 
-Copy this into your project notes after [choosing a direction](project-paths.md). It records reproducibility, not judging requirements. Confirm support, deadlines, and the submission location with the organisers.
+Copy this into your project notes. Check deadlines and submission details with the organisers.
 
-## Question and result
+## What did you build?
 
-- What question or task does the project address?
-- What did the actual result show? Include a small result table, chart, or working interface.
-- What remains unverified?
+- What question does it answer?
+- Show a result table, chart or working app.
+- What is missing or still needs checking?
 
-## Sources
+## What data did you use?
 
-| Source and actual path/release | Objects owned by your team | Row grain and relevant time period | Attribution and limitations |
+| Source and version | Your tables or views | What each row means | Dates covered and limitations |
 |---|---|---|---|
-| Fill in the sources you actually used | Use assigned names | State one row represents what | Record source notes and required attribution |
+| Add your source link and any required attribution | Use your team's names | Describe one row | Note missing data or uncertain matches |
 
-## Reproduce
+## How can someone run it?
 
-1. List required platform access and tool versions without credentials.
-2. Identify your assigned team prefix and any approved shared objects.
-3. Save the exact setup SQL in dependency order, one complete command per execution unit. Explain which objects already exist and which commands may be skipped on rerun.
-4. Save the exact query and a named verification query, with actual expected fields/values from your run.
-5. Describe how to run the interface, if any, and how errors appear.
-6. Record execution time/date, source release, and bounded output. Label source changes, missing values, uncertain joins, partial date coverage, DQ, and materialization honestly.
+1. List the access and tools they need. Leave out credentials.
+2. Save the setup SQL in the order it runs. Note any existing objects they should reuse.
+3. Save the query and a small example of the output from your run.
+4. Explain how to start your app, if you built one.
+5. Record when you ran it and the source version. Note which connections, rows, joins and app steps you checked.
 
-## Verification boundary
+If you used sample data to test the interface, say so. Have a teammate try it with real data.
 
-State separately whether you verified login, SQL execution, external rows, transformations/joins, and the final interface. An offline fixture or a successful CREATE is not a completed end-to-end run.
+## Before you finish
 
-## Handoff and cleanup
-
-Name a teammate who can reproduce the result and the objects your team owns. Leave shared sources intact. Request administrator approval for shared-instance cleanup and follow the [documented lifecycle limits](troubleshooting.md#cleanup).
+List the objects your team created. Leave shared sources intact and ask before removing anything on the shared instance. See [cleanup](troubleshooting.md#cleanup).

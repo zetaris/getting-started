@@ -21,7 +21,7 @@ const groups = [
   ]],
   ['Help and reference', [
     ['docs/guides/troubleshooting.md', 'Troubleshooting'],
-    ['docs/guides/recipe-readiness.md', 'Recipe readiness'],
+    ['docs/guides/recipe-readiness.md', 'Available recipes'],
     ['scripts/HOWTO.md', 'Client scripts'],
     ['docs/connections/cursor-connection.md', 'Cursor connection'],
     ['docs/connections/codex-connection.md', 'Codex connection'],
@@ -117,9 +117,9 @@ for (const [source, label] of pages) {
   <div class="shell">
     <aside class="sidebar"><nav class="desktop-nav" aria-label="Documentation">${nav}</nav><details class="mobile-nav"><summary>Browse the guide</summary><nav aria-label="Documentation">${nav}</nav></details></aside>
     <main id="main" tabindex="-1"><div class="document-meta"><span>Getting started / ${escape(label)}</span><a href="${github}/blob/${encodeURIComponent(revision)}/${encodePath(source)}">Read source &nearr;</a></div>
-      ${source === 'START-HERE.md' ? '<div class="intro"><p>YOUR FIRST ZETARIS PROJECT</p><h1>Make data queryable.<br>Build something with it.</h1><div>Follow the guide from platform access to real rows, then choose a project and save a result someone else can reproduce.</div><a class="start-link" href="#1-check-your-prerequisites">Start with access &rarr;</a></div>' : ''}
+      ${source === 'START-HERE.md' ? '<div class="intro"><p>YOUR FIRST ZETARIS PROJECT</p><h1>Connect your data.<br>Build something with it.</h1><div>Get set up, try a dataset, then choose what to build.</div><a class="start-link" href="#1-check-your-prerequisites">Start with access &rarr;</a></div>' : ''}
       <article>${source === 'START-HERE.md' ? content.replace('<h1 id="start-here">Start here</h1>', '<h2 id="start-here">Start here</h2>') : content}</article>${pager}
-      <footer>Built from the repository documentation. Source availability and permissions need checking on your instance.</footer>
+      <footer>Built from the repository documentation. Use your own account and team names on the shared instance.</footer>
     </main>
     <aside class="outline" aria-label="On this page"><p>On this page</p>${toc}</aside>
   </div>
