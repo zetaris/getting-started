@@ -17,6 +17,8 @@ Use [recipe readiness](docs/guides/recipe-readiness.md) to choose later sources 
 
 ## Documentation map
 
+The [GitHub Pages guide](website/README.md) describes how to preview and publish the onboarding website from this branch. It renders the existing guides directly from Markdown.
+
 | Doc | What it's for |
 |---|---|
 | [`docs/install/`](docs/install/) | Installing and configuring Zetaris (local or AWS), and the record of what's been tested |
