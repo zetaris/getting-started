@@ -44,4 +44,4 @@ USL cleanup blocks have their own verification limits. Do not run a `DROP NAMESP
 
 The event support destination is unresolved. A Discord channel may be added later; no channel is currently specified. Until then, use the administrator who issued your access, or ask the organizer to identify one.
 
-Send the route, failed step, redacted object name/query, time, error code/message, and last successful result. Redact credentials, Authorization headers, tokens, and unrelated customer data. Distinguish “login works,” “SQL executes,” and “source rows verified.” Use the [organizer checklist](hackathon-organizer-checklist.md) for missing event details.
+Send the route, failed step, redacted object name/query, time, error code/message, and last successful result. Redact credentials, Authorization headers, tokens, and unrelated customer data. Distinguish “login works,” “SQL executes,” and “source rows verified.” Ask the organisers for any missing event details.

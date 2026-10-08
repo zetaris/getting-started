@@ -13,7 +13,7 @@ Read [START-HERE.md](START-HERE.md) first. It supports both a locally installed 
 
 CREATE/SELECT pairs are available for the active REST and file sources. Read their headers and select the statements you need. The single-query helper's `--file` option sends the whole file as one request. For multi-command files use the new `run_sql.py` runner; source/model dependencies are declared in `open_data/manifest.json` and planned by `onboard.py`. REST verification queries are generally commented out. Do not treat a whole recipe as an automatically executed migration.
 
-Use [recipe readiness](docs/guides/recipe-readiness.md) to choose later sources and [troubleshooting](docs/guides/troubleshooting.md) for partial setup or errors. Support and submission details remain unresolved in the [organizer checklist](docs/guides/hackathon-organizer-checklist.md).
+Use [recipe readiness](docs/guides/recipe-readiness.md) to choose later sources and [troubleshooting](docs/guides/troubleshooting.md) for partial setup or errors. Confirm support and submission details with the organisers.
 
 ## Documentation map
 

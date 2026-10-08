@@ -39,4 +39,4 @@ Done means real query data appears in the interface and errors are visible. An o
 
 ## Finish
 
-Use the [demo template](demo-template.md). Save the setup and query, identify your actual source/release, and state your limits. The [organizer checklist](hackathon-organizer-checklist.md) records event details still needing confirmation.
+Use the [demo template](demo-template.md). Save the setup and query, identify your actual source/release, and state your limits. Confirm event submission details with the organisers.

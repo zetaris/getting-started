@@ -1,6 +1,6 @@
 # Project demo template
 
-Copy this into your project notes after [choosing a direction](project-paths.md). It records reproducibility, not judging requirements. Support, deadlines, and submission location remain [organizer decisions](hackathon-organizer-checklist.md).
+Copy this into your project notes after [choosing a direction](project-paths.md). It records reproducibility, not judging requirements. Confirm support, deadlines, and the submission location with the organisers.
 
 ## Question and result
 

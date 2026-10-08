@@ -14,7 +14,7 @@ It contains recipes, connection helpers, and documentation. It does **not** incl
 | Execution tool | Start in the SQL Editor. Deno/Python and JDBC are optional routes; see [connection choices](docs/connections/README.md). |
 | Scope and naming | The event instance is shared. Obtain an assigned team prefix and confirm which objects you may create. See [reruns and team isolation](docs/guides/troubleshooting.md#reruns-and-team-isolation). |
 
-Do not fill unknown endpoints or credentials with example values. If required access is missing, use the [organizer checklist](docs/guides/hackathon-organizer-checklist.md) to identify exactly what to request.
+Do not fill unknown endpoints or credentials with example values. If required access is missing, ask the organisers for the access details listed above.
 
 ### Path A: an existing instance
 
