@@ -8,7 +8,7 @@ It contains recipes, connection helpers, and documentation. It does **not** incl
 
 | Requirement | How to resolve it |
 |---|---|
-| A Zetaris instance and a user permitted to query and create the required objects | Use the existing-instance path below if access has actually been supplied; otherwise follow the installation path. |
+| A Zetaris instance and a user permitted to query and create the required objects | Use the existing instance if access has been supplied. Otherwise, start at [Zetaris Cloud](https://www.zetaris.com/cloud) and follow the [local installation guide](docs/install/updated_zetaris_installation_guide.md). |
 | Platform access details | Record the web UI URL, account, and allowed workspace/objects. For JDBC, also obtain the JDBC endpoint and matching driver. For HTTP, obtain the numeric organization ID and confirm the UI exposes the proxy routes. |
 | Outbound source access | The Zetaris server must reach the selected public source. A successful request from your laptop alone does not prove this. |
 | Execution tool | Start in the SQL Editor. Deno/Python and JDBC are optional routes; see [connection choices](docs/connections/README.md). |
