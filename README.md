@@ -6,7 +6,7 @@ Data recipes, connection helpers, and guides for making external data queryable 
 
 Read [START-HERE.md](START-HERE.md) first. It supports both a locally installed platform and an existing instance. The event instance is shared; use assigned team names and permissions.
 
-1. **Confirm access.** This repo does not supply the platform distribution, an account, or a JDBC driver. Follow the prerequisite checklist and the appropriate access path.
+1. **Confirm access.** For a local installation, start at [Zetaris Cloud](https://www.zetaris.com/cloud) to obtain the platform bundle, then follow the [installation guide](docs/install/updated_zetaris_installation_guide.md). For an existing instance, obtain access from its administrator. This repo supplies the recipes and guides; platform accounts and JDBC drivers are separate.
 2. **Connect and execute one query.** Choose SQL Editor, agent JDBC, or the HTTP helpers in the [connection guide](docs/connections/README.md).
 3. **Verify a small dataset.** Follow [your first dataset](docs/guides/first-dataset.md): a minimal PokéAPI JSON subset; PUDL is now known to fail. Execute complete statements separately and inspect actual rows.
 4. **Choose your project.** Follow an [analysis, data-product, or application path](docs/guides/project-paths.md), then use the [demo template](docs/guides/demo-template.md).

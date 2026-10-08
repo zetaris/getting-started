@@ -37,7 +37,7 @@ Zetaris is distributed as a Docker Compose bundle. It contains the platform conf
 
 You need the platform archive, its matching `.env`, registry credentials and a Zetaris licence or evaluation entitlement covering your installation.
 
-1. Open the [Zetaris Cloud registration page](https://cloud.enterprise.zetaris.com/register), or sign in with your existing account. The email signup flow verifies your email, then collects account/country details and a password. Your Zetaris Cloud credentials are separate from the administrator account you will create inside your installation.
+1. Start at [Zetaris Cloud](https://www.zetaris.com/cloud) for a local installation. Choose **Start Free** to open the account portal, then register or sign in with your existing account. You can also use the [registration page](https://cloud.enterprise.zetaris.com/register) directly. Your Zetaris Cloud credentials are separate from the administrator account you will create inside your installation.
 2. Review the [Terms and Conditions](https://cloud.enterprise.zetaris.com/terms) and [Privacy Policy](https://cloud.enterprise.zetaris.com/privacy) before completing registration. Your use of the platform is governed by your Order with Zetaris. Without one, the agreement allows internal evaluation for up to 30 days; it does not grant an ongoing licence.
 3. From the Zetaris Cloud download page, download `zetaris-platform.zip` and copy the registry sign-in command. If the download is not available for your account, contact [Zetaris Support](https://www.zetaris.com/support) to have it enabled.
 

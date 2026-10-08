@@ -20,6 +20,7 @@ const groups = [
     ['docs/guides/demo-template.md', 'Prepare your demo'],
   ]],
   ['Help and reference', [
+    ['docs/guides/hackathon-organizer-checklist.md', 'Organiser checklist'],
     ['docs/guides/troubleshooting.md', 'Troubleshooting'],
     ['docs/guides/recipe-readiness.md', 'Recipe readiness'],
     ['scripts/HOWTO.md', 'Client scripts'],

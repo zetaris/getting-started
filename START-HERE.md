@@ -27,7 +27,9 @@ This path works only once access is confirmed. This repo does not grant access t
 
 ### Path B: install locally
 
-Follow the [installation guide](docs/install/updated_zetaris_installation_guide.md), starting with obtaining the separate distribution and registry access. It covers machine requirements, configuration, startup, `verify.sh`, first login, and teardown. The [test record](docs/install/zetaris-installation-test-record.md) records a local fresh-install run. AWS is an optional documented path whose steps have not been live-tested in that record.
+Start at [Zetaris Cloud](https://www.zetaris.com/cloud) to obtain the platform bundle for a local installation. Use **Start Free** to register or sign in, then follow the download and registry-access steps in the [installation guide](docs/install/updated_zetaris_installation_guide.md#download-and-licensing).
+
+Continue with the guide's local Docker Compose path. It covers machine requirements, configuration, startup, `verify.sh`, first login, and teardown. The [test record](docs/install/zetaris-installation-test-record.md) records a local fresh-install run. AWS is an optional documented path whose steps have not been live-tested in that record.
 
 Keep the platform bundle's `.env` separate from this repo's client `.env.local`. Configure the initial account before the bundle's first startup; later edits do not recreate existing accounts.
 
