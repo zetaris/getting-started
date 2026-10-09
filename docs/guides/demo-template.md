@@ -1,6 +1,8 @@
 # Prepare your demo
 
-Copy this into your project notes. Check deadlines and submission details with the organisers.
+For the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026), the event page lists submissions closing on **27 October 2026 at 23:45 UTC**. Its scoring is impact 30, technical 20, innovation 15, demo 15, product and UX 10, and sponsor technology 10 points. Check the current official rules for required deliverables; this template is a reproducibility aid.
+
+Copy this into your project notes. Check deadlines and submission details on the [event page](https://hackathon.genai.works/event/open-agent-hackathon-2026).
 
 ## What did you build?
 
@@ -26,4 +28,4 @@ If you used sample data to test the interface, say so. Have a teammate try it wi
 
 ## Before you finish
 
-List the objects your team created. Leave shared sources intact and ask before removing anything on the shared instance. See [cleanup](troubleshooting.md#cleanup).
+List the objects your team created. Leave shared sources intact and remove only objects your team owns and has permission to remove. See [cleanup](troubleshooting.md#cleanup).

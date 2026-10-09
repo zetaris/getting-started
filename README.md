@@ -6,14 +6,14 @@ Data recipes, connection helpers, and guides for making external data queryable 
 
 Read [START-HERE.md](START-HERE.md) first. It supports both a locally installed platform and an existing instance. The event instance is shared; use assigned team names and permissions.
 
-1. **Confirm access.** For a local installation, start at [Zetaris Cloud](https://www.zetaris.com/cloud) to obtain the platform bundle, then follow the [installation guide](docs/install/updated_zetaris_installation_guide.md). For an existing instance, obtain access from its administrator. This repo supplies the recipes and guides; platform accounts and JDBC drivers are separate.
+1. **Confirm access.** For a local installation, start at [Zetaris Cloud](https://www.zetaris.com/cloud) to obtain the platform bundle, then follow the [installation guide](docs/install/updated_zetaris_installation_guide.md). For an existing instance, use your supplied URL and account. This repo supplies the recipes and guides; platform accounts and JDBC drivers are separate.
 2. **Connect and execute one query.** Choose SQL Editor, agent JDBC, or the HTTP helpers in the [connection guide](docs/connections/README.md).
 3. **Verify a small dataset.** Follow [your first dataset](docs/guides/first-dataset.md): a minimal PokéAPI JSON subset; PUDL is now known to fail. Execute complete statements separately and inspect actual rows.
 4. **Choose your project.** Follow an [analysis, data-product, or application path](docs/guides/project-paths.md), then use the [demo template](docs/guides/demo-template.md).
 
 CREATE/SELECT pairs are available for the active REST and file sources. Read their headers and select the statements you need. The single-query helper's `--file` option sends the whole file as one request. For multi-command files use the new `run_sql.py` runner; source/model dependencies are declared in `open_data/manifest.json` and planned by `onboard.py`. REST verification queries are generally commented out. Do not treat a whole recipe as an automatically executed migration.
 
-Use [recipe readiness](docs/guides/recipe-readiness.md) to choose later sources and [troubleshooting](docs/guides/troubleshooting.md) for partial setup or errors. Confirm support and submission details with the organisers.
+Use [recipe readiness](docs/guides/recipe-readiness.md) to choose later sources and [troubleshooting](docs/guides/troubleshooting.md) for partial setup or errors. See the [event page](https://hackathon.genai.works/event/open-agent-hackathon-2026) for support and submission details.
 
 ## Documentation map
 

@@ -38,7 +38,6 @@ main { min-width: 0; padding: 36px 52px 40px; max-width: 960px; width: 100%; mar
 .intro > p { color: var(--accent); letter-spacing: .16em; font-size: 11px; font-weight: 700; }
 .intro h1 { font-size: clamp(32px, 3.3vw, 48px); font-weight: 800; line-height: 1.12; letter-spacing: -.03em; margin: 19px 0; }
 .intro > div { color: var(--muted); max-width: 570px; font-size: 16px; line-height: 1.55; }
-.start-link { display: inline-block; background: var(--accent); color: white; padding: 10px 19px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; margin-top: 24px; }
 article h1 { font-size: 48px; font-weight: 800; line-height: 1.15; letter-spacing: -.03em; margin: 0 0 24px; }
 article h2 { font-size: 32px; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; margin: 44px 0 16px; padding-top: 8px; }
 article h3 { font-size: 22px; font-weight: 700; line-height: 1.5; margin: 28px 0 12px; }
@@ -70,6 +69,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 32px 0; }
 .pager a:last-child { text-align: right; }
 .pager small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-bottom: 4px; }
 footer { font-size: 11px; color: var(--muted); margin-top: 42px; padding-top: 20px; border-top: 1px solid var(--line); }
+.assistant-launcher { margin: 40px 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.protocol-field { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700; }
+.protocol-field select { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: 500 14px/1.55 "Plus Jakarta Sans", system-ui, sans-serif; }
+.starter-prompt { white-space: pre-wrap; }
+.starter-prompt code { overflow-wrap: anywhere; }
+.launcher-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.launcher-actions a { padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 700; }
+.launcher-actions a:hover { background: var(--soft); color: var(--accent); }
+.assistant-launcher .launcher-note { margin-top: 16px; font-size: 13px; color: var(--muted); }
 @media (max-width: 1200px) { .shell { grid-template-columns: 235px minmax(0, 1fr); } .outline { display: none; } main { padding: 32px 40px; } }
 @media (max-width: 760px) {
   .header { height: 70px; padding: 0 16px; } .brand { gap: 0; } .brand-logo { width: 160px; } .brand-label { display: none; } .github-link { font-size: 12px; }
@@ -81,17 +89,12 @@ footer { font-size: 11px; color: var(--muted); margin-top: 42px; padding-top: 20
 }
 @media print { .header, .sidebar, .outline, .copy-button, .pager { display: none; } .shell { display: block; } main { max-width: none; padding: 0; } pre { white-space: pre-wrap; } }
 
-.start-link:hover { background: var(--accent-hover); }
 :root[data-theme="dark"] { color-scheme: dark; --ink: #fff; --muted: #e7e7ee; --line: #2a2d39; --accent: #7c89f7; --accent-hover: #dbe0fd; --soft: #15171f; --selected: #2a2d39; --surface: #06070d; --panel: #15171f; --focus: #7c89f7; }
 [data-theme="dark"] .logo-light { display: none; }
 [data-theme="dark"] .logo-dark { display: block; }
-[data-theme="dark"] .start-link { background: #4052f2; color: #fff; }
-[data-theme="dark"] .start-link:hover { background: #2f3ec2; }
 @media (max-width: 600px) { .header-actions .github-link { display: none; } }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) { color-scheme: dark; --ink: #fff; --muted: #e7e7ee; --line: #2a2d39; --accent: #7c89f7; --accent-hover: #dbe0fd; --soft: #15171f; --selected: #2a2d39; --surface: #06070d; --panel: #15171f; --focus: #7c89f7; }
   :root:not([data-theme]) .logo-light { display: none; }
   :root:not([data-theme]) .logo-dark { display: block; }
-  :root:not([data-theme]) .start-link { background: #4052f2; color: #fff; }
-  :root:not([data-theme]) .start-link:hover { background: #2f3ec2; }
 }

@@ -4,7 +4,7 @@
 
 | Option | What you need | Check it works |
 |---|---|---|
-| SQL Editor | Website URL, your account and query permissions | Run `SELECT 7 AS seven;`. Expect one row with `7`. |
+| SQL Editor | Website URL, your account and query permissions | Run `SELECT 1 AS one;`. Expect one row with `1`. |
 | Assistant over JDBC | Zetaris driver JAR, JDBC endpoint, account and Java | Run `SELECT 1`. Expect one row with `1`. |
 | HTTP helpers | Supported UI URL, numeric org ID, account or token, and Python or Deno | Run `SELECT 1` with the query helper. |
 
@@ -20,7 +20,7 @@ You don't need Java, a JDBC driver, Python or Deno for this option.
 
 Follow the guide for [Cursor](cursor-connection.md), [Codex](codex-connection.md), or [Claude Code](claude-code-connection.md).
 
-For JDBC, get the matching Zetaris driver from the platform download or your administrator. Use Zetaris Lightning SQL and its driver; don't substitute a Hive or Spark driver or start a local Spark session.
+For JDBC, get the matching Zetaris driver from the platform download. Use Zetaris Lightning SQL and its driver; don't substitute a Hive or Spark driver or start a local Spark session.
 
 Direct REST uses an API key and the platform's OpenAPI spec. Its URL and credentials differ from the UI proxy helpers below. Follow your assistant's guide for the right settings.
 
@@ -30,7 +30,7 @@ Need SQL syntax? See the [recipe reference](lightning-recipe-reference.md) or [f
 
 Follow [client scripts](../../scripts/HOWTO.md) to set up `.env.local`, authentication and the org ID.
 
-Use a UI URL that supports the documented proxy routes. If it doesn't, ask the administrator for a supported route or use SQL Editor/JDBC. Changing the URL to a raw API port won't fix it.
+Use a UI URL that supports the documented proxy routes. If it doesn't, use SQL Editor or JDBC. Changing the URL to a raw API port won't fix it.
 
 ## Run a recipe
 

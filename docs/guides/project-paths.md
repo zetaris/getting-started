@@ -2,6 +2,19 @@
 
 Once [your first dataset](first-dataset.md) works, choose a question you want to answer. These are ideas to help you start. Check [available recipes](recipe-readiness.md) before adding another source.
 
+## Hackathon tracks
+
+The [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026) lists these tracks:
+
+| Track | Focus |
+|---|---|
+| Solving Fragmented Intelligence | Discover and work across fragmented data sources. |
+| The Agent That Can Explain Why | Investigate questions across sources and produce evidence-backed answers. |
+| Reasoning Architecture | Turn data, knowledge, memory and reasoning into reliable decisions and actions. |
+| Wildcard [Tinkerer] | Extend an existing project with Zetaris and Meterless; judging scores the new work. |
+
+Check the event page's rules before choosing your track. The options below help you get started with data; your hackathon entry should demonstrate the agent's useful work.
+
 ## Analyse some data
 
 Start with Pikachu's hidden abilities, or try a query from a recipe's `_select.sql` file after setting up its required tables.
@@ -21,7 +34,7 @@ Try these guides:
 - [EDGAR and SIC](../../open_data/usl/HOWTO.md) walks through a USL model, relationships and data-quality checks. It records a foreign-key check failure and open questions about materialisation.
 - [EDGAR, PUDL and NOAA](create-edgar-pudl-noaa-usl.md) is an advanced walkthrough. PUDL is currently blocked, its weather period is partial, and its data-quality result hasn't been verified. Resolve those before relying on its results.
 
-On the shared instance, replace all sample database, container, namespace and model names with your assigned names. Ask before using shared sources, and leave other teams' objects alone.
+On the shared instance, replace all sample database, container, namespace and model names with your assigned names. Use shared sources only with read permission, and leave other teams' objects alone.
 
 Save the joined result and explain any duplicates, missing matches or gaps in the dates.
 
@@ -35,4 +48,4 @@ PUDL's energy-source codes describe fuel categories. They don't measure generati
 
 ## Prepare your demo
 
-Use the [demo template](demo-template.md). Save the setup, query and result, and note anything you haven't checked. Confirm submission details with the organisers.
+Use the [demo template](demo-template.md). Save the setup, query and result, and note anything you haven't checked. Check the [event page](https://hackathon.genai.works/event/open-agent-hackathon-2026) for submission details.

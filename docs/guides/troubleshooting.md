@@ -6,10 +6,10 @@ Find your error below. For detailed SQL limits, see the [SQL companion](zetaris-
 
 | Problem | What to try |
 |---|---|
-| Missing URL, account or driver | Ask the administrator for what's missing. You can use SQL Editor without a JDBC driver. See [connection options](../connections/README.md). |
+| Missing URL, account or driver | For a local install, use the [Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download). For an existing instance, use your supplied connection details. You can use SQL Editor without a JDBC driver. See [connection options](../connections/README.md). |
 | Local install won't start | Run `preflight.sh` from the platform bundle and follow the [install guide](../install/updated_zetaris_installation_guide.md). Check registry access, memory, disk and configuration. |
 | Login fails or HTTP 401 | Check your URL and credentials. Editing the platform's `.env` after setup doesn't reset an existing account. |
-| Permission error or HTTP 403 | Ask the administrator to check your organisation, team names and permissions. Use your own account. |
+| Permission error or HTTP 403 | Check that your organisation, team names and account permissions match the requested operation. Use your own account. |
 | Missing or invalid org ID | Follow [HTTP setup](../../scripts/HOWTO.md#find-your-organization-id). Use your actual numeric ID. SQL Editor doesn't need this setting. |
 | HTTP 404 or an HTML response | Check that the UI URL supports the helper's proxy routes. The raw API port isn't a substitute. |
 | JDBC won't connect | Check the driver JAR, driver class, Java and endpoint. On a remote agent, `localhost` points to the agent's machine. |
@@ -35,14 +35,12 @@ On the shared instance, use your assigned team names and permissions. Names help
 
 ## Cleanup
 
-Follow the recipe's cleanup notes and ask before removing shared objects.
+Follow the recipe's cleanup notes. Remove only objects you own and have permission to remove.
 
 `DROP VIEW` has worked in recorded tests. Removing REST/file registrations through SQL has been inconsistent; use Data Explorer's **File Source & API** panel for those. See the [SQL companion](zetaris-lightning-sql-companion.md) for details.
 
 Only drop a namespace if you're allowed to remove everything it contains. Don't stop or reset the shared platform. For your own local install, follow the installation guide's shutdown steps.
 
-## Ask for help
-
-Ask the organisers or the administrator who gave you access. A support channel hasn't been supplied yet.
+## Record the error
 
 Include the tool you're using, failed step, time, error message and last step that worked. Say whether you could log in, run SQL and query source rows. Remove passwords, tokens, Authorization headers and unrelated customer data before sharing anything.

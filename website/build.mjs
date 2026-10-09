@@ -46,6 +46,27 @@ const journey = ['START-HERE.md', 'docs/connections/README.md', 'docs/guides/fir
 const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 const relative = (from, to) => path.posix.relative(path.posix.dirname(from), to);
 const encodePath = value => value.split('/').map(encodeURIComponent).join('/');
+const connectionGuide = readFileSync(path.join(root, 'docs/connections/codex-connection.md'), 'utf8');
+const prompts = {};
+for (const [protocol, section] of [['jdbc', '5. JDBC starter prompt'], ['rest', '6. REST starter prompt']]) {
+  const text = connectionGuide.split(`## ${section}`)[1]?.match(/```text\n([\s\S]*?)\n```/)?.[1];
+  if (!text || !text.startsWith('Read AGENTS.md')) throw new Error(`Missing ${protocol} starter prompt`);
+  prompts[protocol] = `Use the getting-started repository at ${github}/tree/${encodeURIComponent(revision)} as the workspace. If it is not checked out, help me clone and open it first. Read docs/connections/README.md for setup. Keep credentials in .env.local, never in this prompt or a report.\n\n${text.replace(/Goal: <[\s\S]*?>/, 'Goal: list the databases and available sources, then help me plan the minimal PokéAPI abilities recipe using my team names. Do not create objects yet.')}`;
+}
+const launchUrls = prompt => ({
+  codex: `codex://threads/new?prompt=${encodeURIComponent(prompt)}`,
+  cursor: `cursor://anysphere.cursor-deeplink/prompt?text=${encodeURIComponent(prompt)}`,
+  claude: `claude://code/new?q=${encodeURIComponent(prompt)}`,
+});
+const launcherLinks = launchUrls(prompts.jdbc);
+const launcher = `<section class="assistant-launcher" aria-labelledby="assistant-heading" data-prompts="${escape(JSON.stringify(prompts))}">
+  <h2 id="assistant-heading">Start with your coding assistant</h2>
+  <p>Open this repository in your assistant, choose a connection and review the prompt before sending it.</p>
+  <div class="protocol-field"><label for="prompt-protocol">Connection</label><select id="prompt-protocol"><option value="jdbc">JDBC</option><option value="rest">REST</option></select></div>
+  <pre class="starter-prompt"><code>${escape(prompts.jdbc)}</code></pre>
+  <div class="launcher-actions"><a data-assistant="codex" href="${escape(launcherLinks.codex)}">Open in Codex</a><a data-assistant="cursor" href="${escape(launcherLinks.cursor)}">Open in Cursor</a><a data-assistant="claude" href="${escape(launcherLinks.claude)}">Open in Claude Code</a></div>
+  <p class="launcher-note">Requires the desktop app. If it doesn't open, copy the prompt into your assistant. Configure .env.local first; JDBC also needs the matching driver JAR.</p>
+</section>`;
 
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
@@ -89,7 +110,15 @@ for (const [source, label] of pages) {
       }
     },
   });
-  const content = parser.parse(readFileSync(path.join(root, source), 'utf8'));
+  let content = parser.parse(readFileSync(path.join(root, source), 'utf8'));
+  if (source === 'START-HERE.md' || source === 'docs/connections/README.md') content += launcher;
+  if (source === 'docs/install/updated_zetaris_installation_guide.md') content = content.replace(/(?=<h2 id="6-)/, launcher);
+  if (content.includes('class="assistant-launcher"')) {
+    const entry = { depth: 2, text: 'Start with your coding assistant', id: 'assistant-heading' };
+    const nextSection = headings.findIndex(heading => heading.id.startsWith('6-'));
+    if (source === 'docs/install/updated_zetaris_installation_guide.md' && nextSection >= 0) headings.splice(nextSection, 0, entry);
+    else headings.push(entry);
+  }
   const nav = groups.map(([title, entries]) => `<div class="nav-group"><p>${escape(title)}</p>${entries.map(([file, text]) => `<a href="${relative(route, routes.get(file))}"${file === source ? ' aria-current="page"' : ''}>${escape(text)}</a>`).join('')}</div>`).join('');
   const toc = headings.map(({ depth, text, id }) => `<a class="depth-${depth}" href="#${escape(id)}">${text}</a>`).join('');
   const position = journey.indexOf(source);
@@ -117,7 +146,7 @@ for (const [source, label] of pages) {
   <div class="shell">
     <aside class="sidebar"><nav class="desktop-nav" aria-label="Documentation">${nav}</nav><details class="mobile-nav"><summary>Browse the guide</summary><nav aria-label="Documentation">${nav}</nav></details></aside>
     <main id="main" tabindex="-1"><div class="document-meta"><span>Getting started / ${escape(label)}</span><a href="${github}/blob/${encodeURIComponent(revision)}/${encodePath(source)}">Read source &nearr;</a></div>
-      ${source === 'START-HERE.md' ? '<div class="intro"><p>YOUR FIRST ZETARIS PROJECT</p><h1>Connect your data.<br>Build something with it.</h1><div>Get set up, try a dataset, then choose what to build.</div><a class="start-link" href="#1-check-your-prerequisites">Start with access &rarr;</a></div>' : ''}
+      ${source === 'START-HERE.md' ? '<div class="intro"><p>YOUR FIRST ZETARIS PROJECT</p><h1>Connect your data.<br>Build something with it.</h1><div>Get set up, try a dataset, then choose what to build.</div></div>' : ''}
       <article>${source === 'START-HERE.md' ? content.replace('<h1 id="start-here">Start here</h1>', '<h2 id="start-here">Start here</h2>') : content}</article>${pager}
       <footer>Built from the repository documentation. Use your own account and team names on the shared instance.</footer>
     </main>

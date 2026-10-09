@@ -39,11 +39,11 @@ Set `PGHOST` to your server IP or hostname, then fill in the rest. Quote passwor
 
 ## Find your organization ID
 
-Ask the instance administrator for the numeric organization ID associated with your participant account. Do not infer it from the organization name or use the example number above.
+Use the numeric organization ID associated with your participant account. Do not infer it from the organization name or use the example number above.
 
 If you are already signed in and the UI can make a successful data request, you can also open your browser's developer tools, use the Network panel, and inspect that request's headers. If it includes `X-Org-ID`, copy only that numeric value into your local `.env.local`. Do not copy or share Authorization/Cookie headers, tokens, or the full request. A request for a different organization is not a valid value for your account.
 
-The repo does not document a guaranteed UI screen for this ID. If the header is absent or access is not confirmed, ask the administrator. Do not guess an API endpoint to obtain it. Only HTTP helpers require this field; you can use the SQL Editor while this is unresolved.
+The repo does not document a guaranteed UI screen for this ID. If the header is absent or access is not confirmed, use the SQL Editor until you have a verified ID. Do not guess an API endpoint to obtain it. Only HTTP helpers require this field; you can use the SQL Editor while this is unresolved.
 
 ## Verify SQL execution
 
