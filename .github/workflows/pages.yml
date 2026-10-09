@@ -70,5 +70,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
       - name: Report skipped deployment
-        if: steps.pages_check.outputs.enabled != 'true'
+        if: steps.pages_check.outputs.enabled == 'false'
         run: echo "Deploy step skipped because GitHub Pages is not enabled."
