@@ -45,6 +45,30 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Check whether GitHub Pages is enabled
+        id: pages_check
+        run: |
+          status="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages")"
+
+          if [ "${status}" = "200" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [ "${status}" = "404" ]; then
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "GitHub Pages is not enabled for ${GITHUB_REPOSITORY}; skipping deployment."
+            exit 0
+          fi
+
+          echo "Unexpected HTTP status while checking GitHub Pages: ${status}" >&2
+          exit 1
       - name: Deploy to GitHub Pages
+        if: steps.pages_check.outputs.enabled == 'true'
         id: deployment
         uses: actions/deploy-pages@v5
+      - name: Report skipped deployment
+        if: steps.pages_check.outputs.enabled != 'true'
+        run: echo "Deploy step skipped because GitHub Pages is not enabled."
