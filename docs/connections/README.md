@@ -1,33 +1,39 @@
-# Choose a connection route
+# Connect to Zetaris
 
-Start with [the access checklist](../../START-HERE.md). This repo does not supply an instance or account. The event instance is shared; use your assigned user and team object names, not a platform administrator's credentials.
+[Get access first](../../START-HERE.md), then choose how you want to run SQL. The SQL Editor is the easiest place to start.
 
-| Route | Use it for | Required beyond this repo | First check |
-|---|---|---|---|
-| SQL Editor | Manual onboarding and exploring SQL | Actual web UI URL, account, query/create permissions | `SELECT 7 AS seven;` returns one row with `7`. |
-| Coding assistant over JDBC | An agent executing Lightning SQL | Matching Zetaris driver JAR, JDBC endpoint, account, a Java runtime and a compatible JDBC client | `SELECT 1;` returns one row with `1`. |
-| HTTP helpers | Scripts and application integration | A UI origin exposing the documented proxy routes, numeric org ID, account or API token, Deno or Python | Run the query helper with `SELECT 1`; listing databases alone is insufficient. |
+| Option | What you need | Check it works |
+|---|---|---|
+| SQL Editor | Website URL, your account and query permissions | Run `SELECT 1 AS one;`. Expect one row with `1`. |
+| Assistant over JDBC | Zetaris driver JAR, JDBC endpoint, account and Java | Run `SELECT 1`. Expect one row with `1`. |
+| HTTP helpers | Supported UI URL, numeric org ID, account or token, and Python or Deno | Run `SELECT 1` with the query helper. |
 
-Coding assistants also support direct REST through the separately supplied OpenAPI specification and API key. This differs from the UI proxy helpers below. Do not mix base URLs or credential variable names.
-
-The SQL Editor does not need the Deno/Python helpers or a JDBC driver. If a remote UI does not expose the helper proxy routes, use SQL Editor/JDBC or ask its administrator for a supported HTTP route; do not replace the UI origin with a raw API port and hope it works.
+Use your own account and assigned team names on the shared instance.
 
 ## SQL Editor
 
-Sign in at the actual supplied URL. Execute each complete command separately, waiting for its result. Use [your first dataset](../guides/first-dataset.md) for exact starter steps and expected rows.
+Sign in and open the SQL Editor. Run one complete statement at a time. Then try [your first dataset](../guides/first-dataset.md).
 
-## Cursor and Codex over JDBC
+You don't need Java, a JDBC driver, Python or Deno for this option.
 
-Use [the Cursor prompt](cursor-connection.md), [the Codex guide](codex-connection.md), or [the Claude Code guide](claude-code-connection.md). Both use the matching Zetaris driver, avoid a local Spark session, and submit one Lightning command per request. The [recipe command reference](lightning-recipe-reference.md) is available in this repo; the [SQL companion](../guides/zetaris-lightning-sql-companion.md) covers more complex shapes and limitations.
+## Coding assistants
 
-The platform distribution and driver are not in this repository. Obtain them from the installation guide's distribution route or your instance administrator. Do not search an unrelated checkout or substitute a Hive/Spark driver. A documented JAR filename is an example for the guide's tested distribution, not proof that you have that file.
+Follow the guide for [Cursor](cursor-connection.md), [Codex](codex-connection.md), or [Claude Code](claude-code-connection.md).
+
+For JDBC, get the matching Zetaris driver from the platform download. Use Zetaris Lightning SQL and its driver; don't substitute a Hive or Spark driver or start a local Spark session.
+
+Direct REST uses an API key and the platform's OpenAPI spec. Its URL and credentials differ from the UI proxy helpers below. Follow your assistant's guide for the right settings.
+
+Need SQL syntax? See the [recipe reference](lightning-recipe-reference.md) or [full SQL reference](../guides/zetaris-lightning-sql-commands.md).
 
 ## HTTP helpers
 
-Follow [scripts/HOWTO.md](../../scripts/HOWTO.md) for `.env.local`, authentication, organization ID, execution, and errors. The `.env.local` here configures clients; it does not bootstrap or change accounts in the running platform.
+Follow [client scripts](../../scripts/HOWTO.md) to set up `.env.local`, authentication and the org ID.
 
-Only the HTTP route needs `ZETARIS_ORG_ID`. If you cannot obtain it yet, the SQL Editor route can still be used once platform access is verified.
+Use a UI URL that supports the documented proxy routes. If it doesn't, use SQL Editor or JDBC. Changing the URL to a raw API port won't fix it.
 
-## Multi-command onboarding
+## Run a recipe
 
-Use the [manifest](../../open_data/manifest.json) with `python3 scripts/onboard.py --list` and `plan <id>...` to inspect dependencies. `run_sql.py` is the multi-command runner; the older query helper still sends one full text. Follow [scripts/HOWTO.md](../../scripts/HOWTO.md), run dry-run first, and inspect team names before any real execution.
+Use `onboard.py --list` to see recipes and `onboard.py plan <id>` to see their dependencies. Use `run_sql.py` for a single SQL file with several commands. Preview with `--dry-run` and check your team names before running anything that creates objects.
+
+The older query helper sends a whole file as one request. Use the runners above for multi-command files. Keep a multi-table `COMPILE USL` command together. See [client scripts](../../scripts/HOWTO.md) for the commands.

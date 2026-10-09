@@ -1,42 +1,51 @@
 # Choose what to build
 
-Start after [your first dataset](first-dataset.md) returns real rows. These are optional project directions, not event requirements. Use a source that fits your question and check [readiness](recipe-readiness.md) before adding it.
+Once [your first dataset](first-dataset.md) works, choose a question you want to answer. These are ideas to help you start. Check [available recipes](recipe-readiness.md) before adding another source.
 
-## Analyze a question
+## Hackathon tracks
 
-Begin with the PokéAPI hidden-ability query in the starter, or the analytical examples in a matching `_select.sql` after creating their dependencies.
+The [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026) lists these tracks:
 
-1. Write one question the available fields can actually answer.
-2. Inspect the fields and row grain, then filter or aggregate.
-3. Save the SQL and real output. Compare a few rows with the source before drawing a conclusion.
-4. Explain one finding and one limitation.
+| Track | Focus |
+|---|---|
+| Solving Fragmented Intelligence | Discover and work across fragmented data sources. |
+| The Agent That Can Explain Why | Investigate questions across sources and produce evidence-backed answers. |
+| Reasoning Architecture | Turn data, knowledge, memory and reasoning into reliable decisions and actions. |
+| Wildcard [Tinkerer] | Extend an existing project with Zetaris and Meterless; judging scores the new work. |
 
-Conditional extension after the PUDL failure is resolved: compare fuel-unit categories in the reference codes. This does not measure electricity generation. To study generation, first register and verify the optional generator table and inspect its fields; do not infer a generation metric from reference codes.
+Check the event page's rules before choosing your track. The options below help you get started with data; your hackathon entry should demonstrate the agent's useful work.
 
-Done means your query answers the stated question with an inspected result, not just a table screenshot.
+## Analyse some data
 
-## Combine sources into a data product
+Start with Pikachu's hidden abilities, or try a query from a recipe's `_select.sql` file after setting up its required tables.
 
-Choose a second source and describe the join key, row grain, and missing-match behavior before joining. Avoid matching companies and utilities by name alone.
+1. Write your question.
+2. Check what each row and field means.
+3. Write a query and compare a few results with the source.
+4. Save the SQL and explain what you found, including any gaps.
 
-Existing paths:
+## Combine sources
 
-- [VDM and USL in the SQL companion](zetaris-lightning-sql-companion.md): concepts, consumption, and known limits. VDM creation is described as GUI work; a queryable table is not itself a VDM.
-- [EDGAR+SIC USL contrast](../../open_data/usl/HOWTO.md): simple lifecycle followed by relationships and DQ. The current USL catalog records verified lifecycle steps, an observed FK DQ failure, a completed comparison showing complementary checks, and unresolved materialization.
-- [EDGAR/PUDL/NOAA walkthrough](create-edgar-pudl-noaa-usl.md): source registration, schema/key checks, caching, compile, activation, and a joined query. Its recorded weather window is partial and its DQ result is unverified. Its PUDL prerequisite is now known to fail; resolve that before using the historical guide.
+Choose a second source. Check the join key and what each row represents. Look for duplicates and missing matches. Company names alone often aren't enough to join records.
 
-These guides use fixed sample names. On the shared instance, replace databases, SchemaStore containers, namespaces, model names, and **all** references consistently with your assigned names. Use an existing shared source only when the administrator confirms its definition and your read permissions. Do not execute cleanup blocks on shared objects.
+Try these guides:
 
-Done means the joined output has the intended grain and you can explain duplicates, unmatched rows, period coverage, and any unverified DQ or materialization step.
+- [VDM and USL](zetaris-lightning-sql-companion.md) explains the options and limits. VDM creation uses the GUI.
+- [EDGAR and SIC](../../open_data/usl/HOWTO.md) walks through a USL model, relationships and data-quality checks. It records a foreign-key check failure and open questions about materialisation.
+- [EDGAR, PUDL and NOAA](create-edgar-pudl-noaa-usl.md) is an advanced walkthrough. PUDL is currently blocked, its weather period is partial, and its data-quality result hasn't been verified. Resolve those before relying on its results.
 
-## Build an application or chart
+On the shared instance, replace all sample database, container, namespace and model names with your assigned names. Use shared sources only with read permission, and leave other teams' objects alone.
 
-After its known-to-fail PUDL prerequisite is resolved and verified on your instance, use [the small PUDL chart example](../../examples/pudl-chart/README.md) to move from one query to a local HTML chart through the existing Python HTTP helper. It does not need a frontend framework or hosting account. It validates its input and keeps platform credentials in the local Python process.
+Save the joined result and explain any duplicates, missing matches or gaps in the dates.
 
-This is a retained conditional example, not the current starter. Start only with a PUDL table actually verified on your instance. Change the query to answer your own question, then decide what interaction or presentation helps a reader use the result. Browser-only code must not contain platform credentials; a deployed app requires its own approved server-side access and authentication design.
+## Build an app or chart
 
-Done means real query data appears in the interface and errors are visible. An offline response fixture verifies rendering only, not platform access.
+Use a query result in a simple interface. Show the real data and make errors visible. Keep platform credentials on the server, out of browser code. A deployed app also needs its own access and authentication setup.
 
-## Finish
+The [PUDL chart example](../../examples/pudl-chart/README.md) uses Python and a local HTML chart. It's available once PUDL works on your instance. Its sample data can help check the chart layout, but you still need a real query to show the connection works.
 
-Use the [demo template](demo-template.md). Save the setup and query, identify your actual source/release, and state your limits. The [organizer checklist](hackathon-organizer-checklist.md) records event details still needing confirmation.
+PUDL's energy-source codes describe fuel categories. They don't measure generation. For generation analysis, register and check the generator table first.
+
+## Prepare your demo
+
+Use the [demo template](demo-template.md). Save the setup, query and result, and note anything you haven't checked. Check the [event page](https://hackathon.genai.works/event/open-agent-hackathon-2026) for submission details.

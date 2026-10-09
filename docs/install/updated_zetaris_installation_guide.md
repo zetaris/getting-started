@@ -37,11 +37,11 @@ Zetaris is distributed as a Docker Compose bundle. It contains the platform conf
 
 You need the platform archive, its matching `.env`, registry credentials and a Zetaris licence or evaluation entitlement covering your installation.
 
-1. Open the [Zetaris Cloud registration page](https://cloud.enterprise.zetaris.com/register), or sign in with your existing account. The email signup flow verifies your email, then collects account/country details and a password. Your Zetaris Cloud credentials are separate from the administrator account you will create inside your installation.
+1. Start at [Zetaris Cloud](https://www.zetaris.com/cloud) for a local installation. Choose **Start Free** to open the account portal, then register or sign in with your existing account. You can also use the [registration page](https://cloud.enterprise.zetaris.com/register) directly. Your Zetaris Cloud credentials are separate from the administrator account you will create inside your installation.
 2. Review the [Terms and Conditions](https://cloud.enterprise.zetaris.com/terms) and [Privacy Policy](https://cloud.enterprise.zetaris.com/privacy) before completing registration. Your use of the platform is governed by your Order with Zetaris. Without one, the agreement allows internal evaluation for up to 30 days; it does not grant an ongoing licence.
-3. From the Zetaris Cloud download page, download `zetaris-platform.zip` and copy the registry sign-in command. If the download is not available for your account, contact [Zetaris Support](https://www.zetaris.com/support) to have it enabled.
+3. Open the [Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download), download `zetaris-platform.zip` and use the registry sign-in command supplied there. That page also has the current local startup steps and sign-in details. Move the zip out of Downloads before unpacking it. If the download is not available for your account, contact [Zetaris Support](https://www.zetaris.com/support) to have it enabled.
 
-If your organisation has already arranged access, use the archive and registry credentials supplied by its Zetaris administrator. The Apache licence in the `getting-started` repository covers the data recipes only, not the platform images.
+If your organisation has already arranged access, use the supplied archive and registry credentials. The Apache licence in the `getting-started` repository covers the data recipes only, not the platform images.
 
 After extraction, keep these files together:
 
@@ -254,10 +254,10 @@ Open <http://localhost:3000> on your laptop. The traffic travels over SSH, and t
 3. Open the SQL Editor and run:
 
 ```sql
-SELECT 7 AS seven;
+SELECT 1 AS one;
 ```
 
-Expect one row with value `7`. This confirms that an authenticated query reaches the engine without depending on an external dataset.
+Expect one row with value `1`. This confirms that an authenticated query reaches the engine without depending on an external dataset.
 
 If you retained the shipped default login, the bundle README lists `admin@zetaris.com` / `Zetaris1@`; change that password immediately.
 
@@ -326,7 +326,7 @@ For the environment, results and memory measurements behind this guide, see the 
 - [ ] Bundle, matching configuration and registry access obtained.
 - [ ] Hardware/resource checks passed.
 - [ ] Services running; setup jobs exited successfully.
-- [ ] Administrator login and `SELECT 7 AS seven` succeed.
+- [ ] Administrator login and `SELECT 1 AS one` succeed.
 - [ ] Intended Parquet/CSV and REST recipes return data.
 - [ ] For AWS, the cost estimate, credit expiry and teardown time are recorded.
 

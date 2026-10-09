@@ -1,58 +1,57 @@
 # Start here
 
-This repo helps you make data queryable in Zetaris and turn a query into a project. You choose the question and the result you want to build.
+Get Zetaris running, try a small dataset, then choose what you want to build. This repo has the SQL recipes and guides you'll need.
 
-It contains recipes, connection helpers, and documentation. It does **not** include a running platform, the platform distribution, an issued account, registry credentials, a JDBC driver, or the direct-REST OpenAPI specification. A [recipe command reference](docs/connections/lightning-recipe-reference.md) and [full Lightning command reference](docs/guides/zetaris-lightning-sql-commands.md) are included. Check access before running SQL.
+Taking part in the [Open Agent Hackathon 2026](https://hackathon.genai.works/event/open-agent-hackathon-2026)? It runs online on 22-27 October, with teams of 1-5 builders. Use the event page for registration, tracks, rules and submission deadlines.
 
 ## 1. Check your prerequisites
 
-| Requirement | How to resolve it |
+| What you need | What to do |
 |---|---|
-| A Zetaris instance and a user permitted to query and create the required objects | Use the existing-instance path below if access has actually been supplied; otherwise follow the installation path. |
-| Platform access details | Record the web UI URL, account, and allowed workspace/objects. For JDBC, also obtain the JDBC endpoint and matching driver. For HTTP, obtain the numeric organization ID and confirm the UI exposes the proxy routes. |
-| Outbound source access | The Zetaris server must reach the selected public source. A successful request from your laptop alone does not prove this. |
-| Execution tool | Start in the SQL Editor. Deno/Python and JDBC are optional routes; see [connection choices](docs/connections/README.md). |
-| Scope and naming | The event instance is shared. Obtain an assigned team prefix and confirm which objects you may create. See [reruns and team isolation](docs/guides/troubleshooting.md#reruns-and-team-isolation). |
+| Zetaris access | Use the instance we've given you. If you're installing locally, sign in to [Zetaris Cloud's Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download). |
+| Login details | Get the website URL, your account, and permission to run queries and create objects. |
+| Team names | On the shared instance, use your assigned team names and only change objects your team owns. |
+| Source access | Zetaris must be able to reach the data source. Being able to reach it from your laptop isn't enough. |
 
-Do not fill unknown endpoints or credentials with example values. If required access is missing, use the [organizer checklist](docs/guides/hackathon-organizer-checklist.md) to identify exactly what to request.
+### Use an existing instance
 
-### Path A: an existing instance
+1. Sign in with your account.
+2. Open the SQL Editor.
+3. Run `SELECT 1 AS one;`. You should get one row with `1`.
 
-1. Obtain the actual web URL, user account, and permissions from its administrator.
-2. Sign in and open the SQL Editor.
-3. Run `SELECT 7 AS seven;`. Expect one row containing `7`.
-4. If this fails, resolve [connection and permission errors](docs/guides/troubleshooting.md) before registering sources.
+If it fails, check [troubleshooting](docs/guides/troubleshooting.md).
 
-This path works only once access is confirmed. This repo does not grant access to an instance.
+### Install locally
 
-### Path B: install locally
+Sign in to the [Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download) and follow its steps. It provides the download, your registry sign-in command and the local sign-in details.
 
-Follow the [installation guide](docs/install/updated_zetaris_installation_guide.md), starting with obtaining the separate distribution and registry access. It covers machine requirements, configuration, startup, `verify.sh`, first login, and teardown. The [test record](docs/install/zetaris-installation-test-record.md) records a local fresh-install run. AWS is an optional documented path whose steps have not been live-tested in that record.
+1. Install and open Docker Desktop. Give Docker 8 GB of memory and 4 CPUs, and leave 15 GB of disk space free. On Apple Silicon, enable **Use Rosetta** as directed by the portal. On Windows, use WSL for the shell commands.
+2. Run the registry sign-in command shown in the portal, then download `zetaris-platform.zip`. Move the zip out of Downloads before unpacking it.
+3. Unpack it, enter the `zetaris-platform` folder and run `./preflight.sh`. Resolve any failed checks before continuing.
+4. Run `docker compose pull`, then `docker compose up -d`. Initial setup continues after the start command returns.
+5. Run `./verify.sh`. If checks fail while setup is still running, wait a minute and try again.
+6. Open [http://localhost:3000](http://localhost:3000) and sign in with the details shown in the portal. Change the initial password from the user menu.
 
-Keep the platform bundle's `.env` separate from this repo's client `.env.local`. Configure the initial account before the bundle's first startup; later edits do not recreate existing accounts.
+Keep the registry and account credentials private. For configuration details and troubleshooting, use the [installation guide](docs/install/updated_zetaris_installation_guide.md). The local install also has a [recorded test](docs/install/zetaris-installation-test-record.md).
 
-## 2. Choose how to execute SQL
+## 2. Run some SQL
 
-Use the **SQL Editor** for the shortest manual path. Select one complete statement and execute it, then wait for its result before the next dependent statement.
+Start in the SQL Editor. Run one complete statement at a time and wait for the result.
 
-For agent-driven work, use [Cursor](docs/connections/cursor-connection.md), [Codex](docs/connections/codex-connection.md), or [Claude Code](docs/connections/claude-code-connection.md) over JDBC or direct REST after obtaining the protocol-specific prerequisites. For application work, use the [HTTP helpers](scripts/HOWTO.md). Clients now read only `.env.local`; do not use the older client `.env`. The platform bundle's own `.env` remains separate.
+Want to use an assistant or script? See [connection options](docs/connections/README.md) for Cursor, Codex, Claude Code, JDBC and HTTP setup. Client settings go in `.env.local`; the platform bundle uses its own `.env`.
 
-The single-query helpers' `--file` option sends the entire file in one request and does not split SQL or roll back partial setup. The new `run_sql.py` runner splits multi-command scripts while preserving USL compile payloads. Plan dependencies with `onboard.py` using `open_data/manifest.json`. Run dry-run first and inspect the selected commands and team names before real execution. A `COMPILE USL ... DDL` payload containing several table definitions is one command and must stay intact.
+For a file with several commands, use `run_sql.py`. For recipes with dependencies, use `onboard.py`. Preview the commands with `--dry-run` before running them. See [client scripts](scripts/HOWTO.md).
 
-## 3. Get your first real rows
+## 3. Try your first dataset
 
-Follow [your first dataset](docs/guides/first-dataset.md). The default uses a small PokéAPI JSON subset. PUDL is currently known to fail and is retained only as a historical, conditional example. NOAA CSV is a documented later file-source option, with explicit caching and size caveats.
+Follow [your first dataset](docs/guides/first-dataset.md) to query Pikachu's abilities from PokéAPI. Check that you get the expected rows before moving on.
 
-Success means nonempty rows with the expected fields and values. A login, `SELECT 1`, a visible registration, or a successful CREATE alone does not establish that the external data works.
+## 4. Choose what to build
 
-These recipes register access to remote data. They do not necessarily make a durable copy. REST queries may fetch again; cache and materialization are separate steps with the limits in the [SQL companion](docs/guides/zetaris-lightning-sql-companion.md).
+You can [analyse data, combine sources, or build an app](docs/guides/project-paths.md). Choose a question that interests you. For more data, see [available recipes](docs/guides/recipe-readiness.md).
 
-## 4. Choose your direction
+## 5. Prepare your demo
 
-After verification, choose an [analysis, data product, or application path](docs/guides/project-paths.md). These are starting points, not assigned objectives. For more datasets, use the [recipe readiness index](docs/guides/recipe-readiness.md). Planned and known-to-fail work is clearly separated from starter choices.
+Save your SQL and results so someone else can run them. Use the [demo template](docs/guides/demo-template.md), and check the [event page](https://hackathon.genai.works/event/open-agent-hackathon-2026) for current submission requirements.
 
-## 5. Save a result someone else can reproduce
-
-Use the [demo template](docs/guides/demo-template.md) to record the question, setup, query, real result, and limitations. Confirm event submission and judging requirements with the organizer; this repo does not define them.
-
-For errors, partial setup, shared-instance naming, or cleanup, start with [troubleshooting](docs/guides/troubleshooting.md). Before stopping a locally installed platform, use the installation guide's lifecycle instructions. Do not tear down a shared instance.
+Stuck? See [troubleshooting](docs/guides/troubleshooting.md). Only clean up your own objects. Don't stop or reset the shared instance.
