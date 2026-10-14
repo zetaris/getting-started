@@ -113,7 +113,7 @@ RUN DQ TABLE lightning.metastore.usl_demo.sic_usl.sic_code;
 -- Expect: total_records = 1005, valid_records = 1005, invalid_records = 0.
 
 -- ---------------------------------------------------------------------------
--- Step 5: materialize -- deferred (docs/plans/archive/usl-build-plan.md step V4).
+-- Step 5: materialize -- deferred. See open_data/usl/usl-sources.md for status.
 -- No cloud storage target is configured on any instance this repo has
 -- touched yet, and standing one up is out of scope for now. Left here,
 -- commented out, for whenever that's unblocked: Records: All (no DQ

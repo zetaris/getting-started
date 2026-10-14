@@ -309,4 +309,4 @@ No source here uses parallel arrays such as `times: [...]` and `values: [...]`. 
 
 ## 8. Everything else
 
-For licenses and source links, see [`rest-api-sources.md`](rest-api-sources.md). The [SQL companion](../../docs/guides/zetaris-lightning-sql-companion.md#1-the-two-onboarding-patterns-this-repo-has-proven) compares REST, file, and JDBC onboarding. Other categories are tracked in [`docs/plans/FUTURES.md`](../../docs/plans/FUTURES.md).
+For licenses and source links, see [`rest-api-sources.md`](rest-api-sources.md). The [SQL companion](../../docs/guides/zetaris-lightning-sql-companion.md#1-the-two-onboarding-patterns-this-repo-has-proven) compares REST, file, and JDBC onboarding.

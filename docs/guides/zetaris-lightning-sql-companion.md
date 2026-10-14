@@ -166,7 +166,7 @@ The [USL](#8-the-unified-semantic-layer-usl-a-scriptable-alternativesuccessor-to
 
 ## 8. The Unified Semantic Layer (USL): a scriptable alternative/successor to VDM
 
-The examples below use the supplied USL User Guide and the [`open_data/usl/`](../../open_data/usl/) package. See [USL source status](../../open_data/usl/usl-sources.md) and the [archived build record](../plans/archive/usl-build-plan.md). Claims based only on the guide are identified below.
+The examples below use the supplied USL User Guide and the [`open_data/usl/`](../../open_data/usl/) package. See [USL source status](../../open_data/usl/usl-sources.md). Claims based only on the guide are identified below.
 
 ### 8.1 Why this matters for this repo specifically
 
@@ -221,7 +221,7 @@ The supplied USL guide describes these capabilities. The table is a guide summar
 ### 8.3 Practical implications for this repo's REST sources
 
 - `CACHE TABLE` is a session cache. `MATERIALIZE USL TABLE` is described as a persistent export. The repo has not live-tested materialization or its interaction with a cache.
-- A foreign key checks that a referenced value exists. In the EDGAR/SIC fixture, the `sic` rule found IBM's code `3570` missing from the reference list; it does not check whether two description strings match. See [USL source status](../../open_data/usl/usl-sources.md) and the [archived build record](../plans/archive/usl-build-plan.md).
+- A foreign key checks that a referenced value exists. In the EDGAR/SIC fixture, the `sic` rule found IBM's code `3570` missing from the reference list; it does not check whether two description strings match. See [USL source status](../../open_data/usl/usl-sources.md).
 - The current USL example uses zero-padded string `cik` values from submissions. It does not join to revenue tables where `cik` is numeric; normalize that difference before adding such a join.
 - Activation queries are ordinary `SELECT` statements. The self-join workaround in section 4 may apply, but the USL-specific case has not been tested.
 
@@ -239,7 +239,7 @@ Some items below come from the supplied guide; others were checked live on 12 Oc
 
 ### 8.5 Known open items in this repo's USL package specifically
 
-The [archived USL build record](../plans/archive/usl-build-plan.md) tracks the full checklist. Remaining limits include:
+Remaining verification limits include:
 
 - Cross-USL foreign keys have not been tested.
 - The SQL form of `MATERIALIZE USL TABLE` has not been confirmed to support `Records: Valid Records Only`.
@@ -261,7 +261,7 @@ These findings come from the live-tested [`open_data/usl/`](../../open_data/usl/
 
 ## 9. Open questions to close before validating this guide
 
-Use the [archived USL build record](../plans/archive/usl-build-plan.md) for the live-verification checklist. The outstanding items are materialization behaviour, valid-only SQL options, `COMPILE USL` repeat behaviour, cross-USL foreign keys and preview row counts. Treat the guide-only claims above as unverified until a test or product document confirms them.
+The outstanding verification items are materialization behaviour, valid-only SQL options, `COMPILE USL` repeat behaviour, cross-USL foreign keys and preview row counts. Treat the guide-only claims above as unverified until a test or product document confirms them.
 
 ---
 
@@ -269,8 +269,6 @@ Use the [archived USL build record](../plans/archive/usl-build-plan.md) for the 
 
 | Document | Use it for |
 |---|---|
-| [EDGAR/SIC archived record](../plans/archive/edgar-sic-enrichment-plan.md) | REST/SchemaStore/VDM example and its source-data caveats |
-| [USL archived build record](../plans/archive/usl-build-plan.md) | USL verification checklist and outcomes |
 | [`open_data/usl/`](../../open_data/usl/) | USL SQL and per-model status |
 | [REST API HOWTO](../../open_data/rest_apis/HOWTO.md), [Parquet/CSV HOWTO](../../open_data/parquet_csv/HOWTO.md) | Source setup and verification steps |
 | [SQL command reference](zetaris-lightning-sql-commands.md) | Command syntax and examples |
