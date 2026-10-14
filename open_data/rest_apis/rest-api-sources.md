@@ -135,4 +135,4 @@ A catalog of REST sources registered with `CREATE LIGHTNING REST TABLE`. Each en
 
 ---
 
-**See also:** `HOWTO.md` for the Zetaris REST onboarding walkthrough, `sql/known_to_fail/` for sources that hit a blocking issue during testing along with their debugging writeups, `../parquet_csv/` for the filestore-table pattern, and [Cookbooks](../../docs/guides/recipe-readiness.md) for other available sources.
+**See also:** `HOWTO.md` for the Zetaris REST onboarding walkthrough, `sql/known_to_fail/` for sources that hit a blocking issue during testing along with their debugging writeups, `../parquet_csv/` for the filestore-table pattern, and [`docs/plans/FUTURES.md`](../../docs/plans/FUTURES.md) plus its `recipes/*.md` files for every other category.

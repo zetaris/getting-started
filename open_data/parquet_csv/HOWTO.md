@@ -147,4 +147,4 @@ For each runnable script:
 
 ## 7. Everything else
 
-For licenses, paths, and source links, see [`parquet-csv-data-sources.md`](parquet-csv-data-sources.md).
+For licenses, paths, and source links, see [`parquet-csv-data-sources.md`](parquet-csv-data-sources.md). Other categories are tracked in [`docs/plans/FUTURES.md`](../../docs/plans/FUTURES.md).

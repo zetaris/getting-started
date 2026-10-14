@@ -1,6 +1,6 @@
 # Zetaris branding
 
-The site follows the Zetaris Brand Guidelines 2026. The rules below and the bundled assets are sufficient to maintain the site; the original PDF is not a build dependency.
+Use the user-supplied **Zetaris Brand Guidelines 2026.pdf** as the branding reference for this site. The original supplied file is `/Users/bevanlewis/Downloads/branding/Zetaris Brand Guidelines 2026.pdf`; its accompanying logo exports are in the sibling `SVG/` and `SVG 2/` directories. These local paths record provenance and are not build dependencies.
 
 ## Applied rules
 
@@ -17,4 +17,4 @@ The site follows the Zetaris Brand Guidelines 2026. The rules below and the bund
 
 The self-hosted variable font comes from the [Google Fonts Plus Jakarta Sans directory](https://github.com/google/fonts/tree/main/ofl/plusjakartasans). Its SIL Open Font License is included beside the font in `assets/fonts/OFL.txt`.
 
-Brand examples do not replace the onboarding content or establish platform performance claims.
+The PDF remains a local reference, not a published site asset. Brand examples in the guide do not replace the onboarding content or establish platform performance claims.

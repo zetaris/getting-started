@@ -17,7 +17,7 @@ Use [recipe readiness](docs/guides/recipe-readiness.md) to choose later sources 
 
 ## Documentation map
 
-The [website guide](website/README.md) describes how to preview the onboarding website locally. It renders the existing guides directly from Markdown.
+The [GitHub Pages guide](website/README.md) describes how to preview and publish the onboarding website from this branch. It renders the existing guides directly from Markdown.
 
 | Doc | What it's for |
 |---|---|
@@ -31,6 +31,8 @@ The [website guide](website/README.md) describes how to preview the onboarding w
 | [`open_data/manifest.json`](open_data/manifest.json) | Source/model IDs, status, and dependencies for `onboard.py` |
 | [`docs/guides/project-paths.md`](docs/guides/project-paths.md) | Optional project directions, including the [PUDL chart](examples/pudl-chart/README.md) and [EDGAR/PUDL/NOAA guide](docs/guides/create-edgar-pudl-noaa-usl.md) |
 | [`docs/guides/zetaris-lightning-sql-companion.md`](docs/guides/zetaris-lightning-sql-companion.md) | SQL reference: shapes, quoting, gotchas, and confirmed platform limitations — read alongside the Zetaris Kbase while writing your own SQL |
+| [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) | The full data-source roadmap, priority order, and status per category |
+| [`docs/plans/`](docs/plans/) | Active plans for in-progress or upcoming work; [`docs/plans/archive/`](docs/plans/archive/) holds completed or superseded plans and the original source-research manifest, kept as historical record |
 
 ## Repo layout
 
@@ -47,9 +49,10 @@ docs/
   connections/     Route choices, Cursor/Codex/Claude Code prompts, and recipe command reference
   install/         Installation & configuration guide, plus its test record
   guides/          First dataset, project paths, readiness, recovery, and demo guidance
+  plans/           Active roadmap and category plans (FUTURES.md, recipes/); archive/ for completed plans
 ```
 
-Use [Cookbooks](docs/guides/recipe-readiness.md) and the source catalogs to find the available recipes and their verification limits.
+Folders are added as each category in the roadmap actually ships, rather than scaffolded up front — see [`docs/plans/FUTURES.md`](docs/plans/FUTURES.md) for where this is headed.
 
 ## Client scripts
 
@@ -57,4 +60,4 @@ Use [Cookbooks](docs/guides/recipe-readiness.md) and the source catalogs to find
 
 ## Contributing
 
-Adding a new data source, documenting one that doesn't work, or updating a guide? See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the conventions this repo relies on — the `_create.sql`/`_select.sql` pattern, the `known_to_fail/` writeup format, license verification, and more.
+Adding a new data source, documenting one that doesn't work, archiving a finished plan, or touching anything else in this repo? See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the conventions this repo relies on — the `_create.sql`/`_select.sql` pattern, the `known_to_fail/` writeup format, license verification, and more.

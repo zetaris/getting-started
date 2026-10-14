@@ -83,4 +83,4 @@ Partition, snapshot, and release paths change. Before use, run the listing comma
 
 ---
 
-**See also:** [File cookbook](HOWTO.md) for the Zetaris onboarding walkthrough and [Cookbooks](../../docs/guides/recipe-readiness.md) for other available sources.
+**See also:** `HOWTO.md` for the Zetaris onboarding walkthrough, and [`docs/plans/FUTURES.md`](../../docs/plans/FUTURES.md) plus its `recipes/*.md` files for everything outside Parquet/CSV — Kafka, logs, JSON/REST, SQL RDBMS, PDFs, and the government open-data sections.

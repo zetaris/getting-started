@@ -99,7 +99,7 @@ FROM edgar.all_companies_profile_table
 WHERE sic_description_edgar <> sic_description_reference;
 ```
 
-The FK-generated DQ rule checks that each SIC code exists; it does not compare descriptions. Two attempts to register description equality as `REGISTER DQ` failed, so the model checks it with a plain join. That join drops IBM and returns five wording differences; the FK rule flags IBM as missing from the SIC reference. The checks catch different issues. See the [SQL companion](../../docs/guides/zetaris-lightning-sql-companion.md#86-register-dq-confirmed-limitations-live-tested) and [`usl-sources.md`](usl-sources.md).
+The FK-generated DQ rule checks that each SIC code exists; it does not compare descriptions. Two attempts to register description equality as `REGISTER DQ` failed, so the model checks it with a plain join. That join drops IBM and returns five wording differences; the FK rule flags IBM as missing from the SIC reference. The checks catch different issues. See the [SQL companion](../../docs/guides/zetaris-lightning-sql-companion.md#86-register-dq-confirmed-limitations-live-tested), [`usl-sources.md`](usl-sources.md), and archived build plan section 4, step V6.
 
 ## 4. Known open items in this package
 
@@ -107,8 +107,8 @@ See the [SQL companion's open USL items](../../docs/guides/zetaris-lightning-sql
 
 ## 5. Teardown
 
-Both scripts include commented `REMOVE USL` and `DROP NAMESPACE ... CASCADE` teardown statements from the USL User Guide. Live teardown confirmation remains open.
+Both scripts include commented `REMOVE USL` and `DROP NAMESPACE ... CASCADE` teardown statements from the USL User Guide. The package's archived build plan still lists live teardown confirmation as open (step V10).
 
 ## 6. Everything else
 
-For the REST/SchemaStore/VDM versions, see the [REST cookbook](../rest_apis/HOWTO.md). General USL guidance is in [SQL companion section 8](../../docs/guides/zetaris-lightning-sql-companion.md#8-the-unified-semantic-layer-usl-a-scriptable-alternativesuccessor-to-vdm). Verification status is recorded in [USL sources](usl-sources.md).
+For the REST/SchemaStore/VDM versions, see the linked scripts and [`edgar-sic-enrichment-plan.md`](../../docs/plans/archive/edgar-sic-enrichment-plan.md). General USL guidance is in [SQL companion section 8](../../docs/guides/zetaris-lightning-sql-companion.md#8-the-unified-semantic-layer-usl-a-scriptable-alternativesuccessor-to-vdm). Verification history is in the [archived build plan](../../docs/plans/archive/usl-build-plan.md).

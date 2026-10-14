@@ -6,6 +6,7 @@ This repo's value is in the detail: every source is traceable to a real license,
 
 - **Read the package's own docs first.** Each `open_data/*/` package has a `HOWTO.md` (onboarding walkthrough) and a `*-data-sources.md` or `*-sources.md` catalog (per-source license, path, and test status). Match its existing pattern rather than inventing a new one.
 - **`docs/guides/zetaris-lightning-sql-companion.md`** is the running list of confirmed Zetaris SQL gotchas and platform limitations. Skim it before writing new SQL — you may be about to rediscover something already documented there.
+- **`docs/plans/FUTURES.md`** is the roadmap and priority order. If you're picking up a new category, check it first; don't start on a lower-priority item on the assumption a higher one is done without confirming its live-test status.
 
 ## Adding a new data source
 
@@ -44,6 +45,15 @@ When a newer script supersedes an old one (for example `rate_limited/12_company_
 4. Retire anything that only existed for the old script (a warm-up script, a deno task) in the same change.
 
 A `_select.sql` keeps its verification queries commented out so a bulk run of the file doesn't fire reads, and that matters most for a rate-limited source: run them one at a time.
+
+## Archiving a completed or superseded plan
+
+`docs/plans/` holds active work; `docs/plans/archive/` holds plans that are done, superseded, or never started but no longer being pursued. When a plan's work is confirmed shipped (not just "mostly done"):
+
+1. `git mv` it into `docs/plans/archive/`.
+2. Add a banner at the very top: `> **Archived — <status>.**` where `<status>` is honest about what actually happened — `done`, `stable`, `superseded`, or `not started` are all valid; don't write `done` for something with real open items left.
+3. Fix the plan's own relative links for the new depth, and fix its top-of-file status line if it's gone stale.
+4. Update every other doc that linked to the old path — `docs/plans/FUTURES.md`, the main `README.md`, and any package doc that referenced it.
 
 ## After moving or renaming any file
 

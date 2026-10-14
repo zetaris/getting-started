@@ -65,7 +65,8 @@
 --      existence (a company's sic value exists in sic_code), not
 --      description-string equality -- 02_sic_edgar_usl_select.sql's plain
 --      join query checks the latter directly. Compare the two results
---      rather than assuming the FK rule alone is sufficient.
+--      (docs/plans/archive/usl-build-plan.md step V6) rather than assuming the FK
+--      rule alone is sufficient.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -73,17 +74,18 @@
 -- that script already created it on this instance (see that script's
 -- caveat 1 re: IF NOT EXISTS idempotency, unconfirmed either way).
 --
--- As in 01_sic_usl_create.sql, the flat namespace layout is an example,
--- not a required convention. If you choose a different namespace, update
--- this statement and every lightning.metastore.usl_demo reference below.
+-- Same first-draft caveat as 01_sic_usl_create.sql's Step 0: this flat
+-- layout is not a settled convention. If docs/plans/archive/usl-build-plan.md step
+-- V0 picks the nested alternative instead, update this statement and every
+-- lightning.metastore.usl_demo reference below to match.
 -- ---------------------------------------------------------------------------
 CREATE NAMESPACE IF NOT EXISTS lightning.metastore.usl_demo;
 
 -- ---------------------------------------------------------------------------
 -- Step 1: design -- two tables, one FK relationship. sic below is declared
 -- NOT NULL (every one of the 7 companies' submissions responses is
--- confirmed to carry a sic value in the recorded source responses) so the
--- FK's auto-generated DQ rule has something to check on
+-- confirmed to carry a sic value, per docs/plans/archive/edgar-sic-enrichment-plan.md
+-- section 3) so the FK's auto-generated DQ rule has something to check on
 -- every row, not just the rows that happen to have a value.
 -- ---------------------------------------------------------------------------
 COMPILE USL IF NOT EXISTS sic_edgar_usl DEPLOY NAMESPACE lightning.metastore.usl_demo DDL
@@ -181,10 +183,11 @@ RUN DQ TABLE lightning.metastore.usl_demo.sic_edgar_usl.company;
 -- Expect: total_records=7, valid_records=7 (every company's sic exists in
 -- sic_code -- the same guarantee sql/11's INNER JOIN provided by
 -- construction). This alone does not prove description agreement -- see
--- 02_sic_edgar_usl_select.sql for that check. Compare both results.
+-- 02_sic_edgar_usl_select.sql for that check, and record the comparison in
+-- docs/plans/archive/usl-build-plan.md step V6.
 
 -- ---------------------------------------------------------------------------
--- Step 6: materialize -- deferred. See open_data/usl/usl-sources.md for status.
+-- Step 6: materialize -- deferred (docs/plans/archive/usl-build-plan.md step V7).
 -- No cloud storage target is configured on any instance this repo has
 -- touched yet, and standing one up is out of scope for now. Left here,
 -- commented out, for whenever that's unblocked: Records: Valid Records
