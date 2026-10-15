@@ -58,7 +58,7 @@ const prompts = {};
 for (const [protocol, section] of [['jdbc', '5. JDBC starter prompt'], ['rest', '6. REST starter prompt']]) {
   const text = connectionGuide.split(`## ${section}`)[1]?.match(/```text\n([\s\S]*?)\n```/)?.[1];
   if (!text || !text.startsWith('Read AGENTS.md')) throw new Error(`Missing ${protocol} starter prompt`);
-  prompts[protocol] = `Use the getting-started repository at ${github}/tree/${encodeURIComponent(revision)} as the workspace. If it is not checked out, help me clone and open it first. Read docs/connections/client-setup.md for setup. Keep credentials in .env.local, never in this prompt or a report.\n\n${text.replace(/Goal: <[\s\S]*?>/, 'Goal: verify SQL execution, inspect the supplied NY_TAXI and TPCDS_DB tables, then run a sample SELECT with LIMIT 5. Do not create objects.')}`;
+  prompts[protocol] = `Use the getting-started repository at https://github.com/zetaris/getting-started as the workspace. If it is not checked out, help me clone and open it first. Read docs/connections/client-setup.md for setup. Keep credentials in .env.local, never in this prompt or a report.\n\n${text.replace(/Goal: <[\s\S]*?>/, 'Goal: verify SQL execution, inspect the supplied NY_TAXI and TPCDS_DB tables, then run a sample SELECT with LIMIT 5. Do not create objects.')}`;
 }
 const launchUrls = prompt => ({
   codex: `codex://threads/new?prompt=${encodeURIComponent(prompt)}`,
