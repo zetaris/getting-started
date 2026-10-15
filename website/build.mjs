@@ -2,12 +2,12 @@ import { Marked, Renderer } from 'marked';
 import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, statSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'site');
 const repository = process.env.GITHUB_REPOSITORY || 'zetaris/getting-started';
-const revision = process.env.GITHUB_SHA || execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+// Source links always point at main so Pages builds do not pin a publish branch or commit.
+const revision = 'main';
 const github = `https://github.com/${repository}`;
 // This explicit list is the publication boundary. Never copy the checkout into site/.
 const groups = [

@@ -1,6 +1,6 @@
 # GitHub Pages onboarding guide
 
-The site renders the existing repository Markdown into a static documentation site. Edit the original guides to change their content. `build.mjs` defines the published pages and navigation; assets define the layout and copy buttons. Plans, SQL scripts, issue records and other unpublished references link to their source on GitHub at the build's commit.
+The site renders the existing repository Markdown into a static documentation site. Edit the original guides to change their content. `build.mjs` defines the published pages and navigation; assets define the layout and copy buttons. Plans, SQL scripts, issue records and other unpublished references link to their source on GitHub on `main`.
 
 Only the listed Markdown pages and `website/assets/` are included in the artifact. Client environment files, caches and platform credentials are not read by the build. The browser does not connect to Zetaris.
 
