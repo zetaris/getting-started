@@ -40,6 +40,10 @@
 -- 02_sic_edgar_usl_create.sql -- only run this once across both scripts on
 -- a given instance (see caveat 1 above re: idempotency).
 --
+-- Create the parent lightning.metastore first. On a clean instance,
+-- CREATE NAMESPACE lightning.metastore.usl_demo alone fails with
+-- "parent namespace : metastore is not existing".
+--
 -- This flat layout is a first draft, not a settled convention -- a nested,
 -- per-source alternative (CREATE NAMESPACE IF NOT EXISTS
 -- lightning.metastore.company_dns.sic_usl;) hasn't been compared against it
@@ -47,6 +51,7 @@
 -- reference below if a later comparison shows the nested form is
 -- preferable.
 -- ---------------------------------------------------------------------------
+CREATE NAMESPACE IF NOT EXISTS lightning.metastore;
 CREATE NAMESPACE IF NOT EXISTS lightning.metastore.usl_demo;
 
 -- ---------------------------------------------------------------------------

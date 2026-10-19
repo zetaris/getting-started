@@ -25,8 +25,9 @@
 -- Steps 0-1 must also already be run (same company_dns.sic_codes_raw
 -- dependency as 01_sic_usl_create.sql).
 --   Run 01_sic_usl_create.sql first if this is a fresh instance -- it
---   creates lightning.metastore.usl_demo (shared by this script) and is
---   the lower-risk smoke test for the USL lifecycle this script builds on.
+--   creates lightning.metastore and lightning.metastore.usl_demo (shared
+--   by this script) and is the lower-risk smoke test for the USL
+--   lifecycle this script builds on.
 --
 -- Verification status: see ../usl-sources.md. The lifecycle through Step 4
 -- is confirmed working (after a null-handling fix, commit 8f18f4f). The
@@ -74,11 +75,16 @@
 -- that script already created it on this instance (see that script's
 -- caveat 1 re: IF NOT EXISTS idempotency, unconfirmed either way).
 --
+-- Parent lightning.metastore first (same as 01): without it,
+-- lightning.metastore.usl_demo fails with "parent namespace : metastore
+-- is not existing".
+--
 -- Same first-draft caveat as 01_sic_usl_create.sql's Step 0: this flat
 -- layout is not a settled convention. If docs/plans/archive/usl-build-plan.md step
 -- V0 picks the nested alternative instead, update this statement and every
 -- lightning.metastore.usl_demo reference below to match.
 -- ---------------------------------------------------------------------------
+CREATE NAMESPACE IF NOT EXISTS lightning.metastore;
 CREATE NAMESPACE IF NOT EXISTS lightning.metastore.usl_demo;
 
 -- ---------------------------------------------------------------------------

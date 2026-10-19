@@ -14,8 +14,9 @@ This walkthrough runs the simpler `sic_usl` model from `sql/01_sic_usl_create.sq
 
 **Prerequisite:** `open_data/rest_apis/sql/rate_limited/12_company_dns_create.sql` Steps 0-2 (through `CACHE TABLE company_dns.sic_codes_raw;`) must already have been run on this instance — this model activates directly from that raw V3 REST table. That script is rate limited, so run its steps one at a time, with 15 seconds or more before each step that calls the endpoint (see its header).
 
-1. Open the Zetaris **SQL Editor** and create the namespace:
+1. Open the Zetaris **SQL Editor** and create the parent metastore, then the package namespace (the parent is required on a clean instance; without it, the second statement fails with `parent namespace : metastore is not existing`):
    ```sql
+   CREATE NAMESPACE IF NOT EXISTS lightning.metastore;
    CREATE NAMESPACE IF NOT EXISTS lightning.metastore.usl_demo;
    ```
 2. Compile the table definition. It has no data until activation:
@@ -74,7 +75,7 @@ Both models reuse raw REST tables from the `rest_apis` package. Register them in
 
 USL's `ACTIVATE ... AS SELECT` can flatten and join the same raw sources used by SchemaStore views.
 
-**Instance requirements:** `lightning.metastore` must exist before creating a namespace. Without it, REST returned `parent namespace : metastore is not existing`; after initialization, namespace creation worked over JDBC and REST. Send the multi-table `sic_edgar_usl` compile as one statement; semicolon-splitting clients break it. JDBC, REST, or the Unified Semantic Layer → New USL screen can send it intact.
+**Instance requirements:** `lightning.metastore` must exist before creating a child namespace. Without it, REST returned `parent namespace : metastore is not existing`. Both create scripts now open with `CREATE NAMESPACE IF NOT EXISTS lightning.metastore;` before `lightning.metastore.usl_demo`, so a clean instance no longer needs a separate init step. Send the multi-table `sic_edgar_usl` compile as one statement; semicolon-splitting clients break it. JDBC, REST, or the Unified Semantic Layer → New USL screen can send it intact.
 
 ## 2. Models in this package
 
