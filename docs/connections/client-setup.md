@@ -110,9 +110,8 @@ Lightning databases; an empty list is normal on a clean instance.
 ## 8. Safety and permissions
 
 - Start with read-only commands such as `SHOW`, `DESCRIBE`, and `SELECT`.
-- On a shared instance, get your team prefix and permissions first. Check that
-  an existing object belongs to your team and matches the definition before
-  reusing it.
+- Use your own local or AWS Zetaris instance. Check that an existing object
+  matches the recipe definition before reusing it.
 - Creating, dropping, granting, or writing changes the instance. Preview
   create scripts with `--dry-run` and wait for the user's clear go-ahead before
   running them.
@@ -257,9 +256,8 @@ preflight does not verify the UI-proxy route.
 ## 8. Safety and permissions
 
 - Start with read-only commands such as `SHOW`, `DESCRIBE`, and `SELECT`.
-- On a shared instance, get your team prefix and permissions first. Check that
-  an existing object belongs to your team and matches the definition before
-  reusing it.
+- Use your own local or AWS Zetaris instance. Check that an existing object
+  matches the recipe definition before reusing it.
 - Creating, dropping, granting, or writing changes the instance. Preview
   create scripts with `--dry-run` and wait for the user's clear go-ahead before
   running them.

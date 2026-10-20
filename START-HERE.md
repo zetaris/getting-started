@@ -4,11 +4,10 @@ Query the supplied samples, connect your own data, then build your hackathon pro
 
 ## 1. Check your prerequisites
 
-You need the Zetaris website URL, your account and query permission.
+Set up your own Zetaris instance using one of the routes below. Then sign in with your account.
 
 | Access route | Start here |
 |---|---|
-| Supplied instance | Sign in using the details you've been given. |
 | Your computer | Download from [Zetaris Cloud's Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download), then follow [Install locally](docs/install/updated_zetaris_installation_guide.md). |
 | Managed AWS cluster | Use [Managed AWS cluster](docs/install/managed-aws-cluster-guide.md) to connect your AWS account and create a Zetaris compute cluster from Zetaris Cloud. |
 
@@ -20,7 +19,7 @@ Follow [your first SQL commands](docs/connections/lightning-recipe-reference.md)
 
 ## 3. Try your first dataset
 
-Optionally follow [your first dataset](docs/guides/first-dataset.md) to connect PokéAPI and query Pikachu's abilities. This step needs creation permission and your assigned team names. Zetaris must be able to reach the API.
+Optionally follow [your first dataset](docs/guides/first-dataset.md) to connect PokéAPI and query Pikachu's abilities. This step needs creation permission on your instance. Zetaris must be able to reach the API.
 
 Check the expected rows if you use this recipe. You can also build a project using only the supplied samples.
 
@@ -32,4 +31,4 @@ Check the expected rows if you use this recipe. You can also build a project usi
 
 Use the [demo template](docs/guides/demo-template.md) to save your SQL, results and steps someone else can reproduce. Check the event page for submission requirements.
 
-Stuck? See [troubleshooting](docs/guides/troubleshooting.md). Change only your team's approved objects; leave shared sources and the platform running.
+Stuck? See [troubleshooting](docs/guides/troubleshooting.md). Follow the cleanup steps for your local installation or AWS cluster when you finish.

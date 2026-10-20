@@ -4,7 +4,7 @@ After [querying the supplied samples](../connections/lightning-recipe-reference.
 
 ## What you need
 
-- Permission to create objects and assigned team names on the shared instance.
+- Your own local or AWS Zetaris instance with permission to create objects.
 - Outbound access from Zetaris to `https://pokeapi.co`.
 
 Replace `POKEAPI_REST` and `pokeapi_rest` with your assigned database name, and `pokeapi` with your assigned container name everywhere below. Reuse an existing object only if it belongs to your team and its definition matches.

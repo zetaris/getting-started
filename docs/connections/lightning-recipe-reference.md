@@ -73,6 +73,6 @@ LIMIT 5;
 
 ## Next step
 
-Connect [your first dataset](../guides/first-dataset.md) using PokéAPI. That step needs creation permission, assigned team names and API access from Zetaris.
+Connect [your first dataset](../guides/first-dataset.md) using PokéAPI. That step needs creation permission on your instance and API access from Zetaris.
 
 For scripts, use [client scripts](../../scripts/HOWTO.md). For more SQL, use the [full reference](../guides/zetaris-lightning-sql-commands.md) and its setup requirements. If a step fails, see [troubleshooting](../guides/troubleshooting.md).

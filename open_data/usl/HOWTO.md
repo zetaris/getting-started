@@ -1,6 +1,6 @@
 # HOWTO: onboard these USL models into Zetaris
 
-On the shared event instance, use your assigned namespace and model names consistently. Send one complete command at a time and keep each USL compile payload intact. The separate [EDGAR/PUDL/NOAA walkthrough](../../docs/guides/create-edgar-pudl-noaa-usl.md) depends on PUDL, which is currently known to fail.
+On your own local or AWS instance, use your chosen namespace and model names consistently. Send one complete command at a time and keep each USL compile payload intact. The separate [EDGAR/PUDL/NOAA walkthrough](../../docs/guides/create-edgar-pudl-noaa-usl.md) depends on PUDL, which is currently known to fail.
 
 These scripts rebuild data products already available through REST/SchemaStore and compare that path with USL. They are not replacements for the existing products.
 

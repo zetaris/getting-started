@@ -9,7 +9,7 @@ Choose a task and follow its cookbook. Verified means it worked in a recorded ru
 | Query the supplied NY Taxi and TPCDS tables | [First SQL commands](../connections/lightning-recipe-reference.md) | Login and query permission |
 | Connect PokéAPI and find Pikachu's abilities | [PokéAPI cookbook](first-dataset.md) | Creation permission, team names and API access from Zetaris |
 
-Use your assigned team names on the shared instance.
+Run recipes on your own local or AWS Zetaris instance.
 
 ## Find a recipe
 

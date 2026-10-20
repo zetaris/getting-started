@@ -4,7 +4,7 @@ Data recipes, connection helpers, and guides for making external data queryable 
 
 ## Start here
 
-Read [START-HERE.md](START-HERE.md) first. It supports both a locally installed platform and an existing instance. The event instance is shared; use assigned team names and permissions.
+Read [START-HERE.md](START-HERE.md) first. Participants use their own Zetaris instance, either downloaded locally or deployed through AWS.
 
 1. **Confirm access.** For a local installation, start at [Zetaris Cloud](https://www.zetaris.com/cloud) to obtain the platform bundle, then follow the [installation guide](docs/install/updated_zetaris_installation_guide.md). For an existing instance, use your supplied URL and account. This repo supplies the recipes and guides; platform accounts and JDBC drivers are separate.
 2. **Connect and execute one query.** Choose SQL Editor, agent JDBC, or the HTTP helpers in the [connection guide](docs/connections/README.md).

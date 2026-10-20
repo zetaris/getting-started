@@ -28,4 +28,4 @@ If you used sample data to test the interface, say so. Ask a teammate to try it 
 
 ## Before you finish
 
-List the objects your team created. Leave shared sources intact and remove only objects your team owns and has permission to remove. See [cleanup](troubleshooting.md#cleanup).
+List the objects your team created. Remove only project objects you intend to delete, and retain any data you still need. See [cleanup](troubleshooting.md#cleanup).

@@ -14,7 +14,7 @@ Find your error below. For SQL limitations, see the [SQL companion](zetaris-ligh
 | Missing or invalid org ID | Follow [HTTP setup](../../scripts/HOWTO.md#find-your-organization-id) and use your numeric ID. SQL Editor does not need this setting. |
 | HTTP 404 or an HTML response | Use the UI URL that supports the helper's proxy routes. The raw API port does not. |
 | JDBC won't connect | Check the driver JAR, class, Java and endpoint. On a remote agent, `localhost` is that machine. |
-| Object already exists | Check its owner and definition. Reuse a match; otherwise use your assigned team name. |
+| Object already exists | Check its owner and definition. Reuse a match; otherwise choose a different project name. |
 | Table created but no rows returned | Check the source path, response, schema and Zetaris access. Start with a small `SELECT`. |
 | HTTP 429 | Wait as the source instructs. For `company_dns`, wait 60 seconds and retry that one statement. Space endpoint calls by at least 15 seconds and cache the raw table. Avoid retry loops; one statement can trigger several requests. |
 | HTTP 502 | Check the source error and retry once if appropriate. `company_dns` has moved hosts and no longer uses the removed warm-up helper. On rate-limited sources, wait before another attempt. Report repeated failures. |
@@ -22,13 +22,13 @@ Find your error below. For SQL limitations, see the [SQL companion](zetaris-ligh
 | A downloaded file won't query | Put it in storage Zetaris can reach. A file on your laptop may be out of reach. |
 | Chart won't read the result | Check the query response shape and look for an error before comparing it with the example. |
 
-## Reruns and team isolation
+## Reruns and object names
 
-On the shared instance, use your assigned team names. Names help avoid clashes; permissions control access.
+Use consistent object names on your own local or AWS instance. Check existing objects before reusing a name.
 
 1. Replace all database, container, namespace, model and reference names consistently.
 2. Check existing objects before creating them. See the [recipe reference](../connections/lightning-recipe-reference.md).
-3. Reuse shared sources only when their definitions and your read permission are confirmed.
+3. Reuse existing sources only when their definitions match your recipe.
 4. Run one complete statement at a time. If one fails, fix it and continue; earlier statements may have created objects.
 5. Cache, change or remove only objects you own and are allowed to change.
 
@@ -36,7 +36,7 @@ On the shared instance, use your assigned team names. Names help avoid clashes; 
 
 ## Cleanup
 
-Remove only objects you own and have permission to remove. Do not stop or reset the shared platform. For your local install, follow the installation guide's shutdown steps.
+Remove only objects you own and have permission to remove. For your local install, follow the installation guide's shutdown steps. For AWS, follow the [managed cluster teardown steps](../install/managed-aws-cluster-guide.md).
 
 On 12 October 2026, Zetaris 2.4.3.1 let `DROP LIGHTNING DATABASE TABLE` remove `reason` (public S3 filestore) and `ability` (PokéAPI REST); `DROP LIGHTNING DATABASE` then removed their test database. This covers only these fixtures. The check deleted an empty SchemaStore container through the documented API after `viewCount=0`; no SQL container-drop form was tested. Use Data Explorer's **File Source & API** panel for other registrations. See the [SQL companion](zetaris-lightning-sql-companion.md) for full scope.
 

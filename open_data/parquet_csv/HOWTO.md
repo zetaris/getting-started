@@ -1,6 +1,6 @@
 # HOWTO: onboard these Parquet/CSV sources into Zetaris
 
-Start with [Start here](../../START-HERE.md) and the [PokéAPI starter](../../docs/guides/first-dataset.md). On the shared event instance, use your assigned team database names. File sources are optional follow-up work.
+Start with [Start here](../../START-HERE.md) and the [PokéAPI starter](../../docs/guides/first-dataset.md). On your own local or AWS instance, use your chosen database names. File sources are optional follow-up work.
 
 This guide covers the seven current CREATE/SELECT SQL pairs in `sql/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
 

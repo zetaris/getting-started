@@ -10,12 +10,11 @@ connection, SQL, and permission rules for this repository.
 Use Cursor to inspect a Zetaris instance, run Lightning SQL, or work through a
 data recipe. It checks the connection before starting your goal.
 
-## Repository and shared-instance scope
+## Repository and instance scope
 
 Use the shared [client setup](client-setup.md) for connection details, API
-authentication, and troubleshooting. On the event instance, get your team's
-prefix and permissions first. Inspect existing objects and leave other teams'
-objects alone.
+authentication, and troubleshooting. Use your own local or AWS Zetaris
+instance. Inspect existing objects before changing or reusing them.
 
 ## 2. Prerequisites
 

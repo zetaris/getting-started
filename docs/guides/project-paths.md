@@ -25,7 +25,7 @@ Try these guides:
 - [EDGAR and SIC](../../open_data/usl/HOWTO.md) walks through a USL model, relationships and data-quality checks. The foreign-key check found one invalid record; materialisation remains unverified.
 - [EDGAR, PUDL and NOAA](create-edgar-pudl-noaa-usl.md) is an advanced walkthrough. PUDL is blocked, its weather period is partial, and its data-quality result is unverified.
 
-On the shared instance, replace sample database, container, namespace and model names with your assigned names. Use shared sources only with read permission. Leave other teams' objects alone.
+Use your own local or AWS Zetaris instance. Choose database, container, namespace and model names for your project and use them consistently.
 
 Save the joined result and explain any duplicates, missing matches or date gaps.
 
