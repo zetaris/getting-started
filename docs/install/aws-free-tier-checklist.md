@@ -14,7 +14,9 @@ Checked against AWS's own pages on 2026-10-20. AWS has changed this program befo
 
 ## 1. Create the account and choose the Free plan
 
-- [ ] Start at [AWS Free Tier](https://aws.amazon.com/free) and open the sign-up.
+> **Use the standard email/password signup for Zetaris:** open [AWS Sign up (advanced)](https://signin.aws.amazon.com/signup?request_type=register). The form should ask for a **Root user email address**. Avoid the new **Continue with Google** signup flow for this setup.
+
+- [ ] Open [the direct AWS signup page](https://signin.aws.amazon.com/signup?request_type=register) and complete the email/password account setup.
 - [ ] When AWS asks you to choose a plan, choose the **Free plan**. The Free plan means AWS does not charge you while you use it; the alternative, the Paid plan, bills anything beyond your credits. AWS explains the difference in [Choosing a plan](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html).
 - [ ] Finish AWS's sign-up and sign in to the AWS Management Console.
 
@@ -55,12 +57,15 @@ AWS describes all five in its [announcement](https://aws.amazon.com/blogs/aws/aw
 
 ## If something looks wrong
 
+- **You used Google signup and Zetaris cannot verify the AWS account.** Follow [AWS account remains Unverified](../guides/troubleshooting.md#aws-account-remains-unverified). For a new setup, use the standard email/password signup linked above, then repeat Zetaris Quickstart in that account. A new account does not guarantee eligibility for additional Free Tier credits.
 - **A credit has not appeared.** Wait the full 10 minutes, refresh the Billing and Cost Management console, and check that you completed the activity as AWS describes it on the linked page.
 - **AWS says your plan was upgraded.** Joining an AWS Organization, Control Tower or the Partner Network upgrades the account to a Paid plan, which AWS bills at normal prices beyond any credits. AWS's terms say that after joining an Organization you can no longer use or earn Free Tier credits, so avoid it.
 - **Your account was closed.** This follows the end of the Free plan. You have 90 days to upgrade and reopen it; after that AWS deletes the account's content.
 
 ## Sources
 
+- [AWS Sign up (advanced): direct email/password signup](https://signin.aws.amazon.com/signup?request_type=register)
+- [AWS sign-in options](https://docs.aws.amazon.com/signin/latest/userguide/what-is-sign-in.html)
 - [AWS Free Tier](https://aws.amazon.com/free)
 - [Choosing a plan (AWS Billing)](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html)
 - [AWS Free Tier update: up to $200 in credits (AWS News Blog)](https://aws.amazon.com/blogs/aws/aws-free-tier-update-new-customers-can-get-started-and-explore-aws-with-up-to-200-in-credits)

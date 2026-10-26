@@ -6,6 +6,8 @@ For Docker Compose on your own computer, see [Install locally](updated_zetaris_i
 
 ## Before you start
 
+> **Creating an AWS account? Use [AWS Sign up (advanced)](https://signin.aws.amazon.com/signup?request_type=register)** and the **Root user email address** form. For this Zetaris setup, use email/password signup rather than the new Google signup flow. Complete the [Free Tier checklist](aws-free-tier-checklist.md) before connecting the account.
+
 - Sign in to Zetaris Cloud Gateway and the AWS account that will own the resources. A **new AWS account on the Free Tier** is the best choice: set one up with the [AWS Free Tier checklist](aws-free-tier-checklist.md) and the cluster draws on your free credits. An existing account also works, but AWS bills it normally. See [Costs and the AWS Free Tier](#costs-and-the-aws-free-tier).
 - In the AWS Billing and Cost Management console, check which plan the account is on and what credit balance it has.
 - Use an AWS identity with permission to create and delete the supplied CloudFormation stack and its resources. Review the IAM permissions requested by the stack with your AWS administrator if needed.
@@ -33,7 +35,7 @@ The Zetaris developer/free edition is scoped to the size available on each platf
 8. After verification succeeds, click **Done** to save the configuration.
 9. Confirm that the account appears under **Compute > Credentials > Active** with status **Verified**. It is now available for cluster creation.
 
-Keep the stack name and region with your session notes. You will need the corresponding stack during teardown. If creation or verification fails, inspect the CloudFormation events and the Zetaris verification message before continuing.
+Keep the stack name and region with your session notes. You will need the corresponding stack during teardown. If creation or verification fails, inspect the CloudFormation events and the Zetaris verification message before continuing. For **Unverified** or **Zetaris can't access the IAM role for this AWS account**, follow [AWS account remains Unverified](../guides/troubleshooting.md#aws-account-remains-unverified).
 
 ## 2. Create your compute cluster
 
@@ -100,6 +102,7 @@ To review your retained storage, record the **EFS ID** from the cluster **Overvi
 
 ## Troubleshooting
 
+- **Verify AWS Account stays Unverified or says Zetaris can't access the IAM role.** If you used the new Google signup flow, use the [standard email/password signup](https://signin.aws.amazon.com/signup?request_type=register) for a new setup. Also check the stack, account, role and External ID using [these troubleshooting steps](../guides/troubleshooting.md#aws-account-remains-unverified).
 - **Lifecycle summary still says "started".** The summary can retain this wording after completion. Check the individual stages and final cluster status: all seven provisioning stages must succeed with **Active**, or all three termination stages must succeed with **Deleted**.
 - **S3 Bucket is blank in Overview.** Use **CloudFormation > Resources > WorkspaceS3Bucket** to find the bucket. A `DELETE_SKIPPED` status means CloudFormation retained it. The cluster's EFS file system is separate from the Quickstart stack and must be reviewed separately.
 

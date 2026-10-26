@@ -7,6 +7,7 @@ Find your error below. For SQL limitations, see the [SQL companion](zetaris-ligh
 | Problem | What to try |
 |---|---|
 | Missing URL, account or driver | For a local install, use the [Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download). For an existing instance, use the supplied connection details. SQL Editor needs no JDBC; see [connection options](../connections/README.md). |
+| AWS account stays **Unverified** or says **Zetaris can't access the IAM role for this AWS account** | Follow [AWS account remains Unverified](#aws-account-remains-unverified), including the recommended email/password signup route if you used Google signup. |
 | Local install won't start | Run `preflight.sh` from the platform bundle and follow the [install guide](../install/updated_zetaris_installation_guide.md). Check registry access, memory, disk and configuration. |
 | Driver OOM, growing memory while caching JSON, or `Cannot call methods on a stopped SparkContext` | Follow [Driver memory and wide JSON](driver-memory-wide-json.md) for recovery, bounded caching, Parquet storage and driver settings. |
 | Login fails or HTTP 401 | Check the URL and credentials. Changing the platform's `.env` after setup does not reset an account. |
@@ -23,6 +24,19 @@ Find your error below. For SQL limitations, see the [SQL companion](zetaris-ligh
 | A downloaded file won't query | Put it in storage Zetaris can reach. A file on your laptop may be out of reach. |
 | Uploaded PDF shows bytes or only part of its text | Follow [Upload a PDF and read its text](upload-pdf.md) for File Store registration, `preview_len` and `pdfToText(bincontent)`. |
 | Chart won't read the result | Check the query response shape and look for an error before comparing it with the example. |
+
+## AWS account remains Unverified
+
+At **Verify AWS Account → Step 4 of 4**, you may see:
+
+> Zetaris can't access the IAM role for this AWS account.
+
+1. **Check how you created the AWS account.** For a new setup, use [AWS Sign up (advanced)](https://signin.aws.amazon.com/signup?request_type=register), which asks for a **Root user email address**, and complete email/password signup. This is the recommended workaround if you used the new Google signup flow and cannot finish the Zetaris integration. Then repeat [Zetaris Quickstart](../install/managed-aws-cluster-guide.md#1-add-and-verify-your-aws-account) in that account. If you already have resources you need, keep them and contact support before starting over.
+2. **Check the stack.** In CloudFormation, confirm the intended AWS account and region, and wait for the Quickstart stack to reach `CREATE_COMPLETE`.
+3. **Check the role details.** The IAM Role ARN and External ID in Zetaris must belong to the same current Quickstart setup. Do not reuse values from another account or an older setup. If the stack or role's trust policy changed, review it against the supplied Quickstart configuration; keep its External ID condition.
+4. Return to Zetaris and select **Verify again**. If it still fails, share the error and CloudFormation status with support.
+
+This message can also mean the role is missing or its trust policy does not allow access; it does not prove Google signup caused the failure. See [AWS's IAM role troubleshooting](https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_roles.html).
 
 ## Reruns and object names
 
