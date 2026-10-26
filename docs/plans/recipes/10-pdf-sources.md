@@ -5,6 +5,8 @@
 **Original research:** `docs/plans/archive/quickstart-data-manifest.md` §6
 **Target location:** `pdf/`
 
+For uploading your own PDF and reading its text, see [Upload a PDF](../../guides/upload-pdf.md). This plan covers the separate work of adding public PDF source collections.
+
 ## Sources
 
 - 🟢 **U.S. federal government works** — IRS forms, GAO reports; public domain by statute (17 U.S.C. §105). Stable URLs, real multi-page structured documents. Note: embedded third-party images/photos may carry their own rights even when the report text doesn't.

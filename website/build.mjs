@@ -25,6 +25,7 @@ const groups = [
     ['open_data/rest_apis/rest-api-sources.md', 'REST source catalog'],
     ['open_data/parquet_csv/HOWTO.md', 'File cookbook'],
     ['open_data/parquet_csv/parquet-csv-data-sources.md', 'File source catalog'],
+    ['docs/guides/upload-pdf.md', 'Upload a PDF'],
     ['open_data/usl/HOWTO.md', 'USL cookbook'],
     ['open_data/usl/usl-sources.md', 'USL model catalog'],
     ['docs/guides/create-edgar-pudl-noaa-usl.md', 'EDGAR, PUDL and NOAA'],

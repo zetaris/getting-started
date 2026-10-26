@@ -15,6 +15,7 @@ Run recipes on your own local or AWS Zetaris instance.
 
 - [REST cookbook](../../open_data/rest_apis/HOWTO.md): connect, flatten and query API data, including SIC industry classifications. The [REST catalog](../../open_data/rest_apis/rest-api-sources.md) records readiness; NASA DONKI is unverified and Singapore PM2.5 is known to fail.
 - [File cookbook](../../open_data/parquet_csv/HOWTO.md): register and query files such as NOAA weather and AWS Public Blockchain. Check the [file catalog](../../open_data/parquet_csv/parquet-csv-data-sources.md) for failures, size and licensing.
+- [Upload a PDF](upload-pdf.md): register your own PDF in File Store, read its text preview and extract text from its bytes.
 - [USL cookbook](../../open_data/usl/HOWTO.md): build SIC and SIC/EDGAR models. The [model catalog](../../open_data/usl/usl-sources.md) records a foreign-key data-quality failure and open materialisation questions.
 
 Check size, rate limits, licence and setup before adding each source.
@@ -31,7 +32,7 @@ Using scripts? See [client scripts](../../scripts/HOWTO.md) for recipe IDs, depe
 | Singapore housing and Open Food Facts bulk downloads | Fetchers only. Put the files where Zetaris can reach them; bulk delimiter support still needs checking. |
 | Large tables and full-dataset scans | Check size and permissions first |
 | Kafka | Ingestion still needs checking |
-| SQL databases, logs, PDFs and other planned recipes | Not ready for onboarding |
+| SQL databases, logs, PDF source collections and other planned recipes | Not ready for onboarding; for your own PDF, use the upload guide above. |
 
 Known-to-fail recipes require an explicit runner override; they remain failures. See the [roadmap](../plans/FUTURES.md) for planned work.
 

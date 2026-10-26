@@ -20,6 +20,7 @@ Find your error below. For SQL limitations, see the [SQL companion](zetaris-ligh
 | HTTP 502 | Check the source error and retry once if appropriate. `company_dns` has moved hosts and no longer uses the removed warm-up helper. On rate-limited sources, wait before another attempt. Report repeated failures. |
 | PUDL registration fails | PUDL has a [known issue](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md). Use the PokéAPI starter. |
 | A downloaded file won't query | Put it in storage Zetaris can reach. A file on your laptop may be out of reach. |
+| Uploaded PDF shows bytes or only part of its text | Follow [Upload a PDF and read its text](upload-pdf.md) for File Store registration, `preview_len` and `pdfToText(bincontent)`. |
 | Chart won't read the result | Check the query response shape and look for an error before comparing it with the example. |
 
 ## Reruns and object names
