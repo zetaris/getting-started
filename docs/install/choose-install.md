@@ -43,6 +43,7 @@ Use this when your computer meets the requirements and you are weighing the two.
 
 ## Next
 
+- **In your browser (Experimental):** Follow the [GitHub Codespaces guide](github-codespaces-guide.md) to run Zetaris on a 4-core machine.
 - **Local:** [Install locally](updated_zetaris_installation_guide.md).
 - **AWS:** [AWS Free Tier checklist](aws-free-tier-checklist.md) for a new account, then [Managed AWS cluster](managed-aws-cluster-guide.md).
 - When Zetaris is running either way, continue to your first SQL from [Start here](../../START-HERE.md).

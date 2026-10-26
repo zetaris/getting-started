@@ -45,6 +45,7 @@ const groups = [
   ['Installation', [
     ['docs/install/choose-install.md', 'Choose an install'],
     ['docs/install/updated_zetaris_installation_guide.md', 'Install locally'],
+    ['docs/install/github-codespaces-guide.md', 'GitHub Codespaces (Experimental)'],
     ['docs/install/aws-free-tier-checklist.md', 'AWS Free Tier setup'],
     ['docs/install/managed-aws-cluster-guide.md', 'Managed AWS cluster'],
   ]],

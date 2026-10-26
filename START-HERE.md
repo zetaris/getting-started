@@ -9,6 +9,7 @@ Set up your own Zetaris instance using one of the routes below. If your computer
 | Access route | Start here |
 |---|---|
 | Your computer | Download from [Zetaris Cloud's Run locally page](https://cloud.enterprise.zetaris.com/dashboard/download), then follow [Install locally](docs/install/updated_zetaris_installation_guide.md). |
+| GitHub Codespaces (Experimental) | Run Zetaris in your browser on a 4-core machine using the [Codespaces guide](docs/install/github-codespaces-guide.md). |
 | Managed AWS cluster | New to AWS? Follow the [AWS Free Tier checklist](docs/install/aws-free-tier-checklist.md) to unlock $200 in credits. Then use [Managed AWS cluster](docs/install/managed-aws-cluster-guide.md) to connect your AWS account and create a Zetaris compute cluster from Zetaris Cloud. |
 
 ## 2. Run some SQL
