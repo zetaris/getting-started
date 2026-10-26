@@ -1,6 +1,6 @@
 # Run Zetaris on GitHub Codespaces (Experimental)
 
-> **Experimental:** This setup may require networking workarounds. Sample-data loading and stopping/resuming the Codespace can encounter issues. Use the local or managed AWS installation for a more established setup.
+> **Experimental:** Codespaces can require additional Docker networking configuration. This guide includes troubleshooting steps for container connections and S3 access.
 
 Use a Codespace to run Zetaris in your browser without installing Docker on your computer. You need a GitHub account and access to [Zetaris Cloud](https://cloud.enterprise.zetaris.com/dashboard/download).
 
@@ -49,6 +49,8 @@ find init initdb -type f -name '*.sh' -exec chmod +x {} +
 ## 3. Sign in to the image registry
 
 Copy the registry sign-in command from Zetaris Cloud's **Run locally** page and run it in the Codespace terminal. Keep the credentials private.
+
+Wait for `Login Succeeded`. Sign-in is once per machine: signing in on your laptop does not sign in the Codespace. If preflight still reports that you are not signed in to `zetarishackathon.azurecr.io`, check that you ran the supplied command in this Codespace, as the same user running Docker. Do not print or share Docker's credential configuration.
 
 Then run:
 
@@ -132,6 +134,8 @@ docker compose up -d postgres driver api ui
 
 This rule allows traffic only within this Docker bridge. Keep the browser port private; do not disable the firewall or change its global policy.
 
+Repeat the driver's TCP probe from above. It should now show `TCP_EXIT=0`. The driver may recover on its next connection attempt; check its logs and container health before restarting anything.
+
 If the problem returns after restarting the Codespace or recreating the network, repeat these steps. To remove the rule, use the same terminal variables:
 
 ```bash
@@ -153,7 +157,7 @@ Wait for `postgres`, `driver`, `api` and `ui` to be healthy. If one fails, read 
 3. Open **Workbench → SQL Workspace → New Query**.
 4. Enter `SELECT 7 AS seven` and select **Execute**.
 
-Keep port `3000` private. Stop forwarding any unwanted ports that Codespaces adds automatically, especially internal port `8889`. The API does not need its own forwarded port for browser use.
+Keep port `3000` private. In **Ports**, right-click each unwanted port and select **Stop Forwarding Port**. Codespaces can automatically forward internal ports as services start, including `4040`, `8888`, `8889`, `10000` and dynamically assigned ports for Postgres and the driver. Browser use needs only `3000`; removing these extra forwards leaves the containers running.
 
 ## 8. Load sample datasets (optional)
 
@@ -163,7 +167,72 @@ The `NY_TAXI` and `TPCDS_DB` samples use files in Amazon S3. First, make sure th
 docker compose exec -T driver curl --connect-timeout 5 --max-time 15 -I https://s3.amazonaws.com/
 ```
 
-An HTTP response means the connection is working. If the command reports a DNS error or times out, stop here: container internet access needs fixing before sample loading or external data connections will work. The bridge rule in section 6 only allows communication between containers; it does not fix outbound internet access. Do not disable the firewall.
+An HTTP response, including `405 Method Not Allowed`, means the driver can reach S3. If the command reports a DNS error or times out, follow the diagnostics below before loading samples. The bridge rule in section 6 only allows communication between containers; it does not fix outbound internet access.
+
+### 8.1 Fix blocked outbound DNS and HTTPS
+
+Compare the host and driver container:
+
+```bash
+getent ahostsv4 s3.amazonaws.com
+curl --connect-timeout 5 --max-time 15 -I https://s3.amazonaws.com/
+docker compose exec -T driver cat /etc/resolv.conf
+ip -4 route show default
+sudo iptables-legacy -S FORWARD
+```
+
+Docker's `nameserver 127.0.0.11` is its internal DNS proxy. Look for the `ExtServers` comment to identify its upstream resolver; use that address, not `127.0.0.11`. The default route shows the outbound interface after `dev`.
+
+To distinguish a DNS failure from blocked HTTPS, resolve an S3 address on the host and supply it to the container's HTTPS probe:
+
+```bash
+ZETARIS_S3_IP=$(getent ahostsv4 s3.amazonaws.com | awk 'NR == 1 {print $1}')
+test -n "$ZETARIS_S3_IP" && docker compose exec -T driver \
+  curl --connect-timeout 5 --max-time 15 \
+  --resolve "s3.amazonaws.com:443:$ZETARIS_S3_IP" -I https://s3.amazonaws.com/
+```
+
+If the host reaches S3, but the container's normal probe times out resolving DNS and this probe also times out connecting, inspect the legacy `FORWARD` rules. A `DROP` policy with rules for `docker0` but no outbound rules for the Zetaris bridge can block these connections. Apply the following only for that case.
+
+In the same terminal, identify the bridge again and set the confirmed resolver and outbound interface. If your Compose project name differs, replace `zetaris_default`:
+
+```bash
+ZETARIS_NETWORK_ID=$(docker network inspect zetaris_default --format '{{.Id}}')
+ZETARIS_BRIDGE="br-${ZETARIS_NETWORK_ID:0:12}"
+ip link show "$ZETARIS_BRIDGE"
+
+# Enter the upstream DNS address and interface shown by the diagnostics above.
+read -r -p "Upstream DNS address from ExtServers: " ZETARIS_DNS
+read -r -p "Outbound interface from the default route: " ZETARIS_OUTBOUND_IF
+ip link show "$ZETARIS_OUTBOUND_IF"
+```
+
+Continue only if both interfaces exist and the resolver matches your container's upstream DNS. These rules allow DNS only to that resolver, outbound HTTPS, and established/related return traffic for this bridge. They keep the global `DROP` policy and do not open public inbound ports:
+
+```bash
+for ZETARIS_DNS_PROTOCOL in udp tcp; do
+  sudo iptables-legacy -C FORWARD -i "$ZETARIS_BRIDGE" -o "$ZETARIS_OUTBOUND_IF" \
+    -d "$ZETARIS_DNS" -p "$ZETARIS_DNS_PROTOCOL" --dport 53 -j ACCEPT 2>/dev/null ||
+  sudo iptables-legacy -I FORWARD 1 -i "$ZETARIS_BRIDGE" -o "$ZETARIS_OUTBOUND_IF" \
+    -d "$ZETARIS_DNS" -p "$ZETARIS_DNS_PROTOCOL" --dport 53 -j ACCEPT
+done
+
+sudo iptables-legacy -C FORWARD -i "$ZETARIS_BRIDGE" -o "$ZETARIS_OUTBOUND_IF" \
+  -p tcp --dport 443 -j ACCEPT 2>/dev/null ||
+sudo iptables-legacy -I FORWARD 1 -i "$ZETARIS_BRIDGE" -o "$ZETARIS_OUTBOUND_IF" \
+  -p tcp --dport 443 -j ACCEPT
+
+sudo iptables-legacy -C FORWARD -i "$ZETARIS_OUTBOUND_IF" -o "$ZETARIS_BRIDGE" \
+  -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null ||
+sudo iptables-legacy -I FORWARD 1 -i "$ZETARIS_OUTBOUND_IF" -o "$ZETARIS_BRIDGE" \
+  -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+```
+
+Repeat the original S3 probe **without** `--resolve`. Continue only once it returns an HTTP response. Do not disable the firewall, change the global forwarding policy or add an unrestricted forwarding rule. These runtime rules may need reapplying after a Codespace restart; recreating the Docker network can change its bridge name. Recheck the interfaces and resolver first.
+
+To undo only these outbound rules later, use the same variable values and the rule specifications above with `-D FORWARD` in place of `-I FORWARD 1`. Removing them can break external data queries; no container teardown is required.
+
+### 8.2 Load the samples
 
 Once the connection works, start sample loading:
 
@@ -181,6 +250,26 @@ docker compose stop bootstrap
 ```
 
 After sample loading finishes, run `./verify.sh`. If you chose to skip samples, that script will report that `bootstrap` never ran; this does not by itself mean the core services failed.
+
+In **SQL Workspace**, run these examples individually to read the CSV and Parquet samples, group items by category, and join sales to items:
+
+```sql
+SHOW LIGHTNING DATABASES;
+
+SELECT * FROM NY_TAXI.taxi_zones LIMIT 5;
+
+SELECT i_item_sk, i_item_id, i_current_price, i_category
+FROM TPCDS_DB.item LIMIT 5;
+
+SELECT i_category, COUNT(*) AS items,
+       ROUND(AVG(i_current_price), 2) AS avg_price
+FROM TPCDS_DB.item
+GROUP BY i_category ORDER BY items DESC;
+
+SELECT i.i_item_id, s.ss_quantity, s.ss_sales_price
+FROM TPCDS_DB.store_sales s JOIN TPCDS_DB.item i
+ON s.ss_item_sk = i.i_item_sk LIMIT 5;
+```
 
 Continue with [Start here](../../START-HERE.md) for SQL and data-source instructions. Recipes using the supplied samples need this optional setup to finish first.
 
@@ -202,7 +291,7 @@ docker compose up -d postgres driver api ui
 
 If the page stays at **Stopping codespace…**, return to the Codespaces list and refresh it. Wait for stopping to finish before reopening. Avoid repeatedly starting and stopping it. If the state does not clear, use [GitHub Support](https://support.github.com/).
 
-If the driver cannot reach Postgres after resuming, repeat section 6. Reload the editor if its forwarded port is missing. Start `bootstrap` separately only if you want to load samples.
+If the driver cannot reach Postgres after resuming, repeat section 6. If S3 access fails, repeat the diagnostics in section 8.1 and reapply the scoped rules only if needed. Reload the editor if its forwarded port is missing. Start `bootstrap` separately only if you want to load samples.
 
 ## 10. Clear Zetaris data
 
