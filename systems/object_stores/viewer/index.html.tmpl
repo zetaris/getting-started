@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIC EDGAR USL Explorer</title>
+<style>
+/* Zetaris light theme. The --z-* values are the tokens published on zetaris.com; the semantic names below point at them, so a dark theme is a token override. Small text uses darker derived shades (--orange, --good, --cyan-text) because the brand amber, green and cyan fail contrast on white. */
+@font-face { font-family: "Plus Jakarta Sans"; src: url("assets/fonts/plus-jakarta-sans.ttf") format("truetype"); font-style: normal; font-weight: 200 800; font-display: swap; }
+:root {
+  color-scheme: light;
+  --z-white: #ffffff; --z-obsidian: #06070d; --z-ink-3: #15171f; --z-ink-2: #2a2d39;
+  --z-text-3: #595e6e; --z-border: #e7e7ee; --z-border-firm: #d5d5e0;
+  --z-indigo: #4052f2; --z-indigo-deep: #2f3ec2; --z-indigo-soft: #7c89f7; --z-indigo-mist: #dbe0fd; --z-indigo-tint: #f3f5fe;
+  --z-glow: rgba(64, 82, 242, 0.15);
+  --z-cyan: #27a7d2; --z-success: #15c46b; --z-warning: #f0a020; --z-danger: #ef4444;
+  --z-radius-sm: 8px; --z-radius-md: 12px; --z-radius-lg: 20px;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: var(--z-white);
+  --surface: var(--z-indigo-tint);
+  --surface-2: var(--z-indigo-mist);
+  --line: var(--z-border);
+  --line-firm: var(--z-border-firm);
+  --fg: var(--z-obsidian);
+  --head: var(--z-obsidian);
+  --muted: var(--z-text-3);
+  --accent: var(--z-indigo);
+  --accent-hover: var(--z-indigo-deep);
+  --accent-tint: var(--z-indigo-mist);
+  --cyan: var(--z-cyan);
+  --cyan-text: #146e8e;
+  --cyan-tint: #e4f5fb;
+  --orange: #a35700;
+  --orange-tint: #fff3dc;
+  --good: #0b7a43;
+  --good-tint: #e2f8ec;
+  --ent-head: var(--z-ink-3);
+  --ent-sub: #9aa0b0;
+  --code-bg: var(--z-ink-3);
+  --code-fg: #e7eaf1;
+  --code-muted: #8b93a7;
+  --code-pass: #15c46b;
+  --code-info: #27a7d2;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.55 var(--font-sans); }
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3, h4 { text-wrap: balance; color: var(--head); }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+.num { font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+
+/* masthead: white page, the Zetaris logo, an eyebrow, the title and a segmented tab control */
+.mast { position: relative; overflow: hidden; background: var(--bg); border-bottom: 1px solid var(--line); padding: 28px 16px 0; }
+.mast::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 140% at 100% 0%, var(--z-glow), transparent 62%); pointer-events: none; }
+.mast-in { position: relative; max-width: 1180px; margin-inline: auto; display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.zlogo { display: block; height: 34px; width: auto; }
+.partner { display: flex; align-items: center; gap: 12px; padding-left: 18px; border-left: 1px solid var(--line-firm); }
+.partner img { display: block; max-height: 30px; max-width: 180px; width: auto; height: auto; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+.mast h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; }
+.mast p { max-width: 74ch; color: var(--muted); font-size: 17px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; width: fit-content; max-width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: var(--z-radius-md); background: var(--surface); }
+.tab { font: 600 15px/1 var(--font-sans); color: var(--muted); background: transparent; border: 0; border-radius: var(--z-radius-sm); padding: 14px 20px; min-height: 44px; cursor: pointer; }
+.tab:hover { color: var(--head); }
+.tab[aria-selected="true"] { background: var(--accent); color: #fff; }
+.tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+main { max-width: 1180px; margin-inline: auto; padding-block: 40px 80px; padding-inline: 16px; }
+.panel { display: flex; flex-direction: column; gap: 52px; }
+section { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+h2 { font-size: clamp(1.5rem, 3.5vw, 2rem); line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
+h3 { font-size: 19px; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; }
+.lede { color: var(--muted); max-width: 74ch; }
+
+/* stat strip */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border: 1px solid var(--line); border-radius: var(--z-radius-md); background: var(--surface); overflow: hidden; }
+.stat { padding: 18px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat + .stat { border-left: 1px solid var(--line); }
+.stat b { font-size: 36px; line-height: 1.05; font-weight: 800; letter-spacing: -0.02em; color: var(--head); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 13.5px; }
+.stat.warn b { color: var(--orange); }
+@media (max-width: 640px) { .stat + .stat { border-left: 0; border-top: 1px solid var(--line); } }
+
+/* cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 20px; }
+.card { background: var(--bg); border: 1px solid var(--line); box-shadow: inset 0 3px 0 var(--accent); border-radius: var(--z-radius-md); padding: 22px 20px 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.card h3 { font: 500 20px/1.2 var(--font-mono); letter-spacing: 0; color: var(--head); overflow-wrap: anywhere; }
+.rows { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--head); font-variant-numeric: tabular-nums; }
+.rows small { font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--muted); margin-left: 6px; }
+.card p { color: var(--muted); }
+dl { margin: 0; display: grid; grid-template-columns: 7.6rem minmax(0, 1fr); gap: 8px 14px; font-size: 14.5px; }
+dt { color: var(--muted); }
+dd { margin: 0; overflow-wrap: anywhere; }
+
+/* bars */
+.bars { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 17rem minmax(0, 1fr) 3.2rem; gap: 14px; align-items: center; }
+.bar-label { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.bar-label b { font-size: 14.5px; font-weight: 700; }
+.bar-label i { font-style: normal; font-size: 12.5px; color: var(--muted); }
+.bar-track { height: 14px; background: var(--surface); border-radius: 999px; min-width: 0; }
+.bar-fill { height: 100%; background: var(--line-firm); border-radius: 999px; }
+.bar-row.hit .bar-fill { background: var(--accent); }
+.bar-row.hit .bar-label i { color: var(--fg); }
+.bar-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.key { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.key span::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; background: var(--line-firm); border-radius: 999px; }
+.key span.hit::before { background: var(--accent); }
+.key span.note::before { display: none; }
+@media (max-width: 640px) { .bar-row { grid-template-columns: minmax(0, 1fr) 3.2rem; } .bar-label { grid-column: 1 / -1; } }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--z-radius-md); }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { text-align: left; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.good { color: var(--good); background: var(--good-tint); }
+.pill.info { color: var(--cyan-text); background: var(--cyan-tint); }
+.pill.warn { color: var(--orange); background: var(--orange-tint); }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 32px; align-items: start; }
+.finds { display: flex; flex-direction: column; gap: 16px; padding: 0; margin: 0; list-style: none; }
+.finds li { display: flex; flex-direction: column; gap: 2px; padding-top: 14px; border-top: 1px solid var(--line); }
+.finds li:first-child { border-top: 0; padding-top: 0; }
+.finds b { font-weight: 700; color: var(--head); }
+.finds span { color: var(--muted); font-size: 14.5px; }
+
+/* diagrams */
+.diagram { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--z-radius-md); background: var(--bg); }
+.diagram svg { display: block; min-width: 1000px; width: 100%; height: auto; }
+.cap { color: var(--muted); font-size: 13.5px; max-width: 84ch; }
+svg text { font-family: var(--font-sans); fill: var(--fg); }
+svg .colh { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; fill: var(--muted); }
+svg .lane { fill: var(--surface); }
+svg .lane-t { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; fill: var(--muted); }
+svg .box { fill: var(--bg); stroke: var(--z-ink-2); stroke-width: 1.5; rx: 8px; }
+svg .box.ext { stroke-dasharray: 5 4; stroke: var(--muted); }
+svg .box.usl { stroke: var(--accent); stroke-width: 2.5; }
+svg .box.store { stroke: var(--cyan); stroke-width: 2.5; }
+svg .bt { font-size: 13px; font-weight: 700; fill: var(--head); }
+svg .bs { font-size: 11px; fill: var(--muted); font-weight: 500; }
+svg .bm { font-family: var(--font-mono); font-size: 11px; }
+svg .bar-usl, svg .bar-store { display: none; }
+svg .flow { stroke: var(--z-ink-2); stroke-width: 1.8; fill: none; }
+svg .flow.store { stroke: var(--cyan); stroke-width: 2.2; }
+svg .flow-lbl { font-size: 11px; fill: var(--muted); font-weight: 600; }
+svg .fk-line { stroke: var(--orange); stroke-width: 2; fill: none; }
+svg .fk-lbl { font-size: 12px; font-weight: 700; fill: var(--orange); }
+svg .also { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; rx: 8px; }
+svg .ent { fill: var(--bg); stroke: var(--z-ink-2); stroke-width: 1.5; }
+svg .ent-h { fill: var(--ent-head); }
+svg .ent-ht { font-family: var(--font-mono); font-size: 14px; font-weight: 500; fill: #fff; }
+svg .ent-hs { font-size: 11px; fill: var(--ent-sub); }
+svg .row-sep { stroke: var(--line); stroke-width: 1; }
+svg .cn { font-family: var(--font-mono); font-size: 12px; }
+svg .ct { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+svg .badge { fill: var(--surface-2); }
+svg .badge.fk { fill: var(--orange-tint); }
+svg .bd { font-size: 10px; font-weight: 700; fill: var(--head); }
+svg .bd.fk { fill: var(--orange); }
+svg .row-hl { fill: var(--orange-tint); }
+svg .callout { fill: var(--surface); }
+svg .callout-t { font-size: 13px; font-weight: 700; fill: var(--head); }
+svg .callout-s { font-size: 12px; fill: var(--muted); }
+svg .callout-bar { fill: var(--orange); }
+
+/* proof tab */
+.verdict { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; background: var(--good-tint); border: 1px solid #b9ebd0; border-radius: var(--z-radius-md); padding: 18px 20px; }
+.verdict .big { font-size: 28px; font-weight: 800; color: var(--good); letter-spacing: -0.02em; }
+.verdict .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; color: var(--fg); font-size: 14px; }
+.verdict .meta b { font-weight: 700; }
+.chain { display: flex; flex-direction: column; gap: 14px; }
+.stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.stg { background: var(--bg); border: 1px solid var(--line); box-shadow: inset 0 3px 0 var(--z-success); border-radius: var(--z-radius-md); padding: 16px 14px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stg.info { box-shadow: inset 0 3px 0 var(--cyan); }
+.stg .k { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.stg .t { font-size: 14px; font-weight: 600; color: var(--head); overflow-wrap: anywhere; }
+.stg .n { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; color: var(--head); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stg .s { font-size: 12.5px; color: var(--muted); }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 8px 24px; }
+.checks li { display: flex; gap: 10px; align-items: baseline; font-size: 14.5px; min-width: 0; }
+.checks li::before { content: "PASS"; flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--good); background: var(--good-tint); border-radius: 999px; padding: 2px 8px; }
+.checks li span { min-width: 0; overflow-wrap: anywhere; }
+details { border: 1px solid var(--line); border-radius: var(--z-radius-md); background: var(--surface); }
+summary { cursor: pointer; padding: 12px 16px; font-weight: 700; color: var(--head); }
+details > .code { margin: 0 12px 12px; }
+
+.code { position: relative; background: var(--code-bg); color: var(--code-fg); border-radius: var(--z-radius-md); }
+.code pre { margin: 0; padding: 14px 16px; padding-right: 84px; overflow-x: auto; font: 400 13px/1.55 var(--font-mono); tab-size: 2; }
+.code.out pre { padding-right: 16px; color: #c9cfdd; }
+.code .lbl { position: absolute; top: 0; left: 0; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--code-muted); padding: 6px 14px; }
+.code.out { border-left: 4px solid var(--z-indigo-soft); }
+.code.out pre, .code.has-lbl pre { padding-top: 28px; }
+.copy { position: absolute; top: 8px; right: 8px; font: 700 12px/1 var(--font-sans); color: #fff; background: var(--accent); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.copy:hover { background: var(--accent-hover); }
+.copy:focus-visible { outline: 3px solid var(--z-indigo-soft); outline-offset: 2px; }
+.copy.done { background: var(--good); }
+.pass { color: var(--code-pass); } .okc { color: var(--code-info); } .dim { color: var(--code-muted); }
+
+.steps { display: flex; flex-direction: column; gap: 36px; counter-reset: step; padding: 0; margin: 0; list-style: none; }
+.step { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 16px; counter-increment: step; }
+.step::before { content: counter(step); grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; font-size: 19px; display: flex; align-items: center; justify-content: center; }
+.step > h3 { align-self: center; }
+.step .body { grid-column: 2; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.step p, .step li { color: var(--fg); }
+.step ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.callout-box { border-left: 4px solid var(--orange); background: var(--orange-tint); border-radius: var(--z-radius-sm); padding: 12px 16px; font-size: 14.5px; }
+.callout-box.info { border-left-color: var(--cyan); background: var(--cyan-tint); }
+.callout-box b { color: var(--head); }
+.disclaimer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; max-width: 90ch; }
+@media (max-width: 560px) { .step { grid-template-columns: minmax(0, 1fr); } .step::before { grid-row: auto; } .step .body { grid-column: 1; } }
+@media (prefers-reduced-motion: no-preference) { .panel { animation: fade 0.18s ease-out; } @keyframes fade { from { opacity: 0.4; } to { opacity: 1; } } }
+
+/* live SQL tab */
+.live-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.dot { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.dot.on { background: var(--good-tint); color: var(--good); }
+.dot.off { background: var(--orange-tint); color: var(--orange); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 600 13px/1 var(--font-sans); color: var(--head); background: var(--bg); border: 1px solid var(--line-firm); border-radius: 999px; padding: 10px 14px; cursor: pointer; }
+.chip:hover { background: var(--accent-tint); border-color: var(--accent); }
+.chip:focus-visible, .btn:focus-visible, .sqlbox:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sqlbox { width: 100%; min-height: 150px; resize: vertical; background: var(--code-bg); color: var(--code-fg); border: 0; border-left: 4px solid var(--z-indigo-soft); border-radius: var(--z-radius-md); padding: 14px 16px; font: 400 14px/1.55 var(--font-mono); tab-size: 2; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.btn { font: 700 14px/1 var(--font-sans); color: #fff; background: var(--accent); border: 0; border-radius: 999px; padding: 14px 24px; cursor: pointer; }
+.btn:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.btn.alt { background: var(--bg); color: var(--head); border: 1px solid var(--line-firm); }
+.btn.alt:hover { background: var(--surface); }
+.hint { color: var(--muted); font-size: 13px; }
+.res-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.res-meta b { color: var(--head); font-weight: 700; }
+.res-wrap { max-height: 480px; overflow: auto; border: 1px solid var(--line); border-radius: var(--z-radius-md); }
+.res-wrap table { font-size: 13.5px; width: max-content; min-width: 100%; }
+.res-wrap th { position: sticky; top: 0; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--head); z-index: 1; }
+.res-wrap td { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; max-width: 520px; overflow: hidden; text-overflow: ellipsis; }
+.res-wrap td.nul { color: var(--muted); font-style: italic; }
+.res-wrap td.rn, .res-wrap th.rn { color: var(--muted); text-align: right; width: 1%; }
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="mast-in">
+    <div class="brand">
+      <img class="zlogo" src="assets/brand/zetaris-indigo.svg" alt="Zetaris" width="123" height="34">
+      <div class="partner" id="partnerSlot" hidden></div>
+    </div>
+    <div class="eyebrow">Zetaris Unified Semantic Layer on {{STORE_NAME}}</div>
+    <h1>sic_edgar_usl</h1>
+    <p>Seven EDGAR companies tied to the 1,005-code SIC hierarchy through one foreign key, then materialized to an S3-compatible object store and checked from the source API to the Parquet file.</p>
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" id="tab-analysis" aria-controls="panel-analysis" aria-selected="true">USL analysis</button>
+      <button class="tab" role="tab" id="tab-topology" aria-controls="panel-topology" aria-selected="false">Topology and ERD</button>
+      <button class="tab" role="tab" id="tab-proof" aria-controls="panel-proof" aria-selected="false">Proof and recipe</button>
+      <button class="tab" role="tab" id="tab-live" aria-controls="panel-live" aria-selected="false">Live SQL</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ============================ TAB 1 ============================ -->
+<div class="panel" id="panel-analysis" role="tabpanel" aria-labelledby="tab-analysis">
+
+  <section aria-label="Summary">
+    <div class="stats">
+      <div class="stat"><b>2</b><span>tables in the USL</span></div>
+      <div class="stat"><b>1,012</b><span>rows in total</span></div>
+      <div class="stat"><b>12</b><span>columns in total</span></div>
+      <div class="stat"><b>3</b><span>key constraints: 2 primary, 1 foreign</span></div>
+      <div class="stat"><b>2</b><span>tables materialized to object storage</span></div>
+      <div class="stat warn"><b>1</b><span>row fails a check: IBM, SIC 3570</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-tables">
+    <div class="sec-head">
+      <h2 id="h-tables">The two tables</h2>
+      <p class="lede">Both are activated from REST sources, so the data stays at the source and the USL holds the model, keys and checks. Each has also been written once as Parquet to the object store.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <div class="card-top"><h3>sic_code</h3><div class="rows">1,005<small>rows</small></div></div>
+        <p>The SIC hierarchy: one row for each four-digit industry code, with its division, major group and industry group.</p>
+        <dl>
+          <dt>Columns</dt><dd>8, from <code>sic_code</code> to <code>industry_group_desc</code></dd>
+          <dt>Primary key</dt><dd><code>sic_code</code>, 1,005 of 1,005 valid</dd>
+          <dt>Shape</dt><dd>10 divisions, 83 major groups, 416 industry groups</dd>
+          <dt>Source</dt><dd><code>company_dns.sic_codes_raw</code> (API V3), unpacked with <code>explode</code> over the <code>data.sics</code> map. The V4 API returns the same 1,005 codes.</dd>
+          <dt>Object store</dt><dd><code>&lt;your folder&gt;/usl_demo/sic_edgar_usl/sic_code/</code>: 1 Parquet file, 42,039 bytes, 1,005 rows</dd>
+        </dl>
+      </article>
+      <article class="card">
+        <div class="card-top"><h3>company</h3><div class="rows">7<small>rows</small></div></div>
+        <p>One row for each company: its CIK, name, SIC code and the industry wording EDGAR uses.</p>
+        <dl>
+          <dt>Columns</dt><dd>4: <code>cik</code>, <code>entity_name</code>, <code>sic</code>, <code>sic_description_edgar</code></dd>
+          <dt>Primary key</dt><dd><code>cik</code>, 7 of 7 valid</dd>
+          <dt>Foreign key</dt><dd><code>sic</code> references <code>sic_code.sic_code</code>, 6 of 7 valid</dd>
+          <dt>Source</dt><dd><code>UNION ALL</code> of seven <code>sec_data.*_submissions_raw</code> tables; empty values become blank strings</dd>
+          <dt>Object store</dt><dd><code>&lt;your folder&gt;/usl_demo/sic_edgar_usl/company/</code>: 7 Parquet files of one row each, 10,660 bytes, 7 rows</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-div">
+    <div class="sec-head">
+      <h2 id="h-div">Where the SIC codes sit</h2>
+      <p class="lede">Codes in <code>sic_code</code> by division. Manufacturing holds almost half of them, and three of the seven companies sit there.</p>
+    </div>
+    <div class="bars" role="list">
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>A Agriculture, forestry, fishing</b></div><div class="bar-track"><div class="bar-fill" style="width:12.6%"></div></div><div class="bar-val">58</div></div>
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>B Mining</b></div><div class="bar-track"><div class="bar-fill" style="width:6.8%"></div></div><div class="bar-val">31</div></div>
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>C Construction</b></div><div class="bar-track"><div class="bar-fill" style="width:5.7%"></div></div><div class="bar-val">26</div></div>
+      <div class="bar-row hit" role="listitem"><div class="bar-label"><b>D Manufacturing</b><i>Apple, Ford, Tesla</i></div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><div class="bar-val">459</div></div>
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>E Transport, comms, utilities</b></div><div class="bar-track"><div class="bar-fill" style="width:14.6%"></div></div><div class="bar-val">67</div></div>
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>F Wholesale trade</b></div><div class="bar-track"><div class="bar-fill" style="width:15%"></div></div><div class="bar-val">69</div></div>
+      <div class="bar-row hit" role="listitem"><div class="bar-label"><b>G Retail trade</b><i>Target, Walmart</i></div><div class="bar-track"><div class="bar-fill" style="width:13.9%"></div></div><div class="bar-val">64</div></div>
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>H Finance, insurance, real estate</b></div><div class="bar-track"><div class="bar-fill" style="width:11.5%"></div></div><div class="bar-val">53</div></div>
+      <div class="bar-row hit" role="listitem"><div class="bar-label"><b>I Services</b><i>Oracle</i></div><div class="bar-track"><div class="bar-fill" style="width:32.7%"></div></div><div class="bar-val">150</div></div>
+      <div class="bar-row" role="listitem"><div class="bar-label"><b>J Public administration</b></div><div class="bar-track"><div class="bar-fill" style="width:6.1%"></div></div><div class="bar-val">28</div></div>
+    </div>
+    <div class="key"><span class="hit">Division with a company</span><span>No company yet</span><span class="note">IBM (3570) would sit in D, but 3570 is not in the hierarchy</span></div>
+  </section>
+
+  <section aria-labelledby="h-co">
+    <div class="sec-head">
+      <h2 id="h-co">Each company against the hierarchy</h2>
+      <p class="lede">The code is joined to <code>sic_code</code>, then the two descriptions are compared. EDGAR writes its own wording, so a match on code does not mean identical text.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Company</th><th>CIK</th><th>SIC</th><th>EDGAR wording</th><th>Hierarchy wording</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Apple Inc.</td><td class="mono num">0000320193</td><td class="mono">3571</td><td>Electronic Computers</td><td>Electronic Computers</td><td><span class="pill good">Identical</span></td></tr>
+          <tr><td>Ford Motor Co</td><td class="mono num">0000037996</td><td class="mono">3711</td><td>Motor Vehicles &amp; Passenger Car Bodies</td><td>Motor Vehicles and Passenger Car Bodies</td><td><span class="pill info">Wording differs</span></td></tr>
+          <tr><td>Tesla, Inc.</td><td class="mono num">0001318605</td><td class="mono">3711</td><td>Motor Vehicles &amp; Passenger Car Bodies</td><td>Motor Vehicles and Passenger Car Bodies</td><td><span class="pill info">Wording differs</span></td></tr>
+          <tr><td>Oracle Corp</td><td class="mono num">0001341439</td><td class="mono">7372</td><td>Services-Prepackaged Software</td><td>Prepackaged Software</td><td><span class="pill info">Wording differs</span></td></tr>
+          <tr><td>Target Corp</td><td class="mono num">0000027419</td><td class="mono">5331</td><td>Retail-Variety Stores</td><td>Variety Stores</td><td><span class="pill info">Wording differs</span></td></tr>
+          <tr><td>Walmart Inc.</td><td class="mono num">0000104169</td><td class="mono">5331</td><td>Retail-Variety Stores</td><td>Variety Stores</td><td><span class="pill info">Wording differs</span></td></tr>
+          <tr><td>International Business Machines Corp</td><td class="mono num">0000051143</td><td class="mono">3570</td><td>Computer &amp; office Equipment</td><td>No row for 3570</td><td><span class="pill warn">No parent code</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-dq">
+    <div class="sec-head">
+      <h2 id="h-dq">Data quality and what to do with it</h2>
+      <p class="lede">The result of <code>RUN DQ</code> on <code>company</code>, followed by what the numbers mean.</p>
+    </div>
+    <div class="two">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Column</th><th>Rule</th><th class="r">Checked</th><th class="r">Valid</th><th class="r">Invalid</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">cik</td><td>Primary key</td><td class="r num">7</td><td class="r num">7</td><td class="r num">0</td></tr>
+            <tr><td class="mono">sic</td><td>Foreign key to <code>sic_code</code></td><td class="r num">7</td><td class="r num">6</td><td class="r num"><b style="color:var(--orange)">1</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="finds">
+        <li><b>IBM fails because its code is missing, not because the data is wrong.</b><span>EDGAR files IBM under SIC 3570. The hierarchy lists 3571 and its neighbours but not 3570. Adding that one row to <code>sic_code</code> would clear the failure.</span></li>
+        <li><b>The older profile view hides this gap; the USL shows it.</b><span><code>edgar.all_companies_profile_table</code> joins the same two sources and silently drops IBM, so it has 6 rows. The USL keeps all 7 and flags the one that does not resolve.</span></li>
+        <li><b>The object store holds all 7 companies.</b><span>The materialization used <code>recordType = 'all'</code>, so IBM is in the Parquet file. Writing only rows that pass the checks needs <code>'valid'</code>, which has not been tried.</span></li>
+        <li><b>Five of the six matches use different wording.</b><span>EDGAR prefixes the division (&ldquo;Services-&rdquo;) and writes &ldquo;&amp;&rdquo;, while the hierarchy spells out &ldquo;and&rdquo;. A key check passes these, so compare text separately if wording matters.</span></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<!-- ============================ TAB 2 ============================ -->
+<div class="panel" id="panel-topology" role="tabpanel" aria-labelledby="tab-topology" hidden>
+
+  <section aria-labelledby="h-topo">
+    <div class="sec-head">
+      <h2 id="h-topo">Where the data comes from and where it lands</h2>
+      <p class="lede">Two public APIs feed two Lightning databases. Two activation queries turn those raw tables into the USL tables, and a materialize statement writes each USL table to a bucket on {{STORE_NAME}}. Left to right is the direction the data moves.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 1230 592" role="img" aria-labelledby="topo-t topo-d" xmlns="http://www.w3.org/2000/svg">
+        <title id="topo-t">Data lineage for sic_edgar_usl</title>
+        <desc id="topo-d">The company-dns API feeds COMPANY_DNS, then the sic_code activation, the sic_code table and a Parquet folder in the object store bucket. The SEC EDGAR submissions API feeds SEC_DATA, then the company activation, the company table and a second Parquet folder. A foreign key links company to sic_code.</desc>
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--head)"/></marker>
+          <marker id="arr-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--cyan)"/></marker>
+          <marker id="arr-fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--orange)"/></marker>
+        </defs>
+
+        <text class="colh" x="20" y="30">1  EXTERNAL SOURCE</text>
+        <text class="colh" x="270" y="30">2  LIGHTNING DATABASE</text>
+        <text class="colh" x="520" y="30">3  USL ACTIVATION</text>
+        <text class="colh" x="770" y="30">4  USL TABLE</text>
+        <text class="colh" x="1020" y="30">5  S3 OBJECT STORE</text>
+        <line x1="0" y1="44" x2="1230" y2="44" stroke="var(--line)" stroke-width="1"/>
+
+        <!-- lane 1 -->
+        <rect class="lane" x="0" y="58" width="1230" height="180"/>
+        <text class="lane-t" x="20" y="77">SIC HIERARCHY</text>
+        <g transform="translate(20,88)">
+          <rect class="box ext" width="190" height="130" rx="4"/>
+          <text class="bt" x="14" y="24">company-dns</text>
+          <text class="bs" x="14" y="40">Public REST API</text>
+          <text class="bm" x="14" y="64">/V3.0/na/sic/code/%</text>
+          <text class="bm" x="14" y="80">/V4.0/na/sic/code/%</text>
+          <text class="bm" x="14" y="96">1,005 codes each</text>
+          <text class="bm" x="14" y="112">2 calls</text>
+        </g>
+        <g transform="translate(270,88)">
+          <rect class="box" width="190" height="130" rx="4"/>
+          <text class="bt" x="14" y="24">COMPANY_DNS</text>
+          <text class="bs" x="14" y="40">Lightning database</text>
+          <text class="bm" x="14" y="64">sic_codes_raw (V3)</text>
+          <text class="bm" x="14" y="80">sic_codes_v4_raw</text>
+          <text class="bm" x="14" y="96">cached in memory</text>
+          <text class="bm" x="14" y="112">view sic_codes_table</text>
+        </g>
+        <g transform="translate(520,88)">
+          <rect class="box" width="190" height="130" rx="4"/>
+          <text class="bt" x="14" y="24">ACTIVATE sic_code</text>
+          <text class="bs" x="14" y="40">USL activation query</text>
+          <text class="bm" x="14" y="64">explode(data.sics)</text>
+          <text class="bm" x="14" y="80">one row per code</text>
+          <text class="bm" x="14" y="96">8 columns</text>
+        </g>
+        <g transform="translate(770,88)">
+          <rect class="box usl" width="190" height="130" rx="4"/>
+          <rect class="bar-usl" x="0" y="0" width="190" height="5"/>
+          <text class="bt" x="14" y="26" style="font-family:var(--font-mono)">sic_code</text>
+          <text class="bs" x="14" y="42">in sic_edgar_usl</text>
+          <text class="bm" x="14" y="66">1,005 rows, 8 cols</text>
+          <text class="bm" x="14" y="82">PK sic_code</text>
+          <text class="bm" x="14" y="98">10 divisions</text>
+          <text class="bm" x="14" y="114">83 major groups</text>
+        </g>
+        <g transform="translate(1020,88)">
+          <rect class="box store" width="190" height="130" rx="4"/>
+          <rect class="bar-store" x="0" y="0" width="190" height="5"/>
+          <text class="bt" x="14" y="26">Parquet folder</text>
+          <text class="bs" x="14" y="42">bucket &lt;bucket&gt;</text>
+          <text class="bm" x="14" y="66">&lt;your folder&gt;/usl_demo/</text>
+          <text class="bm" x="14" y="82">sic_edgar_usl/sic_code/</text>
+          <text class="bm" x="14" y="98">1 file, 42,039 bytes</text>
+          <text class="bm" x="14" y="114">1,005 rows verified</text>
+        </g>
+        <line class="flow" x1="214" y1="153" x2="266" y2="153" marker-end="url(#arr)"/>
+        <text class="flow-lbl" x="240" y="143" text-anchor="middle">GET</text>
+        <line class="flow" x1="464" y1="153" x2="516" y2="153" marker-end="url(#arr)"/>
+        <text class="flow-lbl" x="490" y="143" text-anchor="middle">reads</text>
+        <line class="flow" x1="714" y1="153" x2="766" y2="153" marker-end="url(#arr)"/>
+        <text class="flow-lbl" x="740" y="143" text-anchor="middle">creates</text>
+        <line class="flow store" x1="964" y1="153" x2="1016" y2="153" marker-end="url(#arr-s)"/>
+        <text class="flow-lbl" x="990" y="143" text-anchor="middle">writes</text>
+
+        <!-- lane 2 -->
+        <rect class="lane" x="0" y="290" width="1230" height="180"/>
+        <text class="lane-t" x="20" y="309">EDGAR COMPANIES</text>
+        <g transform="translate(20,320)">
+          <rect class="box ext" width="190" height="130" rx="4"/>
+          <text class="bt" x="14" y="24">SEC EDGAR</text>
+          <text class="bs" x="14" y="40">Public REST API</text>
+          <text class="bm" x="14" y="64">data.sec.gov/submissions</text>
+          <text class="bm" x="14" y="80">CIK&lt;10 digits&gt;.json</text>
+          <text class="bm" x="14" y="96">7 calls, 7 companies</text>
+        </g>
+        <g transform="translate(270,320)">
+          <rect class="box" width="190" height="130" rx="4"/>
+          <text class="bt" x="14" y="24">SEC_DATA</text>
+          <text class="bs" x="14" y="40">Lightning database</text>
+          <text class="bm" x="14" y="64">7 REST tables named</text>
+          <text class="bm" x="14" y="80">{company}_</text>
+          <text class="bm" x="14" y="96">submissions_raw</text>
+        </g>
+        <g transform="translate(520,320)">
+          <rect class="box" width="190" height="130" rx="4"/>
+          <text class="bt" x="14" y="24">ACTIVATE company</text>
+          <text class="bs" x="14" y="40">USL activation query</text>
+          <text class="bm" x="14" y="64">UNION ALL of 7 tables</text>
+          <text class="bm" x="14" y="80">cik, name, sic,</text>
+          <text class="bm" x="14" y="96">sicDescription</text>
+        </g>
+        <g transform="translate(770,320)">
+          <rect class="box usl" width="190" height="130" rx="4"/>
+          <rect class="bar-usl" x="0" y="0" width="190" height="5"/>
+          <text class="bt" x="14" y="26" style="font-family:var(--font-mono)">company</text>
+          <text class="bs" x="14" y="42">in sic_edgar_usl</text>
+          <text class="bm" x="14" y="66">7 rows, 4 columns</text>
+          <text class="bm" x="14" y="82">PK cik, FK sic</text>
+          <text class="bm" x="14" y="98">PK valid 7 of 7</text>
+          <text class="bm" x="14" y="114">FK valid 6 of 7</text>
+        </g>
+        <g transform="translate(1020,320)">
+          <rect class="box store" width="190" height="130" rx="4"/>
+          <rect class="bar-store" x="0" y="0" width="190" height="5"/>
+          <text class="bt" x="14" y="26">Parquet folder</text>
+          <text class="bs" x="14" y="42">bucket &lt;bucket&gt;</text>
+          <text class="bm" x="14" y="66">&lt;your folder&gt;/usl_demo/</text>
+          <text class="bm" x="14" y="82">sic_edgar_usl/company/</text>
+          <text class="bm" x="14" y="98">7 files, 10,660 bytes</text>
+          <text class="bm" x="14" y="114">7 rows verified</text>
+        </g>
+        <line class="flow" x1="214" y1="385" x2="266" y2="385" marker-end="url(#arr)"/>
+        <text class="flow-lbl" x="240" y="375" text-anchor="middle">GET</text>
+        <line class="flow" x1="464" y1="385" x2="516" y2="385" marker-end="url(#arr)"/>
+        <text class="flow-lbl" x="490" y="375" text-anchor="middle">reads</text>
+        <line class="flow" x1="714" y1="385" x2="766" y2="385" marker-end="url(#arr)"/>
+        <text class="flow-lbl" x="740" y="375" text-anchor="middle">creates</text>
+        <line class="flow store" x1="964" y1="385" x2="1016" y2="385" marker-end="url(#arr-s)"/>
+        <text class="flow-lbl" x="990" y="375" text-anchor="middle">writes</text>
+
+        <!-- foreign key between the two USL tables -->
+        <line class="fk-line" x1="865" y1="316" x2="865" y2="222" marker-end="url(#arr-fk)"/>
+        <text class="fk-lbl" x="853" y="268" text-anchor="end">FK: company.sic to sic_code</text>
+
+        <!-- footers -->
+        <rect class="also" x="20" y="500" width="500" height="72" rx="4"/>
+        <text class="bt" x="34" y="524">Onboarded with the sources, not read by this USL</text>
+        <text class="bs" x="34" y="544">Revenue facts: 7 REST tables in SEC_DATA, 7 views in the edgar container.</text>
+        <text class="bs" x="34" y="560">Profile view: all_companies_profile_table joins SIC and drops IBM (6 rows).</text>
+        <rect class="box store" x="770" y="500" width="440" height="72" rx="4"/>
+        <text class="bt" x="784" y="524">Storage setting: s3-compat</text>
+        <text class="bs" x="784" y="544">S3 path s3a://&lt;bucket&gt;/&lt;your folder&gt;</text>
+        <text class="bs" x="784" y="560">Endpoint https://&lt;your S3 endpoint&gt;; files stay in your folder.</text>
+      </svg>
+    </div>
+    <p class="cap">Dashed outlines are public services. Solid dark outlines are objects on the Zetaris instance. Blue outlines are the two USL tables, and cyan outlines are Parquet folders in the bucket on {{STORE_NAME}}.</p>
+  </section>
+
+  <section aria-labelledby="h-phys">
+    <div class="sec-head">
+      <h2 id="h-phys">Physical topology</h2>
+      <p class="lede">What runs where, and which protocol each link uses. Credentials for the object store stay on the workstation and travel inside the materialize statement.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 1100 450" role="img" aria-labelledby="phys-t phys-d" xmlns="http://www.w3.org/2000/svg">
+        <title id="phys-t">Physical topology</title>
+        <desc id="phys-d">An operator workstation talks to a local Zetaris instance over JDBC and REST, and to the public APIs and the object store directly. The Zetaris instance reads the public APIs over HTTPS and writes Parquet to the object store over S3.</desc>
+        <defs>
+          <marker id="p-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--head)"/></marker>
+          <marker id="p-arr-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--cyan)"/></marker>
+        </defs>
+
+        <g transform="translate(20,130)">
+          <rect class="box" width="230" height="190" rx="4"/>
+          <text class="bt" x="14" y="26">Operator workstation</text>
+          <text class="bs" x="14" y="44">macOS, repo checkout</text>
+          <text class="bm" x="14" y="72">Python 3.14 .venv</text>
+          <text class="bm" x="14" y="90">jaydebeapi, boto3,</text>
+          <text class="bm" x="14" y="106">pyarrow</text>
+          <text class="bm" x="14" y="130">JDBC driver JAR, JDK 17</text>
+          <text class="bm" x="14" y="154">.env.local holds the keys</text>
+        </g>
+        <g transform="translate(420,40)">
+          <rect class="box usl" width="300" height="320" rx="4"/>
+          <rect class="bar-usl" x="0" y="0" width="300" height="5"/>
+          <text class="bt" x="14" y="28">Zetaris instance 2.4.3.1</text>
+          <text class="bs" x="14" y="46">local install</text>
+          <text class="bm" x="14" y="76">Lightning SQL engine</text>
+          <text class="bm" x="14" y="104">JDBC  localhost:10000</text>
+          <text class="bm" x="14" y="122">REST  localhost:8888</text>
+          <text class="bm" x="14" y="150">Metastore: usl_demo</text>
+          <text class="bm" x="14" y="168">  sic_edgar_usl, 2 tables</text>
+          <text class="bm" x="14" y="196">Lightning databases:</text>
+          <text class="bm" x="14" y="214">  COMPANY_DNS, SEC_DATA</text>
+          <text class="bm" x="14" y="242">Storage setting:</text>
+          <text class="bm" x="14" y="260">  s3-compat</text>
+        </g>
+        <g transform="translate(830,40)">
+          <rect class="box ext" width="250" height="120" rx="4"/>
+          <text class="bt" x="14" y="26">Public APIs</text>
+          <text class="bs" x="14" y="44">HTTPS</text>
+          <text class="bm" x="14" y="72">company-dns.mediumroast.io</text>
+          <text class="bm" x="14" y="94">data.sec.gov</text>
+        </g>
+        <g transform="translate(830,230)">
+          <rect class="box store" width="250" height="150" rx="4"/>
+          <rect class="bar-store" x="0" y="0" width="250" height="5"/>
+          <text class="bt" x="14" y="28">{{STORE_LABEL}}</text>
+          <text class="bs" x="14" y="46">S3-compatible object store</text>
+          <text class="bm" x="14" y="74">&lt;endpoint&gt;:443</text>
+          <text class="bm" x="14" y="92">bucket &lt;bucket&gt;</text>
+          <text class="bm" x="14" y="110">path or virtual, SigV4</text>
+          <text class="bm" x="14" y="128">TLS verified, never off</text>
+        </g>
+
+        <line class="flow" x1="254" y1="190" x2="416" y2="190" marker-end="url(#p-arr)"/>
+        <text class="flow-lbl" x="335" y="180" text-anchor="middle">SQL, JDBC :10000</text>
+        <line class="flow" x1="254" y1="260" x2="416" y2="260" marker-end="url(#p-arr)"/>
+        <text class="flow-lbl" x="335" y="250" text-anchor="middle">REST :8888</text>
+        <line class="flow" x1="724" y1="100" x2="826" y2="100" marker-end="url(#p-arr)"/>
+        <text class="flow-lbl" x="775" y="90" text-anchor="middle">HTTPS GET</text>
+        <text class="flow-lbl" x="775" y="118" text-anchor="middle">REST tables</text>
+        <line class="flow store" x1="724" y1="300" x2="826" y2="300" marker-end="url(#p-arr-s)"/>
+        <text class="flow-lbl" x="775" y="290" text-anchor="middle">S3A write</text>
+        <text class="flow-lbl" x="775" y="318" text-anchor="middle">MATERIALIZE</text>
+        <path class="flow store" d="M135 324 V420 H955 V384" marker-end="url(#p-arr-s)"/>
+        <text class="flow-lbl" x="545" y="412" text-anchor="middle">boto3 S3 API: probe and verify</text>
+        <path class="flow" d="M135 126 V20 H955 V36" marker-end="url(#p-arr)"/>
+        <text class="flow-lbl" x="545" y="14" text-anchor="middle">live API check in verify_chain</text>
+      </svg>
+    </div>
+    <p class="cap">The REST link on :8888 is used once, to create the storage setting. The materialize statement itself goes over JDBC and the Zetaris engine writes to the bucket, so the engine host must trust the endpoint's TLS certificate chain.</p>
+  </section>
+
+  <section aria-labelledby="h-erd">
+    <div class="sec-head">
+      <h2 id="h-erd">Entity relationship diagram</h2>
+      <p class="lede">Many companies can share one SIC code. The highlighted column is the foreign key that carries the join, and the one failing row.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 830 320" role="img" aria-labelledby="erd-t erd-d" xmlns="http://www.w3.org/2000/svg">
+        <title id="erd-t">Entity relationship diagram</title>
+        <desc id="erd-d">company has a many-to-one relationship to sic_code through company.sic, which references sic_code.sic_code.</desc>
+
+        <g transform="translate(30,30)">
+          <rect class="ent" width="310" height="260"/>
+          <rect class="ent-h" width="310" height="36"/>
+          <text class="ent-ht" x="14" y="23">sic_code</text>
+          <text class="ent-hs" x="296" y="23" text-anchor="end">1,005 rows</text>
+          <g>
+            <rect class="badge" x="12" y="43" width="26" height="14" rx="7"/><text class="bd" x="25" y="53" text-anchor="middle">PK</text>
+            <text class="cn" x="50" y="54">sic_code</text><text class="ct" x="296" y="54" text-anchor="end">varchar(4)</text>
+            <line class="row-sep" x1="0" y1="64" x2="310" y2="64"/>
+            <text class="cn" x="50" y="82">description</text><text class="ct" x="296" y="82" text-anchor="end">varchar(200)</text>
+            <line class="row-sep" x1="0" y1="92" x2="310" y2="92"/>
+            <text class="cn" x="50" y="110">division</text><text class="ct" x="296" y="110" text-anchor="end">varchar(1)</text>
+            <line class="row-sep" x1="0" y1="120" x2="310" y2="120"/>
+            <text class="cn" x="50" y="138">division_desc</text><text class="ct" x="296" y="138" text-anchor="end">varchar(200)</text>
+            <line class="row-sep" x1="0" y1="148" x2="310" y2="148"/>
+            <text class="cn" x="50" y="166">major_group</text><text class="ct" x="296" y="166" text-anchor="end">varchar(2)</text>
+            <line class="row-sep" x1="0" y1="176" x2="310" y2="176"/>
+            <text class="cn" x="50" y="194">major_group_desc</text><text class="ct" x="296" y="194" text-anchor="end">varchar(200)</text>
+            <line class="row-sep" x1="0" y1="204" x2="310" y2="204"/>
+            <text class="cn" x="50" y="222">industry_group</text><text class="ct" x="296" y="222" text-anchor="end">varchar(3)</text>
+            <line class="row-sep" x1="0" y1="232" x2="310" y2="232"/>
+            <text class="cn" x="50" y="250">industry_group_desc</text><text class="ct" x="296" y="250" text-anchor="end">varchar(200)</text>
+          </g>
+        </g>
+
+        <g transform="translate(470,30)">
+          <rect class="ent" width="330" height="148"/>
+          <rect class="ent-h" width="330" height="36"/>
+          <text class="ent-ht" x="14" y="23">company</text>
+          <text class="ent-hs" x="316" y="23" text-anchor="end">7 rows</text>
+          <rect class="badge" x="12" y="43" width="26" height="14" rx="7"/><text class="bd" x="25" y="53" text-anchor="middle">PK</text>
+          <text class="cn" x="50" y="54">cik</text><text class="ct" x="316" y="54" text-anchor="end">varchar(10)</text>
+          <line class="row-sep" x1="0" y1="64" x2="330" y2="64"/>
+          <text class="cn" x="50" y="82">entity_name</text><text class="ct" x="316" y="82" text-anchor="end">varchar(200)</text>
+          <line class="row-sep" x1="0" y1="92" x2="330" y2="92"/>
+          <rect class="row-hl" x="1" y="93" width="328" height="27"/>
+          <rect class="badge fk" x="12" y="99" width="26" height="14" rx="7"/><text class="bd fk" x="25" y="109" text-anchor="middle">FK</text>
+          <text class="cn" x="50" y="110">sic</text><text class="ct" x="316" y="110" text-anchor="end">varchar(4)</text>
+          <line class="row-sep" x1="0" y1="120" x2="330" y2="120"/>
+          <text class="cn" x="50" y="138">sic_description_edgar</text><text class="ct" x="316" y="138" text-anchor="end">varchar(200)</text>
+        </g>
+
+        <path class="fk-line" d="M470 140 H405 V84 H340"/>
+        <path class="fk-line" d="M452 140 L470 128 M452 140 L470 152 M452 140 L470 140"/>
+        <path class="fk-line" d="M352 74 V94 M360 74 V94"/>
+        <text class="fk-lbl" x="445" y="125" text-anchor="end">many</text>
+        <text class="fk-lbl" x="372" y="68" text-anchor="start">one</text>
+
+        <rect class="callout" x="470" y="200" width="330" height="90" rx="4"/>
+        <rect class="callout-bar" x="470" y="200" width="4" height="90"/>
+        <text class="callout-t" x="490" y="224">company.sic references sic_code.sic_code</text>
+        <text class="callout-s" x="490" y="246">6 of 7 companies find their parent row.</text>
+        <text class="callout-s" x="490" y="264">IBM carries SIC 3570, which has no row.</text>
+        <text class="callout-s" x="490" y="282">Parquet: 7 files, 10,660 bytes. sic_code: 1 file.</text>
+      </svg>
+    </div>
+    <p class="cap">Types are the USL column definitions. Line ends use crow's foot notation: the three-pronged end is the many side, the double bar is the one side.</p>
+  </section>
+</div>
+<!-- ============================ TAB 3 ============================ -->
+<div class="panel" id="panel-proof" role="tabpanel" aria-labelledby="tab-proof" hidden>
+
+  <section aria-labelledby="h-proof">
+    <div class="sec-head">
+      <h2 id="h-proof">Verified from the source API to the Parquet file</h2>
+      <p class="lede">This is the captured output of <code>verify_chain.py</code>. It calls the live APIs, queries each stage in Zetaris, then reads the Parquet files back from the bucket and compares the rows.</p>
+    </div>
+    <div class="verdict">
+      <div class="big">CHAIN OK</div>
+      <div class="meta">
+        <span><b>Run</b> example capture</span>
+        <span><b>Exit code</b> 0</span>
+        <span><b>Tables</b> sic_code, company</span>
+        <span><b>Stages checked</b> 5 each</span>
+      </div>
+    </div>
+
+    <div class="callout-box info"><b>Example output.</b> This is a captured run on a test instance. Your times, sizes and file names will differ. Run <code>verify_chain.py</code> (recipe step 11) to see your own.</div>
+
+    <div class="chain">
+      <h3>sic_code: company-dns API to Parquet</h3>
+      <div class="stages">
+        <div class="stg"><span class="k">1 Source API</span><span class="t">company-dns V3 and V4, live</span><span class="n">1,005</span><span class="s">each version</span></div>
+        <div class="stg info"><span class="k">2 Lightning table</span><span class="t">sic_codes_raw</span><span class="n">1</span><span class="s">one JSON document</span></div>
+        <div class="stg"><span class="k">3 SchemaStore view</span><span class="t">sic_codes_table</span><span class="n">1,005</span><span class="s">rows</span></div>
+        <div class="stg"><span class="k">4 USL table</span><span class="t">sic_code</span><span class="n">1,005</span><span class="s">rows</span></div>
+        <div class="stg"><span class="k">5 Parquet</span><span class="t">usl_demo/.../sic_code/</span><span class="n">1,005</span><span class="s">rows, 8 columns</span></div>
+      </div>
+      <ul class="checks">
+        <li><span>API V3 codes are identical to the view codes</span></li>
+        <li><span>View codes are identical to the USL codes</span></li>
+        <li><span>USL rows are identical to the Parquet rows, all 8 columns</span></li>
+              </ul>
+    </div>
+
+    <div class="chain">
+      <h3>company: SEC EDGAR API to Parquet</h3>
+      <div class="stages">
+        <div class="stg"><span class="k">1 Source API</span><span class="t">SEC EDGAR submissions, live</span><span class="n">7</span><span class="s">companies, 7 calls</span></div>
+        <div class="stg info"><span class="k">2 Lightning tables</span><span class="t">7 submissions_raw tables</span><span class="n">7</span><span class="s">one document each</span></div>
+        <div class="stg"><span class="k">3 SchemaStore view</span><span class="t">all_companies_<wbr>profile_table</span><span class="n">6</span><span class="s">omits IBM, as expected</span></div>
+        <div class="stg"><span class="k">4 USL table</span><span class="t">company</span><span class="n">7</span><span class="s">rows</span></div>
+        <div class="stg"><span class="k">5 Parquet</span><span class="t">usl_demo/.../company/</span><span class="n">7</span><span class="s">rows, 4 columns</span></div>
+      </div>
+      <ul class="checks">
+        <li><span>API CIKs are identical to the USL CIKs</span></li>
+        <li><span>API (cik, name, sic) is identical to the USL rows</span></li>
+        <li><span>The view holds exactly the companies whose SIC code exists, which leaves out CIK 0000051143 (IBM, SIC 3570)</span></li>
+        <li><span>USL rows are identical to the Parquet rows, all 4 columns</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-bucket">
+    <div class="sec-head">
+      <h2 id="h-bucket">What is in the bucket</h2>
+      <p class="lede">Your own folder in bucket <code>&lt;bucket&gt;</code> on {{STORE_NAME}}: 10 objects, 52,699 bytes. Each table folder also holds an empty <code>_SUCCESS</code> marker that the writer leaves when it finishes.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Folder</th><th>Written by</th><th class="r">Parquet files</th><th class="r">Bytes</th><th class="r">Rows</th><th>Written (UTC)</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">&lt;your folder&gt;/usl_demo/sic_edgar_usl/sic_code/</td><td>MATERIALIZE USL TABLE (SQL)</td><td class="r num">1</td><td class="r num">42,039</td><td class="r num">1,005</td><td class="num">2026-10-28 23:27</td></tr>
+          <tr><td class="mono">&lt;your folder&gt;/usl_demo/sic_edgar_usl/company/</td><td>MATERIALIZE USL TABLE (SQL)</td><td class="r num">7</td><td class="r num">10,660</td><td class="r num">7</td><td class="num">2026-10-28 23:28</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <details>
+      <summary>Show the raw captured output</summary>
+      <div class="code has-lbl"><span class="lbl">verify_chain.py output</span><button class="copy" type="button" data-target="raw">Copy</button><pre id="raw"><!--include:fixtures/verify_chain_example.txt--></pre></div>
+    </details>
+  </section>
+
+  <section aria-labelledby="h-recipe">
+    <div class="sec-head">
+      <h2 id="h-recipe">Recipe: repeat this at your site</h2>
+      <p class="lede">Fourteen steps from an unpacked package to a verified Parquet object in a bucket on {{STORE_NAME}}, ending with a troubleshooting table and the cleanup. Each step has the command to copy and the output to expect. Replace anything in angle brackets with your own value. Values such as timestamps, ids and file names will differ.</p>
+    </div>
+
+    <ol class="steps">
+
+      <li class="step">
+        <h3>Check what you need</h3>
+        <div class="body">
+          <ul>
+            <li>Zetaris Lightning 2.4.3.1 or later, running, with JDBC on port 10000 and the REST API on port 8888, and a user that can create USLs and storage settings.</li>
+            <li>The Zetaris JDBC driver JAR, and a JDK 11 or later (JDK 17 was used).</li>
+            <li>Python 3.10 or later.</li>
+            <li>An API key you create yourself in the Zetaris GUI (the scripts never create one).</li>
+            <li>For {{STORE_NAME}}: the S3 endpoint URL, an access key, a secret key and an existing bucket.</li>
+            <li>The package, unzipped. It holds <code>systems/</code>, <code>scripts/</code>, <code>open_data/</code> and <code>docs/</code>.</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Create the Python environment</h3>
+        <div class="body">
+          <p>From the package folder:</p>
+          <div class="code"><button class="copy" type="button" data-target="c-venv">Copy</button><pre id="c-venv">cd &lt;package folder&gt;
+python3 -m venv .venv
+.venv/bin/pip install -r systems/object_stores/requirements.txt</pre></div>
+          <div class="callout-box info"><b>Expect</b> no errors. The venv gives the scripts <code>jaydebeapi</code> for JDBC. The scripts find a Homebrew JDK on macOS by themselves.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Put your settings in .env.local</h3>
+        <div class="body">
+          <p>Copy <code>systems/object_stores/.env.example</code> to <code>.env.local</code> in the package folder (<code>cp systems/object_stores/.env.example .env.local</code>) and fill it in. Every script reads the keys from it without printing them. Do not put <code>.env.local</code> in a ZIP you share. Never paste keys into a prompt, a chat or a commit.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-env">Copy</button><pre id="c-env"># Zetaris
+ZETARIS_USERNAME=&lt;your Zetaris user id&gt;
+ZETARIS_PASSWORD=&lt;your Zetaris password&gt;
+ZETARIS_API_KEY=&lt;API key created in the Zetaris GUI&gt;
+ZETARIS_USER_AGENT=&lt;app name&gt; &lt;contact email&gt;
+ZETARIS_JDBC_JAR=/full/path/to/ndp-jdbc-driver-&lt;version&gt;-driver.jar
+
+# S3-compatible object store
+S3_ENDPOINT_URL=https://&lt;your S3 endpoint&gt;
+S3_ACCESS_KEY=&lt;access key&gt;
+S3_SECRET_KEY=&lt;secret key&gt;
+S3_BUCKET=&lt;bucket name&gt;
+S3_PREFIX=&lt;your own folder, for example jane-usl-test&gt;</pre></div>
+          <div class="callout-box info"><b>Note</b> <code>ZETARIS_USER_AGENT</code> is sent to the public SEC EDGAR API, which asks callers to identify themselves. Use a real contact. The REST URL defaults to <code>http://localhost:8888/api/v1.0</code> and the organization id to <code>1</code>, so a local install needs nothing more.</div>
+          <div class="callout-box info"><b>Optional</b> Three more settings adapt the scripts to a store that behaves differently: <code>S3_ADDRESSING</code> (<code>path</code> or <code>virtual</code>), <code>S3_REGION</code> and <code>S3_CA_BUNDLE</code> (a PEM file, for a private certificate authority). Leave them out until the probe in step 8 says otherwise.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Run the preflight</h3>
+        <div class="body">
+          <p>Read-only. It checks the settings, REST, Java, the venv, the JAR and a JDBC <code>SELECT 1</code>.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-pre">Copy</button><pre id="c-pre">python3 scripts/preflight.py --jdbc</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre><span class="pass">[PASS]</span> env file: &lt;package&gt;/.env.local
+<span class="pass">[PASS]</span> ZETARIS_API_KEY: set
+<span class="pass">[PASS]</span> ZETARIS_USERNAME: set
+<span class="pass">[PASS]</span> ZETARIS_PASSWORD: set
+<span class="pass">[PASS]</span> REST datasources: HTTP 200
+<span class="pass">[PASS]</span> REST SELECT 1
+<span class="pass">[PASS]</span> JDBC port 10000: open
+<span class="pass">[PASS]</span> Java (JDK 11+): /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+<span class="pass">[PASS]</span> .venv: &lt;package&gt;/.venv/bin/python
+<span class="pass">[PASS]</span> jaydebeapi: importable
+<span class="pass">[PASS]</span> driver JAR: /full/path/to/ndp-jdbc-driver-&lt;version&gt;-driver.jar
+<span class="pass">[PASS]</span> JDBC SELECT 1
+<span class="okc">READY</span></pre></div>
+          <div class="callout-box">If you see <b>NOT READY</b>, fix the line marked FAIL first. Every later step assumes READY.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Onboard the sources and build the USL</h3>
+        <div class="body">
+          <p>Show the plan first. Nothing is sent.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-dry">Copy</button><pre id="c-dry">python3 scripts/onboard.py run sic_edgar_usl --channel jdbc --dry-run</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre> 1. company_dns      rest  open_data/rest_apis/sql/rate_limited/12_company_dns_create.sql
+ 2. edgar_facts      rest  open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql
+ 3. edgar_profiles   rest  open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql
+ 4. sic_edgar_usl    usl   open_data/usl/sql/02_sic_edgar_usl_create.sql
+<span class="dim">(dry run: nothing sent)</span></pre></div>
+          <p>Then run it. This creates objects on the instance and calls the public APIs once, so run it once and deliberately.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-onb">Copy</button><pre id="c-onb">python3 scripts/onboard.py run sic_edgar_usl --channel jdbc</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>=== company_dns (10 statements, dependency)
+    <span class="pass">10 ok</span>
+=== edgar_facts (16 statements, dependency)
+    <span class="pass">16 ok</span>
+=== edgar_profiles (15 statements, dependency)
+    <span class="pass">15 ok</span>
+=== sic_edgar_usl (9 statements)
+    <span class="pass">9 ok</span>
+done</pre></div>
+          <div class="callout-box info"><b>Note</b> Re-running on an instance that already has these objects needs <code>--skip-exists</code>. The line <code>SLF4J: Failed to load class</code> is a harmless warning from the driver, which bundles no logging backend.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Confirm the USL has the data</h3>
+        <div class="body">
+          <div class="code"><button class="copy" type="button" data-target="c-cnt">Copy</button><pre id="c-cnt">python3 scripts/run_sql.py --channel jdbc -e "SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.sic_code"
+python3 scripts/run_sql.py --channel jdbc -e "SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.company"
+python3 scripts/run_sql.py --channel jdbc -e "RUN DQ TABLE lightning.metastore.usl_demo.sic_edgar_usl.company"</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>[1005]
+[7]
+['cik', 'company', 'Primary Key Constraint', 7, 7, 0]
+['sic', 'company', 'Foreign Key Constraint', 7, 6, 1]</pre></div>
+          <div class="callout-box info"><b>Note</b> One foreign-key row is invalid on purpose in this data set: IBM is filed under SIC 3570, which is not in the hierarchy. It does not stop materialization.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Check the helper packages</h3>
+        <div class="body">
+          <p>Step 2 already installed everything in <code>systems/object_stores/requirements.txt</code>: <code>jaydebeapi</code> for JDBC, <code>boto3</code> for the S3 API and <code>pyarrow</code> to read Parquet. This confirms they load.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-pip">Copy</button><pre id="c-pip">.venv/bin/python -c "import jaydebeapi, boto3, pyarrow; print('helpers ok')"</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre><span class="pass">helpers ok</span></pre></div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Probe the object store before touching Zetaris</h3>
+        <div class="body">
+          <p>This tests the endpoint, the keys and the bucket, and tries your configured addressing style and region first, then the other style and three region names. It writes one tiny test object under <code>&lt;your folder&gt;/zetaris-probe/</code>, deletes it, and creates your own folder in the bucket. Everything this test writes goes under that folder, which is <code>S3_PREFIX</code> or <code>usl-test-</code> plus your login name, so people who share a bucket do not collide. Add <code>--no-write</code> to stay read-only.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-probe">Copy</button><pre id="c-probe">.venv/bin/python systems/object_stores/scripts/probe_s3.py</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>endpoint=https://&lt;endpoint&gt; bucket=&lt;bucket&gt; tls_verify=&lt;CA file&gt;
+configured: addressing=path region=us-east-1
+your folder: s3://&lt;bucket&gt;/&lt;your folder&gt;/
+<span class="pass">[PASS]</span> style=path    region=us-east-1  head_bucket + list ok
+<span class="pass">[PASS]</span> style=path    region=us-west-2  head_bucket + list ok
+<span class="pass">[PASS]</span> style=path    region=eu-west-1  head_bucket + list ok
+<span class="pass">[PASS]</span> style=virtual region=us-east-1  head_bucket + list ok
+<span class="pass">[PASS]</span> style=virtual region=us-west-2  head_bucket + list ok
+<span class="pass">[PASS]</span> style=virtual region=eu-west-1  head_bucket + list ok
+
+Your configured settings work: S3_ADDRESSING=path S3_REGION=us-east-1
+
+Write test with style=path region=us-east-1: &lt;your folder&gt;/zetaris-probe/&lt;uuid&gt;.txt
+<span class="pass">[PASS]</span> put_object
+<span class="pass">[PASS]</span> get_object matches
+<span class="pass">[PASS]</span> delete_object
+<span class="pass">[PASS]</span> your folder s3://&lt;bucket&gt;/&lt;your folder&gt;/ created</pre></div>
+          <div class="callout-box"><b>If every line fails with CERTIFICATE_VERIFY_FAILED:</b> the endpoint's certificate chain may be public, but boto3's bundled CA list may not include its root. The scripts already use the CA file your Python trusts. If your endpoint uses a private CA, set <code>S3_CA_BUNDLE</code> in <code>.env.local</code> or pass <code>--ca-bundle /path/to/ca.pem</code>. Do not turn verification off.</div>
+          <div class="callout-box info"><b>What this tells you</b> The line after the table says whether your configured settings work. If not, copy the <code>S3_ADDRESSING</code> and <code>S3_REGION</code> it prints into <code>.env.local</code> and run the probe again. The probe runs on your machine, so it does not prove that the Zetaris engine can reach the store or trust its certificate chain. The materialize step is the real test.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Create the storage setting in Zetaris</h3>
+        <div class="body">
+          <p>There is no SQL statement to create a storage setting, so this calls the REST endpoint <code>POST /storage-setting</code>. Look at the request first, with the keys hidden:</p>
+          <div class="code"><button class="copy" type="button" data-target="c-ss1">Copy</button><pre id="c-ss1">python3 systems/object_stores/scripts/storage_setting.py create --dry-run</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>POST /storage-setting (dry run, nothing sent)
+{
+  "storageName": "s3-compat",
+  "storageType": "S3",
+  "storagePath": "s3a://&lt;bucket&gt;/&lt;your folder&gt;",
+  "scope": "Owner",
+  "config": {
+    "awsAccessKeyId": "&lt;redacted&gt;",
+    "awsSecretAccessKey": "&lt;redacted&gt;",
+    "s3Endpoint": "https://&lt;endpoint&gt;",
+    "useS3PathStyleAccess": "true"
+  }
+}</pre></div>
+          <p>With <code>S3_ADDRESSING=virtual</code> the <code>useS3PathStyleAccess</code> line is left out. Create it, then note the id it returns:</p>
+          <div class="code"><button class="copy" type="button" data-target="c-ss2">Copy</button><pre id="c-ss2">python3 systems/object_stores/scripts/storage_setting.py create
+python3 systems/object_stores/scripts/storage_setting.py list</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>HTTP 200
+{
+  "id": "&lt;storage setting id&gt;"
+}</pre></div>
+          <div class="callout-box"><b>Creating a setting does not test it.</b> It is accepted even if the endpoint or keys are wrong. The real test is the materialize step. Use <code>storage_setting.py delete &lt;id&gt;</code> to remove one.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Materialize the USL tables with SQL</h3>
+        <div class="body">
+          <p>The script builds the statement from <code>.env.local</code>. Dry-run first. It masks the credentials in what it prints.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-mat1">Copy</button><pre id="c-mat1">python3 systems/object_stores/scripts/materialize_usl_table.py \
+  lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
+  --setting-id &lt;storage setting id&gt; --variant options-json --dry-run</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>MATERIALIZE USL TABLE lightning.metastore.usl_demo.sic_edgar_usl.sic_code TO STORAGE (
+  recordType = 'all',
+  path = 's3a://&lt;bucket&gt;/&lt;your folder&gt;/usl_demo/sic_edgar_usl/sic_code',
+  format = 'parquet',
+  storageSettingId = '&lt;storage setting id&gt;',
+  optionsBase64 = '&lt;base64 JSON with credentials&gt;'
+)
+
+<span class="dim">(dry run: nothing sent)</span></pre></div>
+          <p>Run it for both tables:</p>
+          <div class="code"><button class="copy" type="button" data-target="c-mat2">Copy</button><pre id="c-mat2">python3 systems/object_stores/scripts/materialize_usl_table.py \
+  lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
+  --setting-id &lt;storage setting id&gt; --variant options-json
+
+python3 systems/object_stores/scripts/materialize_usl_table.py \
+  lightning.metastore.usl_demo.sic_edgar_usl.company \
+  --setting-id &lt;storage setting id&gt; --variant options-json</pre></div>
+          <div class="code out"><span class="lbl">Expected output (last line of each run)</span><pre>RESULT: s3a://&lt;bucket&gt;/&lt;your folder&gt;/usl_demo/sic_edgar_usl/sic_code | <span class="pass">SUCCESS</span> | None | None
+RESULT: s3a://&lt;bucket&gt;/&lt;your folder&gt;/usl_demo/sic_edgar_usl/company | <span class="pass">SUCCESS</span> | None | None</pre></div>
+          <div class="callout-box"><b>The credentials must be inside the options.</b> The manual's example passes only <code>storageSettingId</code>. On Zetaris 2.4.3.1 that failed with <code>NoAuthWithAWSException: No AWS Credentials provided</code>, and so did extra top-level keys and <code>fs.s3a.*</code> names. It worked once the S3 keys, endpoint and <code>useS3PathStyleAccess</code> went into the <code>optionsBase64</code> JSON, which is what <code>--variant options-json</code> does. The statement therefore carries your keys, and the instance may keep it in query history, so use a key you can rotate. The details are in <code>systems/object_stores/issues/ISSUE-01-materialize-ignores-storage-setting.md</code>.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Verify the whole chain</h3>
+        <div class="body">
+          <p>This lists the bucket, then checks both tables from the source API through the view and the USL to the Parquet files. It is read-only and exits with 0 only when every stage matches.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-ver">Copy</button><pre id="c-ver">.venv/bin/python systems/object_stores/scripts/verify_chain.py</pre></div>
+          <div class="code out"><span class="lbl">Expected output (stage lines)</span><pre>=== sic_code: company-dns API &gt; view &gt; USL &gt; Parquet
+1a company-dns API V3 (live)                      1,005  <span class="pass">PASS</span>  reference count
+1b company-dns API V4 (live)                      1,005  <span class="pass">PASS</span>
+3  SchemaStore view sic_codes_table               1,005  <span class="pass">PASS</span>
+4  USL table sic_code                             1,005  <span class="pass">PASS</span>
+5  Parquet  &lt;your folder&gt;/usl_demo/sic_edgar_usl/sic_code  1,005  <span class="pass">PASS</span>
+   USL rows vs Parquet rows (8 columns)                  <span class="pass">PASS</span>  identical
+
+=== company: SEC EDGAR API &gt; raw tables &gt; view &gt; USL &gt; Parquet
+1  SEC EDGAR submissions API (live)                   7  <span class="pass">PASS</span>
+3  SchemaStore view all_companies_profile_table       6  <span class="pass">PASS</span>  omits 1 company with SIC not in sic_code
+4  USL table company                                  7  <span class="pass">PASS</span>
+5  Parquet  &lt;your folder&gt;/usl_demo/sic_edgar_usl/company  7  <span class="pass">PASS</span>
+   USL rows vs Parquet rows (4 columns)                  <span class="pass">PASS</span>  identical
+
+<span class="okc">CHAIN OK</span></pre></div>
+          <p>An example of the full output is in the section above. Use <code>--table sic_code</code> or <code>--table company</code> to check one table.</p>
+          <div class="callout-box info"><b>Your numbers will differ</b> if your data does. What matters is that every stage says PASS and the last line is <b>CHAIN OK</b>. A FAIL line names the stage and shows a few keys that differ, and the last line then reads <b>CHAIN BROKEN</b>.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Explore the data live in this viewer</h3>
+        <div class="body">
+          <p>Start the small local server. It serves this page and runs read-only SQL against your instance with the credentials in <code>.env.local</code>, which never reach the browser.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-srv">Copy</button><pre id="c-srv">.venv/bin/python systems/object_stores/scripts/serve_viewer.py</pre></div>
+          <div class="code out"><span class="lbl">Expected output</span><pre>Connected over JDBC (settings from &lt;package&gt;/.env.local).
+Mode: <span class="pass">read-only</span>.  Viewer: <span class="okc">http://127.0.0.1:8765</span>   (Ctrl+C to stop)</pre></div>
+          <p>Open <code>http://127.0.0.1:8765</code> and choose the <b>Live SQL</b> tab. Pick an example, or type your own, and press <b>Run query</b>. For example, this returns the 7 companies:</p>
+          <div class="code"><button class="copy" type="button" data-target="c-q1">Copy</button><pre id="c-q1">SELECT cik, entity_name, sic, sic_description_edgar
+FROM lightning.metastore.usl_demo.sic_edgar_usl.company
+ORDER BY entity_name</pre></div>
+          <div class="callout-box info"><b>Options</b> <code>--channel rest</code> uses the REST API instead of JDBC. <code>--port 9000</code> changes the port. <code>--allow-write</code> lets statements that change the instance through, so leave it off unless you mean it.</div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>If something fails</h3>
+        <div class="body">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>You see</th><th>Cause and fix</th></tr></thead>
+              <tbody>
+                <tr><td><code>CERTIFICATE_VERIFY_FAILED</code> from boto3</td><td>The CA list boto3 bundles lacks your endpoint's root. The scripts use Python's CA file by default. For a private CA set <code>S3_CA_BUNDLE</code> or pass <code>--ca-bundle</code>. Never disable verification.</td></tr>
+                <tr><td>Probe says <code>Your configured settings did not work, but this combination did</code></td><td>Copy the <code>S3_ADDRESSING</code> and <code>S3_REGION</code> it prints into <code>.env.local</code>.</td></tr>
+                <tr><td>The probe passes but the materialize result is an error</td><td>The probe runs on your machine and Zetaris runs elsewhere. Check that the engine host can reach the endpoint and trusts its certificate chain.</td></tr>
+                <tr><td><code>NoAuthWithAWSException: No AWS Credentials provided</code> in the materialize result</td><td>The credentials were not inside <code>optionsBase64</code>. Use <code>--variant options-json</code>.</td></tr>
+                <tr><td>Materialize result says <code>Error</code> but the command printed ok</td><td>The statement returns one row per run. Read that row: <code>SUCCESS</code> or <code>Error</code> followed by the message.</td></tr>
+                <tr><td><code>No module named boto3</code> or <code>pyarrow</code></td><td>You used <code>python3</code>. Use <code>.venv/bin/python</code>.</td></tr>
+                <tr><td><code>Set ZETARIS_USER_AGENT</code></td><td>Add an app name and a contact email to <code>.env.local</code>.</td></tr>
+                <tr><td><code>MISSING ... S3_*</code></td><td>Add the missing name to <code>.env.local</code>.</td></tr>
+                <tr><td><code>Unable to locate a Java Runtime</code></td><td>macOS stub. Install a JDK, for example <code>brew install openjdk@17</code>; the scripts find it.</td></tr>
+                <tr><td>REST <code>401</code> on <code>storage_setting.py</code></td><td>The API key is missing, wrong or expired. Create a new key in the Zetaris GUI and update <code>.env.local</code>.</td></tr>
+                <tr><td>The Live SQL tab says <b>Not connected</b></td><td>The viewer server is not running, or you opened the file directly. Run <code>.venv/bin/python systems/object_stores/scripts/serve_viewer.py</code> and use the address it prints.</td></tr>
+                <tr><td><code>SLF4J: Failed to load class StaticLoggerBinder</code></td><td>Harmless. The driver bundles no logging backend. <code>verify_chain.py</code> and <code>serve_viewer.py</code> hide it.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <h3>Clean up</h3>
+        <div class="body">
+          <p>Confirm what you want gone first. These steps change the instance and the bucket. Show the Zetaris plan, read it, then run it with <code>--yes</code>:</p>
+          <div class="code"><button class="copy" type="button" data-target="c-td">Copy</button><pre id="c-td">python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_profiles --channel jdbc
+python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_profiles --channel jdbc --yes</pre></div>
+          <div class="callout-box info"><b>Note</b> The REST tables, the <code>COMPANY_DNS</code> and <code>SEC_DATA</code> Lightning databases and the containers can only be removed in the Zetaris Data Explorer, and the command lists them. A later re-run then needs <code>--skip-exists</code>. <code>--drop-namespace</code> also removes every other USL in <code>usl_demo</code>, so leave it off unless you want that.</div>
+          <p>Delete the storage setting, then clear your own folder in the bucket. The cleanup script lists what it would delete and deletes nothing until you add <code>--yes</code>. It touches only your own folder, treats every prefix as a folder, and refuses an empty prefix, so it can never empty the whole bucket.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-cl">Copy</button><pre id="c-cl">python3 systems/object_stores/scripts/storage_setting.py list
+python3 systems/object_stores/scripts/storage_setting.py delete &lt;storage setting id&gt;
+.venv/bin/python systems/object_stores/scripts/cleanup_bucket.py
+.venv/bin/python systems/object_stores/scripts/cleanup_bucket.py --yes</pre></div>
+          <div class="code out"><span class="lbl">Expected output ends with</span><pre>Deleted. Checking again:
+  &lt;your folder&gt;/  0 objects left
+
+<span class="okc">CLEAN: every listed prefix is empty.</span></pre></div>
+          <div class="callout-box">If it ends with <b>INCOMPLETE</b>, objects remain. On a versioned bucket, old versions or delete markers may need your store's console. A bucket with object lock or a retention policy refuses the deletes, and no script works around that.</div>
+        </div>
+      </li>
+    </ol>
+
+    <p class="disclaimer">Independent integration notes. Product and company names used here belong to their owners and appear only to identify the product the steps were run against; this page is not an endorsement or an official document of any of them. The example output comes from a test run against Zetaris 2.4.3.1 and may differ on other versions.</p>
+  </section>
+</div>
+
+<!-- ============================ TAB 4 ============================ -->
+<div class="panel" id="panel-live" role="tabpanel" aria-labelledby="tab-live" hidden>
+  <section aria-labelledby="h-live">
+    <div class="sec-head">
+      <h2 id="h-live">Run SQL against your Zetaris instance</h2>
+      <p class="lede">Type a statement or pick one below and run it. The query goes to the small local server that serves this page, which holds your credentials and sends it to Zetaris over the same connection the scripts use. It is read-only: SELECT, WITH, SHOW, DESCRIBE, EXPLAIN and LIST, one statement at a time.</p>
+    </div>
+
+    <div class="live-status">
+      <span class="dot" id="liveDot">Checking connection</span>
+      <span class="hint" id="liveInfo"></span>
+    </div>
+    <div class="callout-box" id="liveHelp" hidden>
+      <b>Not connected.</b> This tab needs the local server. From the package folder, run the command below, then open <code>http://127.0.0.1:8765</code> in your browser. If you opened this file directly, or from a shared link, the server is not reachable.
+      <div class="code" style="margin-top:10px"><button class="copy" type="button" data-target="c-serve">Copy</button><pre id="c-serve">.venv/bin/python systems/object_stores/scripts/serve_viewer.py</pre></div>
+    </div>
+
+    <div class="chips" id="presets" aria-label="Example queries">
+      <button class="chip" type="button" data-sql="SHOW LIGHTNING DATABASES">Lightning databases</button>
+      <button class="chip" type="button" data-sql="SHOW NAMESPACES OR TABLES IN lightning.metastore.usl_demo">USL in usl_demo</button>
+      <button class="chip" type="button" data-sql="SELECT cik, entity_name, sic, sic_description_edgar&#10;FROM lightning.metastore.usl_demo.sic_edgar_usl.company&#10;ORDER BY entity_name">Companies in the USL</button>
+      <button class="chip" type="button" data-sql="SELECT division, division_desc, COUNT(*) AS codes&#10;FROM lightning.metastore.usl_demo.sic_edgar_usl.sic_code&#10;GROUP BY division, division_desc&#10;ORDER BY division">SIC codes per division</button>
+      <button class="chip" type="button" data-sql="SELECT s.division_desc, COUNT(*) AS companies&#10;FROM lightning.metastore.usl_demo.sic_edgar_usl.company c&#10;JOIN lightning.metastore.usl_demo.sic_edgar_usl.sic_code s ON c.sic = s.sic_code&#10;GROUP BY s.division_desc&#10;ORDER BY companies DESC">Companies per division</button>
+      <button class="chip" type="button" data-sql="SELECT c.cik, c.entity_name, c.sic&#10;FROM lightning.metastore.usl_demo.sic_edgar_usl.company c&#10;LEFT JOIN lightning.metastore.usl_demo.sic_edgar_usl.sic_code s ON c.sic = s.sic_code&#10;WHERE s.sic_code IS NULL">Companies with no SIC row</button>
+      <button class="chip" type="button" data-sql="SHOW DQ ALL INVALID TABLE lightning.metastore.usl_demo.sic_edgar_usl.company">Invalid rows (data quality)</button>
+      <button class="chip" type="button" data-sql="SELECT (SELECT COUNT(*) FROM edgar.all_companies_profile_table) AS view_rows,&#10;       (SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.company) AS usl_rows">View rows vs USL rows</button>
+    </div>
+
+    <textarea class="sqlbox" id="sql" spellcheck="false" aria-label="SQL statement">SELECT cik, entity_name, sic, sic_description_edgar
+FROM lightning.metastore.usl_demo.sic_edgar_usl.company
+ORDER BY entity_name</textarea>
+    <div class="actions">
+      <button class="btn" type="button" id="runBtn">Run query</button>
+      <button class="btn alt" type="button" id="csvBtn" hidden>Copy as CSV</button>
+      <label class="hint" for="limitSel">Rows</label>
+      <select id="limitSel" class="chip" aria-label="Maximum rows">
+        <option value="100">100</option><option value="500" selected>500</option><option value="1000">1,000</option><option value="5000">5,000</option>
+      </select>
+      <span class="hint">Ctrl or Cmd + Enter runs it. Do not end the statement with a semicolon.</span>
+    </div>
+
+    <div class="callout-box" id="liveErr" hidden></div>
+    <div class="res-meta" id="resMeta" hidden></div>
+    <div class="res-wrap" id="resWrap" hidden></div>
+  </section>
+</div>
+</main>
+
+<script>
+(function () {
+  var NAMES = ['analysis', 'topology', 'proof', 'live'];
+  var tabs = [].slice.call(document.querySelectorAll('.tab'));
+  function show(name) {
+    tabs.forEach(function (t) {
+      var on = t.id === 'tab-' + name;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    try { history.replaceState(null, '', '#' + name); } catch (e) {}
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { show(t.id.replace('tab-', '')); });
+    t.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var i = tabs.indexOf(t), n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      n.focus(); show(n.id.replace('tab-', ''));
+    });
+  });
+  var h = (location.hash || '').replace('#', '');
+  if (NAMES.indexOf(h) >= 0) show(h);
+
+  /* copy buttons: copy the text of the <pre> they point at */
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta); return ok;
+  }
+  [].slice.call(document.querySelectorAll('.copy')).forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pre = document.getElementById(b.getAttribute('data-target'));
+      if (!pre) return;
+      var text = pre.textContent;
+      function done(ok) {
+        b.textContent = ok ? 'Copied' : 'Select and copy';
+        if (ok) b.classList.add('done');
+        setTimeout(function () { b.textContent = 'Copy'; b.classList.remove('done'); }, 1800);
+        if (!ok) { var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+      } else { done(fallbackCopy(text)); }
+    });
+  });
+
+  /* live SQL tab */
+  (function () {
+    var dot = document.getElementById('liveDot'), info = document.getElementById('liveInfo'), help = document.getElementById('liveHelp');
+    var sql = document.getElementById('sql'), runBtn = document.getElementById('runBtn'), csvBtn = document.getElementById('csvBtn');
+    var errBox = document.getElementById('liveErr'), meta = document.getElementById('resMeta'), wrap = document.getElementById('resWrap');
+    var limitSel = document.getElementById('limitSel'), last = null, connected = false;
+    function setState(on, text, extra) {
+      connected = on; dot.className = 'dot ' + (on ? 'on' : 'off'); dot.textContent = text; info.textContent = extra || ''; help.hidden = on;
+    }
+    function health() {
+      return fetch('api/health', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok) setState(true, 'Connected over ' + String(j.channel).toUpperCase(), j.readOnly ? 'Read-only' : 'Read and write enabled');
+        else setState(false, 'Not connected', '');
+      }).catch(function () { setState(false, 'Not connected', ''); });
+    }
+    document.getElementById('tab-live').addEventListener('click', health);
+    if ((location.hash || '') === '#live') health();
+    [].slice.call(document.querySelectorAll('#presets .chip')).forEach(function (c) {
+      c.addEventListener('click', function () { sql.value = c.getAttribute('data-sql'); sql.focus(); });
+    });
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function show(j) {
+      last = j;
+      var h = '<table><thead><tr><th class="rn">#</th>' + j.columns.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      j.rows.forEach(function (r, i) {
+        h += '<tr><td class="rn">' + (i + 1) + '</td>' + r.map(function (v) {
+          return v === null ? '<td class="nul">NULL</td>' : '<td title="' + esc(v) + '">' + esc(v) + '</td>';
+        }).join('') + '</tr>';
+      });
+      wrap.innerHTML = h + '</tbody></table>'; wrap.hidden = false;
+      meta.innerHTML = '<span><b>' + j.rowCount.toLocaleString() + '</b> row' + (j.rowCount === 1 ? '' : 's') + '</span><span><b>' + j.columns.length + '</b> column' + (j.columns.length === 1 ? '' : 's') + '</span><span><b>' + j.ms.toLocaleString() + ' ms</b></span>' + (j.truncated ? '<span><b>Truncated</b> at ' + j.limit.toLocaleString() + ' rows. Raise the limit or add a LIMIT.</span>' : '');
+      meta.hidden = false; csvBtn.hidden = false;
+    }
+    function run() {
+      errBox.hidden = true; runBtn.disabled = true; runBtn.textContent = 'Running';
+      fetch('api/query', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-SIC-Viewer': '1' }, body: JSON.stringify({ sql: sql.value, limit: +limitSel.value }) })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'The server sent a reply that is not JSON.' }; }); })
+        .then(function (j) {
+          if (j.ok) { setState(true, dot.textContent.indexOf('Connected') === 0 ? dot.textContent : 'Connected', info.textContent); show(j); }
+          else { wrap.hidden = true; meta.hidden = true; csvBtn.hidden = true; errBox.innerHTML = '<b>The query did not run.</b> ' + esc(j.error || 'Unknown error'); errBox.hidden = false; }
+        })
+        .catch(function () { wrap.hidden = true; meta.hidden = true; csvBtn.hidden = true; setState(false, 'Not connected', ''); })
+        .then(function () { runBtn.disabled = false; runBtn.textContent = 'Run query'; });
+    }
+    runBtn.addEventListener('click', run);
+    sql.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); } });
+    csvBtn.addEventListener('click', function () {
+      if (!last) return;
+      function q(v) { v = v === null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+      var text = [last.columns.map(q).join(',')].concat(last.rows.map(function (r) { return r.map(q).join(','); })).join('\n');
+      function done(ok) { csvBtn.textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(function () { csvBtn.textContent = 'Copy as CSV'; }, 1600); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+      else done(fallbackCopy(text));
+    });
+  })();
+})();
+</script>
+</body>
+</html>

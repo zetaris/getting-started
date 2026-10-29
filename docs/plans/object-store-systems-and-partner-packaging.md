@@ -1,6 +1,6 @@
 # Object store test kit: `systems/object_stores/` and partner packaging plan
 
-**Status:** decisions resolved (see the last section). Phases 1 and 2 are done on branch `systems-object-stores` (29 October 2026) and await review; phases 3 to 6 are not started.
+**Status:** decisions resolved (see the last section). Phases 1 to 3 are done on branch `systems-object-stores` (29 to 30 October 2026) and await review; phases 4 to 6 are not started.
 
 ## Goal and scope
 
@@ -166,6 +166,18 @@ The packager only writes under `dist/`, which is already gitignored.
 | 6 | Conformance report | `report.py` (details below), packaged with the kit | A report is generated against the first store, and its checks agree with what the individual scripts print |
 
 **Changes made while doing phase 2.** `render.py` was built in phase 2 instead of phase 3, because the templates could not be tested without it. The HOWTO and package README templates already name `serve_viewer.py` and `viewer/index.html`, which phase 3 adds, so they point at files that do not exist yet; nothing should be merged or packaged before phase 3. The preflight check for the S3 settings, listed as a fourth consumer of the schema, moves to phase 4, where the packager needs it. `settings_docs.py --check` also fails if a script reads a setting name that is not in `settings.json`, which keeps the schema honest.
+
+**Changes made while doing phase 3.**
+
+- The viewer keeps the `sic_edgar_usl` USL as its subject, as agreed. Only the object-store wording and branding became generic.
+- Zetaris logo and Plus Jakarta Sans are served from `website/assets/` (the server's allowlist names exactly three files) instead of being copied into `viewer/assets/`, so the repo carries no second copy. The packager will copy them into the package in phase 4, where the server finds them under `viewer/assets/` first.
+- A fourth token, `{{STORE_LABEL}}`, was added: the name cut to 24 characters, for diagram boxes. Column headers in the diagrams are fixed text so a long name cannot overflow them.
+- The partner-logo slot is in the template (hidden); filling it from `PACKAGE_LOGO` is phase 4. The in-browser "Add logo" uploader of the old viewer was removed, so no third-party mark is ever stored by the page.
+- `serve_viewer.py` now sends a Content-Security-Policy that blocks loading anything from another site, and hides the driver's harmless SLF4J warning, which the HOWTO had already said it did.
+- Layout is verified by `viewer/check_fit.js`, run in a browser, not by a script in the repo, to avoid a headless-browser dependency. Browser automation in the packager can adopt it later. `scripts/check_viewer.py` covers what needs no browser, including WCAG contrast of the text colors; it found one failing derived color (the amber), which was darkened.
+- The recipe on the Proof tab still duplicates the HOWTO as HTML. A check that the two agree is not built yet; see the open item below.
+
+**Open item.** The recipe HTML and `HOWTO.md.tmpl` can drift apart. Generating one from the other, or checking that every command in the HOWTO appears in the viewer, would close that. It is small; say if you want it in phase 4.
 
 Phases 1 to 4 can be reviewed and committed separately, and phase 6 follows the same way. Each is small enough for one pull request.
 

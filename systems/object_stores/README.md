@@ -55,8 +55,25 @@ After editing `settings.json`, run `python3 systems/object_stores/scripts/settin
 | `s3_settings.py` | Reads the settings above and builds the S3 client, so every script uses the same addressing style, region and CA trust. |
 | `settings_docs.py` | Generates `.env.example` and the settings table from `settings.json`, and checks for drift. |
 | `render.py` | Fills `{{STORE_NAME}}`-style tokens in templates such as `HOWTO.md.tmpl`. |
+| `serve_viewer.py` | Serves the viewer and runs read-only SQL against your instance for its Live SQL tab. Renders the page with `S3_STORE_VENDOR` and `S3_STORE_PRODUCT` from `.env.local` on every request. |
+| `check_viewer.py` | Static checks of the viewer template: it renders, a hostile name is escaped, ids and references resolve, nothing loads from another site, and the text colors keep WCAG AA contrast. |
 
 For a walk-through from a clean instance to a verified Parquet file, see [`HOWTO.md.tmpl`](HOWTO.md.tmpl). It is a template, so the packager fills in the store name; `render.py` renders it by hand.
+
+## The viewer
+
+`viewer/index.html.tmpl` is a four-tab page about the `sic_edgar_usl` USL: analysis of its tables, topology and entity relationship diagram, the proof and recipe for this test, and a live SQL tab. It uses the Zetaris light theme and the self-hosted Plus Jakarta Sans font and Zetaris logo from `website/assets/`.
+
+```bash
+.venv/bin/python systems/object_stores/scripts/serve_viewer.py      # then open http://127.0.0.1:8765
+```
+
+The page names your object store from `S3_STORE_VENDOR` and `S3_STORE_PRODUCT` in `.env.local` (both optional; blank shows "S3 object store"). Edit them and reload the page; no restart is needed. The Proof tab shows `viewer/fixtures/verify_chain_example.txt`, an example run with placeholder names, clearly labeled as an example.
+
+Two checks keep the page honest:
+
+- `scripts/check_viewer.py` runs without a browser.
+- `viewer/check_fit.js` runs in a browser. Open the page, paste the file into the console and run `await checkViewerFit()`. It must say `ok: true` at desktop and phone width and with a long store name. It checks that every diagram label stays inside its box, that no connector crosses a label, that no two labels overlap, and that the page does not scroll sideways.
 
 ## Your own folder in the bucket
 

@@ -7,13 +7,21 @@ Tokens:
     {{STORE_VENDOR}}   vendor name, or empty
     {{STORE_PRODUCT}}  product name, or empty
     {{STORE_NAME}}     vendor and product joined, or "your S3-compatible object store"
+    {{STORE_LABEL}}    a short form for diagram boxes: the name cut to 24 characters,
+                       or "S3 object store"
+
+A template can also pull in a text file with <!--include:path/to/file.txt-->. The
+path is relative to the template, must stay inside it, and the content is
+escaped like a value.
 
 Rendering fails, instead of leaving something half-filled, if a template uses an
 unknown token or any "{{" is left in the result. Values are checked: no control
 characters, and at most 60 characters. Use a token only in prose and labels,
 never inside a command someone will copy.
 
-    python3 systems/object_stores/scripts/render.py TEMPLATE [--vendor V] [--product P]
+    python3 systems/object_stores/scripts/render.py TEMPLATE [--vendor V] [--product P] [--html]
+
+--html escapes the values for markup (use it for the viewer).
 """
 
 from __future__ import annotations
@@ -26,8 +34,11 @@ from pathlib import Path
 from typing import Callable
 
 TOKEN = re.compile(r"\{\{\s*([A-Z_]+)\s*\}\}")
+INCLUDE = re.compile(r"<!--include:([A-Za-z0-9_./-]+)-->")
 GENERIC_NAME = "your S3-compatible object store"
+GENERIC_LABEL = "S3 object store"
 MAX_NAME = 60
+MAX_LABEL = 24
 
 
 class RenderError(ValueError):
@@ -46,12 +57,36 @@ def _clean(label: str, value: str) -> str:
 def store_values(vendor: str = "", product: str = "") -> dict[str, str]:
     """The token values for a vendor and product, either of which may be empty."""
     v, p = _clean("S3_STORE_VENDOR", vendor), _clean("S3_STORE_PRODUCT", product)
-    name = " ".join(x for x in (v, p) if x) or GENERIC_NAME
-    return {"STORE_VENDOR": v, "STORE_PRODUCT": p, "STORE_NAME": name}
+    joined = " ".join(x for x in (v, p) if x)
+    label = joined if len(joined) <= MAX_LABEL else joined[: MAX_LABEL - 1].rstrip() + "\u2026"
+    return {
+        "STORE_VENDOR": v,
+        "STORE_PRODUCT": p,
+        "STORE_NAME": joined or GENERIC_NAME,
+        "STORE_LABEL": label or GENERIC_LABEL,
+    }
 
 
 def escape_html(value: str) -> str:
     return html.escape(value, quote=True)
+
+
+def render_includes(text: str, base: Path, escape: Callable[[str], str] | None = None) -> str:
+    """Replace each <!--include:file--> with the file's content, escaped. The file
+    must be inside `base`."""
+    root = base.resolve()
+
+    def sub(m: re.Match) -> str:
+        target = (root / m.group(1)).resolve()
+        if root not in target.parents:
+            raise RenderError(f"include {m.group(1)!r} is outside {root}")
+        try:
+            body = target.read_text(encoding="utf-8").rstrip("\n")
+        except OSError as e:
+            raise RenderError(f"cannot include {m.group(1)!r}: {e.strerror}") from e
+        return escape(body) if escape else body
+
+    return INCLUDE.sub(sub, text)
 
 
 def render(template: str, values: dict[str, str], escape: Callable[[str], str] | None = None) -> str:
@@ -74,9 +109,13 @@ def main() -> int:
     ap.add_argument("template")
     ap.add_argument("--vendor", default="")
     ap.add_argument("--product", default="")
+    ap.add_argument("--html", action="store_true", help="escape values for markup")
     a = ap.parse_args()
     try:
-        sys.stdout.write(render(Path(a.template).read_text(encoding="utf-8"), store_values(a.vendor, a.product)))
+        tpl = Path(a.template)
+        esc = escape_html if a.html else None
+        text = render_includes(tpl.read_text(encoding="utf-8"), tpl.parent, esc)
+        sys.stdout.write(render(text, store_values(a.vendor, a.product), esc))
     except RenderError as e:
         print("render error:", e, file=sys.stderr)
         return 1

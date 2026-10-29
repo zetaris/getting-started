@@ -126,11 +126,11 @@ def names_used_in_scripts() -> dict[str, set[str]]:
 
 def check_templates() -> list[str]:
     problems: list[str] = []
-    for p in sorted(KIT.glob("*.tmpl")):
+    for p in sorted([*KIT.glob("*.tmpl"), *KIT.glob("viewer/*.tmpl")]):
         text = p.read_text(encoding="utf-8")
         for label, vals in (("generic", renderer.store_values()), ("named", renderer.store_values("Example Vendor", "Example Store"))):
             try:
-                renderer.render(text, vals)
+                renderer.render(renderer.render_includes(text, p.parent), vals)
             except renderer.RenderError as e:
                 problems.append(f"{p.name} ({label}): {e}")
     return problems

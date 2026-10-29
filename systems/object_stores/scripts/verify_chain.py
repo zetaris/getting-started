@@ -23,7 +23,6 @@ expectation from the data. Exit code 0 only when every stage matches.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import io
 import json
 import os
@@ -36,30 +35,13 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import s3_settings as s3  # noqa: E402
 import zetaris_sql as z  # noqa: E402
+from quiet import quiet_stderr  # noqa: E402
 
 ROOT = s3.ROOT
 SIC_API = "https://company-dns.mediumroast.io/{v}/na/sic/code/%25"
 SEC_API = "https://data.sec.gov/submissions/CIK{cik}.json"
 PROFILE_SQL = ROOT / "open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql"
 DEFAULT_USL = "lightning.metastore.usl_demo.sic_edgar_usl"
-
-
-@contextlib.contextmanager
-def quiet_stderr():
-    """Silence the JVM's harmless "SLF4J: Failed to load class StaticLoggerBinder"
-    warning (the driver JAR bundles no logging backend). Only file descriptor 2 is
-    redirected, and only while JDBC is in use, so Python errors still show."""
-    sys.stderr.flush()
-    saved = os.dup(2)
-    devnull = os.open(os.devnull, os.O_WRONLY)
-    try:
-        os.dup2(devnull, 2)
-        yield
-    finally:
-        sys.stderr.flush()
-        os.dup2(saved, 2)
-        os.close(saved)
-        os.close(devnull)
 
 
 def http_json(url: str):

@@ -1,0 +1,275 @@
+"""Serve the SIC EDGAR USL viewer and run SQL against a live Zetaris instance.
+
+A browser cannot speak JDBC, and it must not hold your API key or password, so
+this small local server sits in between. It renders viewer/index.html.tmpl for
+each page request and serves one endpoint, POST /api/query, which runs a
+statement through the same channel the other scripts use and returns the rows
+as JSON.
+
+The page is rendered with the store names from .env.local (S3_STORE_VENDOR and
+S3_STORE_PRODUCT, both optional), read again on every request, so editing them
+and reloading the page renames it without restarting the server.
+
+Safety, by design:
+  * Listens on 127.0.0.1 only.
+  * Credentials stay on the server (read from .env.local or the environment).
+  * Read-only by default: only SELECT, WITH, SHOW, DESCRIBE, EXPLAIN and LIST,
+    one statement per call. Statements that create, change or drop anything are
+    refused unless you start the server with --allow-write.
+  * Requests must carry the viewer's own header, so another website open in your
+    browser cannot send queries through it.
+  * The page may load nothing from another site (Content-Security-Policy), and
+    only three named asset files are served.
+
+Run from the repository or package root, with the venv for JDBC:
+
+    .venv/bin/python systems/object_stores/scripts/serve_viewer.py                 # JDBC, http://127.0.0.1:8765
+    .venv/bin/python systems/object_stores/scripts/serve_viewer.py --channel rest  # REST instead of JDBC
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(HERE))
+import render as renderer  # noqa: E402
+import zetaris_sql as z  # noqa: E402
+from quiet import quiet_stderr  # noqa: E402
+
+VIEWER_DIR = HERE.parent / "viewer"
+TEMPLATE = VIEWER_DIR / "index.html.tmpl"
+# Looked up in order, so a package can carry its own copy under viewer/assets/.
+ASSET_DIRS = [VIEWER_DIR / "assets", ROOT / "website" / "assets"]
+ASSETS = {
+    "fonts/plus-jakarta-sans.ttf": "font/ttf",
+    "fonts/OFL.txt": "text/plain; charset=utf-8",
+    "brand/zetaris-indigo.svg": "image/svg+xml",
+}
+CSP = ("default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; "
+       "font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+NAME_KEYS = ("S3_STORE_VENDOR", "S3_STORE_PRODUCT")
+
+READ_ONLY_START = {"select", "with", "show", "describe", "desc", "explain", "list"}
+WRITE_WORDS = re.compile(
+    r"\b(insert|update|delete|merge|drop|create|alter|truncate|grant|revoke|materialize|"
+    r"activate|compile|remove|register|cache|uncache|set|export|refresh|run)\b",
+    re.I,
+)
+MAX_BODY = 64 * 1024
+HEADER = "X-SIC-Viewer"
+
+
+def strip_literals(sql: str) -> str:
+    """The statement with quoted strings and comments blanked, for keyword checks."""
+    sql = re.sub(r"/\*.*?\*/", " ", sql, flags=re.S)
+    sql = re.sub(r"--[^\n]*", " ", sql)
+    sql = re.sub(r"'(?:[^'\\]|\\.|'')*'", "''", sql)
+    sql = re.sub(r'"(?:[^"\\]|\\.)*"', '""', sql)
+    return re.sub(r"`[^`]*`", "``", sql)
+
+
+def check_statement(sql: str, allow_write: bool) -> str:
+    """Return the cleaned statement, or raise ValueError with a reason."""
+    sql = sql.strip().rstrip(";").strip()
+    if not sql:
+        raise ValueError("Type a statement first.")
+    plain = strip_literals(sql)
+    if ";" in plain:
+        raise ValueError("One statement per call: remove the extra semicolon.")
+    first = plain.split(None, 1)[0].lower()
+    if allow_write:
+        return sql
+    if first not in READ_ONLY_START:
+        raise ValueError(
+            f"'{first.upper()}' is not allowed. This viewer is read-only: use SELECT, WITH, SHOW, "
+            "DESCRIBE, EXPLAIN or LIST. Start the server with --allow-write to change this."
+        )
+    bad = WRITE_WORDS.search(plain)
+    if bad and first in {"select", "with"}:
+        raise ValueError(f"'{bad.group(1).upper()}' is not allowed in a read-only query.")
+    return sql
+
+
+def read_names(env_file: Path | None, shell: dict[str, str]) -> dict[str, str]:
+    """The two store-name settings. A value set in the shell wins, as it does for
+    every other setting; otherwise the file is read now, so edits show up."""
+    found: dict[str, str] = {}
+    if env_file and env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                if k.strip() in NAME_KEYS:
+                    found[k.strip()] = v.strip().strip("'\"")
+    return {k: shell.get(k) or found.get(k, "") for k in NAME_KEYS}
+
+
+def render_page(names: dict[str, str]) -> str:
+    """The viewer HTML for the given names. Raises renderer.RenderError."""
+    values = renderer.store_values(names.get("S3_STORE_VENDOR", ""), names.get("S3_STORE_PRODUCT", ""))
+    text = renderer.render_includes(TEMPLATE.read_text(encoding="utf-8"), TEMPLATE.parent, renderer.escape_html)
+    return renderer.render(text, values, renderer.escape_html)
+
+
+def read_asset(rel: str) -> tuple[bytes, str] | None:
+    ctype = ASSETS.get(rel)  # exact names only, so no path can reach another file
+    if not ctype:
+        return None
+    for d in ASSET_DIRS:
+        f = d / rel
+        if f.is_file():
+            return f.read_bytes(), ctype
+    return None
+
+
+class App:
+    def __init__(self, channel_name: str, jar: str | None, allow_write: bool, row_limit: int) -> None:
+        self.channel_name, self.jar, self.allow_write, self.row_limit = channel_name, jar, allow_write, row_limit
+        self.channel = None
+
+    def channel_ready(self):
+        if self.channel is None:
+            with quiet_stderr():  # the driver's harmless SLF4J warning
+                self.channel = z.open_channel(self.channel_name, self.jar)
+        return self.channel
+
+    def run(self, sql: str, limit: int) -> dict:
+        sql = check_statement(sql, self.allow_write)
+        limit = max(1, min(int(limit or self.row_limit), 5000))
+        started = time.time()
+        try:
+            res = self.channel_ready().run(sql, limit=limit + 1)
+        except z.ZetarisError:
+            self.channel = None  # reopen next time, in case the connection dropped
+            raise
+        rows = res.rows
+        truncated = len(rows) > limit
+        rows = rows[:limit]
+        columns = res.columns or [f"col{i + 1}" for i in range(len(rows[0]))] if rows else (res.columns or [])
+        return {
+            "ok": True,
+            "columns": columns,
+            "rows": [[None if v is None else (v if isinstance(v, (int, float, bool)) else str(v)) for v in r] for r in rows],
+            "rowCount": len(rows),
+            "truncated": truncated,
+            "limit": limit,
+            "ms": int((time.time() - started) * 1000),
+            "channel": self.channel_name,
+        }
+
+
+def make_handler(app: App, port: int, env_file: Path | None, shell: dict[str, str]):
+    class Handler(BaseHTTPRequestHandler):
+        server_version = "SicViewer/2"
+
+        def log_message(self, fmt, *args):  # one short line per request, never the SQL
+            sys.stderr.write("  %s %s\n" % (self.command, self.path.split("?")[0]))
+
+        def _send(self, code: int, body: bytes, ctype: str, page: bool = False) -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            if page:
+                self.send_header("Content-Security-Policy", CSP)
+                self.send_header("Referrer-Policy", "no-referrer")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _json(self, code: int, obj: dict) -> None:
+            self._send(code, json.dumps(obj).encode(), "application/json")
+
+        def _host_ok(self) -> bool:
+            host = (self.headers.get("Host") or "").split(":")[0]
+            return host in ("127.0.0.1", "localhost")
+
+        def do_GET(self):
+            path = self.path.split("?")[0]
+            if not self._host_ok():
+                return self._json(403, {"ok": False, "error": "Open the viewer at http://127.0.0.1:%d" % port})
+            if path in ("/", "/index.html"):
+                try:
+                    html = render_page(read_names(env_file, shell))
+                except renderer.RenderError as e:
+                    return self._json(500, {"ok": False, "error": f"Cannot render the viewer: {e}"})
+                except OSError:
+                    return self._json(404, {"ok": False, "error": "viewer/index.html.tmpl is missing"})
+                return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", page=True)
+            if path.startswith("/assets/"):
+                asset = read_asset(path[len("/assets/"):])
+                if asset:
+                    return self._send(200, asset[0], asset[1])
+                return self._json(404, {"ok": False, "error": "Not found"})
+            if path == "/api/health":
+                return self._json(200, {"ok": True, "channel": app.channel_name, "readOnly": not app.allow_write})
+            return self._json(404, {"ok": False, "error": "Not found"})
+
+        def do_POST(self):
+            if self.path.split("?")[0] != "/api/query":
+                return self._json(404, {"ok": False, "error": "Not found"})
+            if not self._host_ok() or self.headers.get(HEADER) != "1":
+                return self._json(403, {"ok": False, "error": "Forbidden"})
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                if n <= 0 or n > MAX_BODY:
+                    raise ValueError("Request body is empty or too large.")
+                body = json.loads(self.rfile.read(n).decode("utf-8"))
+                out = app.run(str(body.get("sql", "")), body.get("limit"))
+                return self._json(200, out)
+            except ValueError as e:
+                return self._json(400, {"ok": False, "error": str(e)})
+            except z.ZetarisError as e:
+                return self._json(502, {"ok": False, "error": str(e)})
+            except Exception as e:  # keep the server alive; show the reason in the viewer
+                return self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}"[:400]})
+
+    return Handler
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--channel", default="jdbc", choices=["jdbc", "rest"])
+    ap.add_argument("--jar", help="driver JAR for JDBC (default: ZETARIS_JDBC_JAR)")
+    ap.add_argument("--limit", type=int, default=500, help="default rows returned (max 5000)")
+    ap.add_argument("--allow-write", action="store_true", help="also allow statements that change the instance")
+    a = ap.parse_args()
+
+    shell = {k: os.environ[k] for k in NAME_KEYS if os.environ.get(k)}  # before .env.local is loaded
+    env = z.load_env()
+    z.reexec_in_venv_if_needed(a.channel)
+    try:
+        render_page(read_names(env, shell))  # fail now if the template or the names are bad
+    except (renderer.RenderError, OSError) as e:
+        print(f"Cannot render the viewer: {e}", file=sys.stderr)
+        return 2
+    app = App(a.channel, a.jar or os.environ.get("ZETARIS_JDBC_JAR"), a.allow_write, a.limit)
+    try:
+        app.channel_ready()  # fail now, with a clear message, not on the first query
+        app.run("SELECT 1", 1)
+    except (z.ZetarisError, ValueError) as e:
+        print(f"Cannot connect over {a.channel.upper()}: {e}", file=sys.stderr)
+        return 2
+    srv = HTTPServer(("127.0.0.1", a.port), make_handler(app, a.port, env, shell))
+    print(f"Connected over {a.channel.upper()} (settings from {env or 'the environment'}).")
+    print(f"Mode: {'READ-WRITE' if a.allow_write else 'read-only'}.  Viewer: http://127.0.0.1:{a.port}   (Ctrl+C to stop)")
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopped.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,37 @@
+s3://<bucket>/<your folder>/  10 objects, 52,699 bytes
+           0  2026-10-28 23:28  <your folder>/usl_demo/sic_edgar_usl/company/_SUCCESS
+       1,434  2026-10-28 23:27  <your folder>/usl_demo/sic_edgar_usl/company/part-00000-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+       1,670  2026-10-28 23:27  <your folder>/usl_demo/sic_edgar_usl/company/part-00001-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+       1,508  2026-10-28 23:28  <your folder>/usl_demo/sic_edgar_usl/company/part-00002-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+       1,455  2026-10-28 23:28  <your folder>/usl_demo/sic_edgar_usl/company/part-00003-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+       1,449  2026-10-28 23:28  <your folder>/usl_demo/sic_edgar_usl/company/part-00004-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+       1,579  2026-10-28 23:28  <your folder>/usl_demo/sic_edgar_usl/company/part-00005-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+       1,565  2026-10-28 23:28  <your folder>/usl_demo/sic_edgar_usl/company/part-00006-69957244-0695-4197-a49f-ef85df679150-c000.snappy.parquet
+           0  2026-10-28 23:27  <your folder>/usl_demo/sic_edgar_usl/sic_code/_SUCCESS
+      42,039  2026-10-28 23:27  <your folder>/usl_demo/sic_edgar_usl/sic_code/part-00000-64123db2-a3ab-4535-96e9-5fd18a56dbb4-c000.snappy.parquet
+
+=== sic_code: company-dns API > view > USL > Parquet
+STAGE                                                            ROWS  RESULT
+1a company-dns API V3 (live)                                    1,005  PASS  reference count
+1b company-dns API V4 (live)                                    1,005  PASS
+2  Lightning REST table                                             1  INFO  holds the whole API response as one JSON row
+3  SchemaStore view sic_codes_table                             1,005  PASS
+4  USL table sic_code                                           1,005  PASS
+   API V3 codes vs view codes                                          PASS  identical
+   view codes vs USL codes                                             PASS  identical
+5  Parquet  <your folder>/usl_demo/sic_edgar_usl/sic_code    1,005  PASS
+   USL rows vs Parquet rows (8 columns)                                PASS  identical
+
+=== company: SEC EDGAR API > raw tables > view > USL > Parquet
+STAGE                                                           ROWS  RESULT
+1  SEC EDGAR submissions API (live)                                7  PASS  7 CIKs from 11_edgar_company_profiles_create.sql
+2  Lightning REST tables (7)                                       7  INFO  one JSON document each: [1, 1, 1, 1, 1, 1, 1]
+3  SchemaStore view all_companies_profile_table                    6  PASS  omits 1 company with SIC not in sic_code: ['0000051143']
+4  USL table company                                               7  PASS
+   API CIKs vs USL CIKs                                               PASS  identical
+   API (cik, name, sic) vs USL                                        PASS  identical
+   expected view CIKs vs view CIKs                                    PASS  identical
+5  Parquet  <your folder>/usl_demo/sic_edgar_usl/company        7  PASS
+   USL rows vs Parquet rows (4 columns)                               PASS  identical
+
+CHAIN OK
