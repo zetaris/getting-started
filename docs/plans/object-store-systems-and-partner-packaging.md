@@ -1,6 +1,6 @@
 # Object store test kit: `systems/object_stores/` and partner packaging plan
 
-**Status:** decisions resolved (see the last section). Phases 1 to 3 are done on branch `systems-object-stores` (29 to 30 October 2026) and await review; phases 4 to 6 are not started.
+**Status:** decisions resolved (see the last section). Phases 1 to 4 are done on branch `systems-object-stores` (29 to 30 October 2026) and await review; phases 5 and 6 are not started.
 
 ## Goal and scope
 
@@ -176,6 +176,18 @@ The packager only writes under `dist/`, which is already gitignored.
 - `serve_viewer.py` now sends a Content-Security-Policy that blocks loading anything from another site, and hides the driver's harmless SLF4J warning, which the HOWTO had already said it did.
 - Layout is verified by `viewer/check_fit.js`, run in a browser, not by a script in the repo, to avoid a headless-browser dependency. Browser automation in the packager can adopt it later. `scripts/check_viewer.py` covers what needs no browser, including WCAG contrast of the text colors; it found one failing derived color (the amber), which was darkened.
 - The recipe on the Proof tab still duplicates the HOWTO as HTML. A check that the two agree is not built yet; see the open item below.
+
+**Changes made while doing phase 4.**
+
+- `settings.json` gained a `bake` field. Only `S3_STORE_VENDOR`, `S3_STORE_PRODUCT`, `S3_ADDRESSING` and `S3_REGION` may be written into a package; `settings_docs.py` rejects a baked secret. Every other value in `.env.local` is collected for the leak check and never copied.
+- The packager parses the env file itself and never puts its values in `os.environ`, so a build cannot leak a setting into a child process.
+- The leak check runs twice: on the files in memory before anything is written, and on the ZIP read back from disk afterwards. If either fails, nothing is left behind. It reports the setting name and the file, never the value. Values shorter than 5 characters (6 for secrets) are reported as skipped, because they match ordinary words.
+- The partner logo is a `<!--partner-logo-->` marker in the viewer template. Only `assets/partner/logo.<svg|png|jpg|webp>` is accepted, the file is checked by signature and size (512 KB), and the server serves it from `viewer/assets/` only, with a sandboxing Content-Security-Policy.
+- Repository-only files stay out of packages: `package.py`, `settings_docs.py`, `check_viewer.py`, `check_fit.js` and the tests.
+- The S3 preflight check moved here from phase 2: `scripts/preflight.py --s3` reads the required settings from `settings.json`, makes no network call, and never prints a value.
+- 40 standard-library tests cover the renderer and the packager. With the leak check disabled in memory, seven of them fail, so they are not vacuous.
+- Checked against the earlier hand-built package: every SQL script and both guides are byte-identical, nothing is missing, and the only changes are the intended ones.
+- Finding: the example user agent quoted in the repo's own help text (`zetaris dev@zetaris.com`) is flagged if someone uses it as a real value, because it appears in the repo's scripts. That is correct behavior, and it matches the rule that the user agent must be a real contact.
 
 **Open item.** The recipe HTML and `HOWTO.md.tmpl` can drift apart. Generating one from the other, or checking that every command in the HOWTO appears in the viewer, would close that. It is small; say if you want it in phase 4.
 

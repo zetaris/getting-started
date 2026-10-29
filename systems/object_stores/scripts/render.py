@@ -71,6 +71,22 @@ def escape_html(value: str) -> str:
     return html.escape(value, quote=True)
 
 
+LOGO_EXTS = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+LOGO_FILE = re.compile(r"assets/partner/logo(\.svg|\.png|\.jpg|\.jpeg|\.webp)")
+PARTNER_MARK = "<!--partner-logo-->"
+
+
+def partner_logo_markup(logo_file: str | None, name: str) -> str:
+    """The header markup for a partner logo, or nothing. `logo_file` must be
+    exactly assets/partner/logo.<ext>, so a value can never choose another path."""
+    if not logo_file:
+        return ""
+    if not LOGO_FILE.fullmatch(logo_file):
+        raise RenderError(f"logo file {logo_file!r} must be assets/partner/logo.<svg|png|jpg|webp>")
+    alt = "Partner logo" if name == GENERIC_NAME else f"{name} logo"
+    return f'<div class="partner" id="partnerSlot"><img src="{escape_html(logo_file)}" alt="{escape_html(alt)}"></div>'
+
+
 def render_includes(text: str, base: Path, escape: Callable[[str], str] | None = None) -> str:
     """Replace each <!--include:file--> with the file's content, escaped. The file
     must be inside `base`."""
@@ -102,6 +118,15 @@ def render(template: str, values: dict[str, str], escape: Callable[[str], str] |
     if "{{" in out:
         raise RenderError("unresolved '{{' left after rendering")
     return out
+
+
+def render_viewer(template: Path, names: dict[str, str], logo_file: str | None = None) -> str:
+    """The viewer page: includes, the partner logo and the store names, all
+    escaped for markup. `names` holds S3_STORE_VENDOR and S3_STORE_PRODUCT."""
+    values = store_values(names.get("S3_STORE_VENDOR", ""), names.get("S3_STORE_PRODUCT", ""))
+    text = render_includes(template.read_text(encoding="utf-8"), template.parent, escape_html)
+    text = text.replace(PARTNER_MARK, partner_logo_markup(logo_file, values["STORE_NAME"]))
+    return render(text, values, escape_html)
 
 
 def main() -> int:

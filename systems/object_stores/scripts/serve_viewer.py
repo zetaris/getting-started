@@ -114,14 +114,24 @@ def read_names(env_file: Path | None, shell: dict[str, str]) -> dict[str, str]:
     return {k: shell.get(k) or found.get(k, "") for k in NAME_KEYS}
 
 
+def partner_logo() -> str | None:
+    """assets/partner/logo.<ext>, if the package carries a partner logo."""
+    for ext in renderer.LOGO_EXTS:
+        if (VIEWER_DIR / "assets" / "partner" / f"logo{ext}").is_file():
+            return f"assets/partner/logo{ext}"
+    return None
+
+
 def render_page(names: dict[str, str]) -> str:
     """The viewer HTML for the given names. Raises renderer.RenderError."""
-    values = renderer.store_values(names.get("S3_STORE_VENDOR", ""), names.get("S3_STORE_PRODUCT", ""))
-    text = renderer.render_includes(TEMPLATE.read_text(encoding="utf-8"), TEMPLATE.parent, renderer.escape_html)
-    return renderer.render(text, values, renderer.escape_html)
+    return renderer.render_viewer(TEMPLATE, names, partner_logo())
 
 
 def read_asset(rel: str) -> tuple[bytes, str] | None:
+    m = re.fullmatch(r"partner/logo(\.[a-z]+)", rel)
+    if m and m.group(1) in renderer.LOGO_EXTS:  # the package's own logo, never from website/
+        f = VIEWER_DIR / "assets" / rel
+        return (f.read_bytes(), renderer.LOGO_EXTS[m.group(1)]) if f.is_file() else None
     ctype = ASSETS.get(rel)  # exact names only, so no path can reach another file
     if not ctype:
         return None
@@ -175,12 +185,14 @@ def make_handler(app: App, port: int, env_file: Path | None, shell: dict[str, st
         def log_message(self, fmt, *args):  # one short line per request, never the SQL
             sys.stderr.write("  %s %s\n" % (self.command, self.path.split("?")[0]))
 
-        def _send(self, code: int, body: bytes, ctype: str, page: bool = False) -> None:
+        def _send(self, code: int, body: bytes, ctype: str, page: bool = False, asset: bool = False) -> None:
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            if asset:  # an SVG opened on its own must not run anything
+                self.send_header("Content-Security-Policy", "default-src 'none'; sandbox")
             if page:
                 self.send_header("Content-Security-Policy", CSP)
                 self.send_header("Referrer-Policy", "no-referrer")
@@ -209,7 +221,7 @@ def make_handler(app: App, port: int, env_file: Path | None, shell: dict[str, st
             if path.startswith("/assets/"):
                 asset = read_asset(path[len("/assets/"):])
                 if asset:
-                    return self._send(200, asset[0], asset[1])
+                    return self._send(200, asset[0], asset[1], asset=True)
                 return self._json(404, {"ok": False, "error": "Not found"})
             if path == "/api/health":
                 return self._json(200, {"ok": True, "channel": app.channel_name, "readOnly": not app.allow_write})

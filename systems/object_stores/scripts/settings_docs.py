@@ -35,7 +35,7 @@ ENV_EXAMPLE = KIT / ".env.example"
 README = KIT / "README.md"
 START, END = "<!-- settings-table:start -->", "<!-- settings-table:end -->"
 NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
-USED_RE = re.compile(r"\b(?:S3|ZETARIS|PACKAGE)_[A-Z][A-Z0-9_]*")
+USED_RE = re.compile(r"\b(?:S3|ZETARIS|PACKAGE)_[A-Z][A-Z0-9_]*(?![\w.]*\.(?:md|tmpl|txt|py|json|html)\b)")
 AUDIENCES = ("user", "maintainer")
 
 sys.path.insert(0, str(HERE))
@@ -63,6 +63,10 @@ def validate(schema: dict) -> list[str]:
             problems.append(f"{n}: audience must be one of {AUDIENCES}")
         if s.get("secret") and s.get("default"):
             problems.append(f"{n}: a secret setting must not have a default")
+        if not isinstance(s.get("bake"), bool):
+            problems.append(f"{n}: bake must be true or false")
+        if s.get("bake") and (s.get("secret") or s.get("audience") != "user"):
+            problems.append(f"{n}: only a non-secret user setting can be baked into a package")
         if not s.get("description"):
             problems.append(f"{n}: no description")
     return problems
@@ -72,7 +76,10 @@ def user_settings(schema: dict, group: str | None = None) -> list[dict]:
     return [s for s in schema["settings"] if s["audience"] == "user" and (group is None or s["group"] == group)]
 
 
-def env_example(schema: dict) -> str:
+def env_example(schema: dict, overrides: dict[str, str] | None = None) -> str:
+    """The example env file. `overrides` (baked settings only) are written as real
+    lines, for a package built for a store that needs, say, S3_ADDRESSING=virtual."""
+    overrides = overrides or {}
     out = [
         "# Copy this file to .env.local and fill it in.",
         "# .env.local holds secrets. Never commit it and never put it in a ZIP you share.",
@@ -91,8 +98,11 @@ def env_example(schema: dict) -> str:
             out += textwrap.wrap(desc, 76, initial_indent="# ", subsequent_indent="# ")
             if s.get("placeholder"):
                 out.append(f"# Example: {s['placeholder']}")
+            ov = overrides.get(s["name"], "") if s.get("bake") else ""
             if s["required"]:
                 out.append(f"{s['name']}=")
+            elif ov and ov != (s["default"] or ""):
+                out.append(f"{s['name']}={ov}")
             else:
                 out.append(f"# {s['name']}={s['default'] or ''}")
     return "\n".join(out) + "\n"

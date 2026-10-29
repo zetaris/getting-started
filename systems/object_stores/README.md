@@ -53,12 +53,41 @@ After editing `settings.json`, run `python3 systems/object_stores/scripts/settin
 | File | What it is |
 |---|---|
 | `s3_settings.py` | Reads the settings above and builds the S3 client, so every script uses the same addressing style, region and CA trust. |
-| `settings_docs.py` | Generates `.env.example` and the settings table from `settings.json`, and checks for drift. |
+| `settings_docs.py` | Repository only. Generates `.env.example` and the settings table from `settings.json`, and checks for drift. |
 | `render.py` | Fills `{{STORE_NAME}}`-style tokens in templates such as `HOWTO.md.tmpl`. |
 | `serve_viewer.py` | Serves the viewer and runs read-only SQL against your instance for its Live SQL tab. Renders the page with `S3_STORE_VENDOR` and `S3_STORE_PRODUCT` from `.env.local` on every request. |
-| `check_viewer.py` | Static checks of the viewer template: it renders, a hostile name is escaped, ids and references resolve, nothing loads from another site, and the text colors keep WCAG AA contrast. |
+| `check_viewer.py` | Repository only. Static checks of the viewer template: it renders, a hostile name is escaped, ids and references resolve, nothing loads from another site, and the text colors keep WCAG AA contrast. |
 
-For a walk-through from a clean instance to a verified Parquet file, see [`HOWTO.md.tmpl`](HOWTO.md.tmpl). It is a template, so the packager fills in the store name; `render.py` renders it by hand.
+For a walk-through from a clean instance to a verified Parquet file, see the HOWTO: `HOWTO.md.tmpl` in this folder in the repository (a template; `render.py` renders it by hand), or `HOWTO.md` at the root of a built package.
+
+## Building a package for a partner
+
+`scripts/package.py` builds a test package of this kit for one partner, as a folder and a ZIP under `dist/` (gitignored). It reads `.env.local`; add these lines to it:
+
+```
+PACKAGE_PARTNER=acme              # required: letters, digits, hyphens; part of the ZIP name
+S3_STORE_VENDOR=Acme              # optional: names shown in the documents and the viewer
+S3_STORE_PRODUCT=StoreX
+S3_ADDRESSING=path                # optional: baked into the example env file as the default
+S3_REGION=us-east-1
+PACKAGE_LOGO=/path/to/logo.svg    # optional: a logo file supplied for this package
+PACKAGE_DENY_WORDS=Other,Names    # optional: words that must not appear anywhere
+```
+
+```bash
+python3 systems/object_stores/scripts/package.py --dry-run   # build and check in memory; write nothing
+python3 systems/object_stores/scripts/package.py             # write dist/zetaris-<partner>-object-store-test/ and the ZIP
+```
+
+The package keeps this repository's paths, so every command in its documents runs the same there. It holds the kit, the helper scripts it uses, the SQL for the `sic_edgar_usl` USL and its sources (resolved from `open_data/manifest.json`), the Zetaris font and logo, and a `MANIFEST.txt` and `SHA256SUMS`. The same inputs and `--date` give the same ZIP.
+
+Only the settings above shape the package. Every other value in `.env.local` (keys, passwords, bucket, endpoint, folder, your login name, home folder) is never copied, and **the build fails and writes nothing if any of them appears in any file**, in memory or in the ZIP read back from disk. It also fails on a file that must never be packaged (`.env.local`, `.venv`, `__pycache__` and the like), on an unresolved template token, and on a denied word. Values shorter than five characters are too likely to match ordinary words, so they are reported as skipped.
+
+Tests (standard library only; no instance and no `.env.local`):
+
+```bash
+python3 -m unittest discover systems/object_stores/tests
+```
 
 ## The viewer
 
@@ -72,8 +101,8 @@ The page names your object store from `S3_STORE_VENDOR` and `S3_STORE_PRODUCT` i
 
 Two checks keep the page honest:
 
-- `scripts/check_viewer.py` runs without a browser.
-- `viewer/check_fit.js` runs in a browser. Open the page, paste the file into the console and run `await checkViewerFit()`. It must say `ok: true` at desktop and phone width and with a long store name. It checks that every diagram label stays inside its box, that no connector crosses a label, that no two labels overlap, and that the page does not scroll sideways.
+- `scripts/check_viewer.py` runs without a browser. Repository only.
+- `viewer/check_fit.js` runs in a browser. Repository only. Open the page, paste the file into the console and run `await checkViewerFit()`. It must say `ok: true` at desktop and phone width and with a long store name. It checks that every diagram label stays inside its box, that no connector crosses a label, that no two labels overlap, and that the page does not scroll sideways.
 
 ## Your own folder in the bucket
 

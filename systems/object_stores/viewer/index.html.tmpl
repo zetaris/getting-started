@@ -256,7 +256,7 @@ details > .code { margin: 0 12px 12px; }
   <div class="mast-in">
     <div class="brand">
       <img class="zlogo" src="assets/brand/zetaris-indigo.svg" alt="Zetaris" width="123" height="34">
-      <div class="partner" id="partnerSlot" hidden></div>
+      <!--partner-logo-->
     </div>
     <div class="eyebrow">Zetaris Unified Semantic Layer on {{STORE_NAME}}</div>
     <h1>sic_edgar_usl</h1>
@@ -816,8 +816,8 @@ S3_PREFIX=&lt;your own folder, for example jane-usl-test&gt;</pre></div>
       <li class="step">
         <h3>Run the preflight</h3>
         <div class="body">
-          <p>Read-only. It checks the settings, REST, Java, the venv, the JAR and a JDBC <code>SELECT 1</code>.</p>
-          <div class="code"><button class="copy" type="button" data-target="c-pre">Copy</button><pre id="c-pre">python3 scripts/preflight.py --jdbc</pre></div>
+          <p>Read-only. It checks the settings, REST, Java, the venv, the JAR, a JDBC <code>SELECT 1</code> and, with <code>--s3</code>, the object store settings. It makes no call to the store; the probe in step 8 does that.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-pre">Copy</button><pre id="c-pre">python3 scripts/preflight.py --jdbc --s3</pre></div>
           <div class="code out"><span class="lbl">Expected output</span><pre><span class="pass">[PASS]</span> env file: &lt;package&gt;/.env.local
 <span class="pass">[PASS]</span> ZETARIS_API_KEY: set
 <span class="pass">[PASS]</span> ZETARIS_USERNAME: set
@@ -830,6 +830,15 @@ S3_PREFIX=&lt;your own folder, for example jane-usl-test&gt;</pre></div>
 <span class="pass">[PASS]</span> jaydebeapi: importable
 <span class="pass">[PASS]</span> driver JAR: /full/path/to/ndp-jdbc-driver-&lt;version&gt;-driver.jar
 <span class="pass">[PASS]</span> JDBC SELECT 1
+[INFO] datasources: none
+[INFO] lightning databases: &lt;your databases&gt;
+[INFO] USL namespaces: none
+<span class="pass">[PASS]</span> S3_ENDPOINT_URL: set
+<span class="pass">[PASS]</span> S3_BUCKET: set
+<span class="pass">[PASS]</span> S3_ACCESS_KEY: set
+<span class="pass">[PASS]</span> S3_SECRET_KEY: set
+<span class="pass">[PASS]</span> S3_ADDRESSING: path
+[INFO] S3_CA_BUNDLE: not set (the CA file Python trusts is used)
 <span class="okc">READY</span></pre></div>
           <div class="callout-box">If you see <b>NOT READY</b>, fix the line marked FAIL first. Every later step assumes READY.</div>
         </div>

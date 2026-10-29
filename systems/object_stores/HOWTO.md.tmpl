@@ -93,11 +93,12 @@ archive you share.
 
 ## 4. Run the preflight
 
-Read-only. It checks the settings, REST, Java, the venv, the JAR and a JDBC
-`SELECT 1`.
+Read-only. It checks the settings, REST, Java, the venv, the JAR, a JDBC
+`SELECT 1` and, with `--s3`, the object store settings. It makes no call to the
+store; the probe in step 8 does that.
 
 ```bash
-python3 scripts/preflight.py --jdbc
+python3 scripts/preflight.py --jdbc --s3
 ```
 
 Expected output:
@@ -115,6 +116,15 @@ Expected output:
 [PASS] jaydebeapi: importable
 [PASS] driver JAR: /full/path/to/ndp-jdbc-driver-<version>-driver.jar
 [PASS] JDBC SELECT 1
+[INFO] datasources: none
+[INFO] lightning databases: <your databases>
+[INFO] USL namespaces: none
+[PASS] S3_ENDPOINT_URL: set
+[PASS] S3_BUCKET: set
+[PASS] S3_ACCESS_KEY: set
+[PASS] S3_SECRET_KEY: set
+[PASS] S3_ADDRESSING: path
+[INFO] S3_CA_BUNDLE: not set (the CA file Python trusts is used)
 READY
 ```
 

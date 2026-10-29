@@ -52,7 +52,7 @@ are not in this package. They are only comments.
 python3 -m venv .venv
 .venv/bin/pip install -r systems/object_stores/requirements.txt
 cp systems/object_stores/.env.example .env.local     # then fill it in
-python3 scripts/preflight.py --jdbc
+python3 scripts/preflight.py --jdbc --s3
 ```
 
 Then follow [HOWTO.md](HOWTO.md) from step 5.
