@@ -1,0 +1,512 @@
+# HOWTO: build a USL, materialize it to {{STORE_NAME}}, and prove it
+
+Fourteen steps from an unpacked package to a verified Parquet object in a bucket.
+Each step has the command to copy and the output to expect. Replace anything in
+angle brackets with your own value. Timestamps, ids and file names in the output
+will differ.
+
+Run every command from the folder that holds `systems/`, `scripts/` and
+`open_data/`: the package folder, or the repository root.
+
+## Contents
+
+1. [What you need](#1-what-you-need)
+2. [Create the Python environment](#2-create-the-python-environment)
+3. [Put your settings in .env.local](#3-put-your-settings-in-envlocal)
+4. [Run the preflight](#4-run-the-preflight)
+5. [Onboard the sources and build the USL](#5-onboard-the-sources-and-build-the-usl)
+6. [Confirm the USL has the data](#6-confirm-the-usl-has-the-data)
+7. [Check the helper packages](#7-check-the-helper-packages)
+8. [Probe the object store](#8-probe-the-object-store)
+9. [Create the storage setting in Zetaris](#9-create-the-storage-setting-in-zetaris)
+10. [Materialize the USL tables with SQL](#10-materialize-the-usl-tables-with-sql)
+11. [Verify the whole chain](#11-verify-the-whole-chain)
+12. [Explore the data in the viewer](#12-explore-the-data-in-the-viewer)
+13. [If something fails](#13-if-something-fails)
+14. [Clean up](#14-clean-up)
+
+## 1. What you need
+
+- Zetaris Lightning 2.4.3.1 or later, running, with JDBC on port 10000 and the
+  REST API on port 8888, and a user that can create USLs and storage settings.
+- The Zetaris JDBC driver JAR, and a JDK 11 or later (JDK 17 was used).
+- Python 3.10 or later.
+- A Zetaris API key that you create yourself in the Zetaris GUI. The scripts never
+  create one.
+- For {{STORE_NAME}}: the S3 endpoint URL, an access key, a secret key and an
+  existing bucket.
+- The package, unzipped, or a checkout of the repository.
+
+## 2. Create the Python environment
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r systems/object_stores/requirements.txt
+```
+
+Expect no errors. The environment gives the scripts `jaydebeapi` for JDBC,
+`boto3` for the S3 API and `pyarrow` to read Parquet. The scripts find a Homebrew
+JDK on macOS by themselves.
+
+## 3. Put your settings in .env.local
+
+```bash
+cp systems/object_stores/.env.example .env.local
+```
+
+Open `.env.local` and fill in every line that does not start with `#`. It holds
+the Zetaris login, the API key, the user agent, the JDBC JAR path and the four S3
+settings, and the file explains each one. The optional lines show their defaults:
+
+```
+ZETARIS_USERNAME=<your Zetaris user id>
+ZETARIS_PASSWORD=<your Zetaris password>
+ZETARIS_API_KEY=<API key created in the Zetaris GUI>
+ZETARIS_USER_AGENT=<app name> <contact email>
+ZETARIS_JDBC_JAR=/full/path/to/ndp-jdbc-driver-<version>-driver.jar
+
+S3_ENDPOINT_URL=https://<your S3 endpoint>
+S3_BUCKET=<bucket name>
+S3_ACCESS_KEY=<access key>
+S3_SECRET_KEY=<secret key>
+S3_PREFIX=<your own folder, for example jane-usl-test>
+```
+
+`S3_PREFIX` is your own folder in the bucket. Everything the test writes goes
+under it, so people who share one bucket do not collide, and the scripts create
+the folder for you. Leave it blank to use `usl-test-` plus your login name.
+
+Three optional settings adapt the scripts to a store that behaves differently.
+Leave them out until the probe (step 8) tells you to set them:
+
+- `S3_ADDRESSING`: `path` (the default) or `virtual`.
+- `S3_REGION`: the region name sent to the store, `us-east-1` by default.
+- `S3_CA_BUNDLE`: a PEM file, for a store whose certificate authority is private.
+
+`ZETARIS_USER_AGENT` is sent to the public SEC EDGAR API, which asks callers to
+identify themselves. Use a real contact. The REST URL defaults to
+`http://localhost:8888/api/v1.0` and the organization id to `1`, so a local
+install needs nothing more.
+
+Never paste keys into a chat or a commit, and keep `.env.local` out of any
+archive you share.
+
+## 4. Run the preflight
+
+Read-only. It checks the settings, REST, Java, the venv, the JAR and a JDBC
+`SELECT 1`.
+
+```bash
+python3 scripts/preflight.py --jdbc
+```
+
+Expected output:
+
+```
+[PASS] env file: <folder>/.env.local
+[PASS] ZETARIS_API_KEY: set
+[PASS] ZETARIS_USERNAME: set
+[PASS] ZETARIS_PASSWORD: set
+[PASS] REST datasources: HTTP 200
+[PASS] REST SELECT 1
+[PASS] JDBC port 10000: open
+[PASS] Java (JDK 11+): /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+[PASS] .venv: <folder>/.venv/bin/python
+[PASS] jaydebeapi: importable
+[PASS] driver JAR: /full/path/to/ndp-jdbc-driver-<version>-driver.jar
+[PASS] JDBC SELECT 1
+READY
+```
+
+If it ends with **NOT READY**, fix the line marked FAIL first. Every later step
+assumes READY.
+
+## 5. Onboard the sources and build the USL
+
+Show the plan first. Nothing is sent.
+
+```bash
+python3 scripts/onboard.py run sic_edgar_usl --channel jdbc --dry-run
+```
+
+Expected output:
+
+```
+ 1. company_dns      rest  open_data/rest_apis/sql/rate_limited/12_company_dns_create.sql
+ 2. edgar_facts      rest  open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql
+ 3. edgar_profiles   rest  open_data/rest_apis/sql/rate_limited/11_edgar_company_profiles_create.sql
+ 4. sic_edgar_usl    usl   open_data/usl/sql/02_sic_edgar_usl_create.sql
+(dry run: nothing sent)
+```
+
+Then run it. This creates objects on the instance and calls the public APIs once,
+so run it once and deliberately.
+
+```bash
+python3 scripts/onboard.py run sic_edgar_usl --channel jdbc
+```
+
+Expected output:
+
+```
+=== company_dns (10 statements, dependency)
+    10 ok
+=== edgar_facts (16 statements, dependency)
+    16 ok
+=== edgar_profiles (15 statements, dependency)
+    15 ok
+=== sic_edgar_usl (9 statements)
+    9 ok
+done
+```
+
+Re-running on an instance that already has these objects needs `--skip-exists`.
+The line `SLF4J: Failed to load class` is a harmless warning from the driver, which
+bundles no logging backend.
+
+## 6. Confirm the USL has the data
+
+```bash
+python3 scripts/run_sql.py --channel jdbc -e "SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.sic_code"
+python3 scripts/run_sql.py --channel jdbc -e "SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.company"
+python3 scripts/run_sql.py --channel jdbc -e "RUN DQ TABLE lightning.metastore.usl_demo.sic_edgar_usl.company"
+```
+
+Expected output, one line from each command:
+
+```
+[1005]
+[7]
+['cik', 'company', 'Primary Key Constraint', 7, 7, 0]
+['sic', 'company', 'Foreign Key Constraint', 7, 6, 1]
+```
+
+One foreign-key row is invalid on purpose in this data set: IBM is filed under SIC
+3570, which is not in the SIC hierarchy. It does not stop materialization.
+
+## 7. Check the helper packages
+
+```bash
+.venv/bin/python -c "import jaydebeapi, boto3, pyarrow; print('helpers ok')"
+```
+
+Expected output: `helpers ok`
+
+## 8. Probe the object store
+
+This tests the endpoint, the keys and the bucket before Zetaris is involved. It
+tries your configured addressing style and region first, then the other style
+and three region names, then writes one tiny test object under
+`<your folder>/zetaris-probe/` and deletes it. Add `--no-write` to stay read-only.
+
+```bash
+.venv/bin/python systems/object_stores/scripts/probe_s3.py
+```
+
+Expected output:
+
+```
+endpoint=https://<endpoint> bucket=<bucket> tls_verify=<CA file>
+configured: addressing=path region=us-east-1
+your folder: s3://<bucket>/<your folder>/
+[PASS] style=path    region=us-east-1  head_bucket + list ok (0 keys shown)
+[PASS] style=path    region=us-west-2  head_bucket + list ok (0 keys shown)
+[PASS] style=path    region=eu-west-1  head_bucket + list ok (0 keys shown)
+[PASS] style=virtual region=us-east-1  head_bucket + list ok (0 keys shown)
+[PASS] style=virtual region=us-west-2  head_bucket + list ok (0 keys shown)
+[PASS] style=virtual region=eu-west-1  head_bucket + list ok (0 keys shown)
+
+Your configured settings work: S3_ADDRESSING=path S3_REGION=us-east-1
+
+Write test with style=path region=us-east-1: <your folder>/zetaris-probe/<uuid>.txt
+[PASS] put_object
+[PASS] get_object matches
+[PASS] delete_object
+[PASS] your folder s3://<bucket>/<your folder>/ created
+```
+
+Your store may pass fewer lines. What matters is the line after the table. If it
+says **Your configured settings did not work, but this combination did**, put the
+`S3_ADDRESSING` and `S3_REGION` it prints in `.env.local` and run the probe again.
+The same two settings drive every later step, including the options Zetaris
+receives (`useS3PathStyleAccess`).
+
+The probe writes its test object inside your folder and also creates the folder.
+S3 has no real directories: a folder is a key prefix, and the script creates the
+empty marker object that consoles show as a folder. Once data is written under it,
+the folder shows through its objects, and the storage engine normally removes the
+empty marker. That is expected.
+
+The probe runs on your machine, so it does not prove that the Zetaris engine can
+reach the store. If the engine runs on another host, that host must reach the
+endpoint and trust the same certificate chain. Step 10 is the real test of that.
+
+If every line fails with `CERTIFICATE_VERIFY_FAILED`: the endpoint's certificate
+chain may be public, but boto3's bundled CA list may not include its root. The
+scripts already use the CA file your Python trusts. If the endpoint uses a private
+CA, set `S3_CA_BUNDLE` in `.env.local` (or pass `--ca-bundle /path/to/ca.pem`). Do
+not turn verification off.
+
+## 9. Create the storage setting in Zetaris
+
+There is no SQL statement to create a storage setting, so this calls the REST
+endpoint `POST /storage-setting`. Look at the request first, with the keys hidden:
+
+```bash
+python3 systems/object_stores/scripts/storage_setting.py create --dry-run
+```
+
+Expected output:
+
+```
+POST /storage-setting (dry run, nothing sent)
+{
+  "storageName": "s3-compat",
+  "storageType": "S3",
+  "storagePath": "s3a://<bucket>/<your folder>",
+  "scope": "Owner",
+  "config": {
+    "awsAccessKeyId": "<redacted>",
+    "awsSecretAccessKey": "<redacted>",
+    "s3Endpoint": "https://<endpoint>",
+    "useS3PathStyleAccess": "true"
+  }
+}
+```
+
+With `S3_ADDRESSING=virtual` the `useS3PathStyleAccess` line is left out.
+
+Create it, then note the id it returns:
+
+```bash
+python3 systems/object_stores/scripts/storage_setting.py create
+python3 systems/object_stores/scripts/storage_setting.py list
+```
+
+Expected output:
+
+```
+HTTP 200
+{
+  "id": "<storage setting id>"
+}
+```
+
+Creating a setting does not test it. It is accepted even when the endpoint or keys
+are wrong. The real test is step 10. Use `storage_setting.py delete <id>` to remove
+one.
+
+## 10. Materialize the USL tables with SQL
+
+The script builds the statement from `.env.local`. Dry-run first. It masks the
+credentials in what it prints.
+
+```bash
+python3 systems/object_stores/scripts/materialize_usl_table.py \
+  lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
+  --setting-id <storage setting id> --variant options-json --dry-run
+```
+
+Expected output:
+
+```
+MATERIALIZE USL TABLE lightning.metastore.usl_demo.sic_edgar_usl.sic_code TO STORAGE (
+  recordType = 'all',
+  path = 's3a://<bucket>/<your folder>/usl_demo/sic_edgar_usl/sic_code',
+  format = 'parquet',
+  storageSettingId = '<storage setting id>',
+  optionsBase64 = '<base64 JSON with credentials>'
+)
+
+(dry run: nothing sent)
+```
+
+Run it for both tables:
+
+```bash
+python3 systems/object_stores/scripts/materialize_usl_table.py \
+  lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
+  --setting-id <storage setting id> --variant options-json
+
+python3 systems/object_stores/scripts/materialize_usl_table.py \
+  lightning.metastore.usl_demo.sic_edgar_usl.company \
+  --setting-id <storage setting id> --variant options-json
+```
+
+The last line of each run:
+
+```
+RESULT: s3a://<bucket>/<your folder>/usl_demo/sic_edgar_usl/sic_code | SUCCESS | None | None
+RESULT: s3a://<bucket>/<your folder>/usl_demo/sic_edgar_usl/company | SUCCESS | None | None
+```
+
+**The credentials must be inside the options.** The manual's example passes only
+`storageSettingId`. On Zetaris 2.4.3.1 that failed with `NoAuthWithAWSException:
+No AWS Credentials provided`, and so did extra top-level keys and `fs.s3a.*` names.
+It worked once the S3 keys, endpoint and `useS3PathStyleAccess` went into the
+`optionsBase64` JSON, which is what `--variant options-json` does. The statement
+therefore carries your keys, and the instance may keep it in query history, so use
+a key you can rotate. The details are in
+[ISSUE-01](systems/object_stores/issues/ISSUE-01-materialize-ignores-storage-setting.md).
+
+Everything lands in your own folder, so other people's output in the same bucket is
+not affected and does not affect you. If you are running this step again yourself,
+clear your folder first (step 14, the bucket cleanup), so that old and new files
+cannot sit side by side and step 11 proves this run, not the previous one.
+
+The `company` table produces 7 Parquet files of one row each, because it is a
+`UNION ALL` of seven sources. That is harmless at this size.
+
+## 11. Verify the whole chain
+
+This lists your folder in the bucket, then checks both tables from the source API through the
+view and the USL to the Parquet files. It is read-only and exits with 0 only when
+every stage matches.
+
+```bash
+.venv/bin/python systems/object_stores/scripts/verify_chain.py
+```
+
+Expected output (stage lines):
+
+```
+=== sic_code: company-dns API > view > USL > Parquet
+1a company-dns API V3 (live)                      1,005  PASS  reference count
+1b company-dns API V4 (live)                      1,005  PASS
+3  SchemaStore view sic_codes_table               1,005  PASS
+4  USL table sic_code                             1,005  PASS
+5  Parquet  <your folder>/usl_demo/sic_edgar_usl/sic_code  1,005  PASS
+   USL rows vs Parquet rows (8 columns)                  PASS  identical
+
+=== company: SEC EDGAR API > raw tables > view > USL > Parquet
+1  SEC EDGAR submissions API (live)                   7  PASS
+3  SchemaStore view all_companies_profile_table       6  PASS  omits 1 company with SIC not in sic_code
+4  USL table company                                  7  PASS
+5  Parquet  <your folder>/usl_demo/sic_edgar_usl/company  7  PASS
+   USL rows vs Parquet rows (4 columns)                  PASS  identical
+
+CHAIN OK
+```
+
+Use `--table sic_code` or `--table company` to check one table. A FAIL line names
+the stage and shows a few keys that differ, and the last line then reads
+**CHAIN BROKEN**. The view has 6 rows, not 7, on purpose: it omits IBM, whose SIC
+code is not in the hierarchy.
+
+## 12. Explore the data in the viewer
+
+Start the small local server. It serves the viewer and runs read-only SQL against
+your instance with the credentials in `.env.local`, which never reach the browser.
+
+```bash
+.venv/bin/python systems/object_stores/scripts/serve_viewer.py
+```
+
+Expected output:
+
+```
+Connected over JDBC (settings from <folder>/.env.local).
+Mode: read-only.  Viewer: http://127.0.0.1:8765   (Ctrl+C to stop)
+```
+
+Open `http://127.0.0.1:8765` and choose the **Live SQL** tab. Pick an example or
+type your own and press **Run query**. For example:
+
+```sql
+SELECT cik, entity_name, sic, sic_description_edgar
+FROM lightning.metastore.usl_demo.sic_edgar_usl.company
+ORDER BY entity_name
+```
+
+Options: `--channel rest` uses the REST API instead of JDBC, `--port 9000` changes
+the port, and `--allow-write` lets statements that change the instance through, so
+leave it off unless you mean it.
+
+Queries on the REST-backed tables can take several seconds, because those tables
+fetch from the public API again unless they are cached.
+
+## 13. If something fails
+
+| You see | Cause and fix |
+|---|---|
+| `CERTIFICATE_VERIFY_FAILED` from boto3 | The CA list boto3 bundles lacks your endpoint's root. The scripts use Python's CA file by default. For a private CA set `S3_CA_BUNDLE`. Never disable verification. |
+| `S3_ADDRESSING must be one of path, virtual` | Fix the value in `.env.local`. |
+| `S3_CA_BUNDLE is set but ... is not a file` | Fix the path in `.env.local`, or remove the line. |
+| Probe: `Your configured settings did not work, but this combination did` | Copy the `S3_ADDRESSING` and `S3_REGION` it prints into `.env.local`. |
+| Probe passes but materialize fails | The probe runs on your machine and Zetaris runs elsewhere. Check that the engine host can reach the endpoint and trusts its certificate chain. |
+| `NoAuthWithAWSException: No AWS Credentials provided` in the materialize result | The credentials were not inside `optionsBase64`. Use `--variant options-json`. See ISSUE-01. |
+| The materialize result says `Error` although the command printed ok | The statement returns one row per run. Read that row: `SUCCESS`, or `Error` followed by the message. |
+| `No module named boto3` or `pyarrow` | You used `python3`. Use `.venv/bin/python`. |
+| `Set ZETARIS_USER_AGENT` | Add an app name and a contact email to `.env.local`. |
+| `Missing in the environment or .env.local: S3_...` | Add the missing name to `.env.local`. |
+| `Unable to locate a Java Runtime` | macOS stub. Install a JDK, for example `brew install openjdk@17`; the scripts find it. |
+| REST `401` from `storage_setting.py` | The API key is missing, wrong or expired. Create a new key in the Zetaris GUI and update `.env.local`. |
+| The Live SQL tab says **Not connected** | The viewer server is not running, or you opened the file directly. Run `.venv/bin/python systems/object_stores/scripts/serve_viewer.py` and use the address it prints. |
+| `SLF4J: Failed to load class StaticLoggerBinder` | Harmless. The driver bundles no logging backend. `verify_chain.py` and `serve_viewer.py` hide it. |
+
+## 14. Clean up
+
+Confirm what you want gone first. These steps change the instance and the bucket.
+
+**Zetaris objects.** Show the plan, read it, then run it with `--yes`:
+
+```bash
+python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_profiles --channel jdbc
+python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_profiles --channel jdbc --yes
+```
+
+This drops the USL, the views and the other SQL-removable objects. The REST tables,
+the `COMPANY_DNS` and `SEC_DATA` Lightning databases and the containers can only be
+removed in the Zetaris Data Explorer, and the command lists them. A later re-run
+then needs `--skip-exists`. `--drop-namespace` also removes every other USL in
+`usl_demo`, so leave it off unless you want that.
+
+**Storage setting:**
+
+```bash
+python3 systems/object_stores/scripts/storage_setting.py list
+python3 systems/object_stores/scripts/storage_setting.py delete <storage setting id>
+```
+
+**Bucket.** The test wrote everything inside your own folder: the Parquet under
+`<your folder>/usl_demo/sic_edgar_usl/` and the probe's test object. The cleanup
+script lists what it would delete and deletes nothing until you add `--yes`:
+
+```bash
+.venv/bin/python systems/object_stores/scripts/cleanup_bucket.py
+```
+
+Expected output, with your own bucket, folder and objects:
+
+```
+Target: bucket <bucket> at <endpoint host>
+Mode:   dry run (nothing will be deleted)
+
+<your folder>/  10 objects, 52,699 bytes
+    ...
+Total: 10 objects, 52,699 bytes under 1 prefix(es)
+
+Dry run: nothing was deleted. Re-run with --yes to delete the objects listed above.
+```
+
+Read the list, then delete:
+
+```bash
+.venv/bin/python systems/object_stores/scripts/cleanup_bucket.py --yes
+```
+
+Expected output ends with:
+
+```
+Deleted. Checking again:
+  <your folder>/  0 objects left
+
+CLEAN: every listed prefix is empty.
+```
+
+By default it touches only your own folder. Output written elsewhere in the bucket
+is left alone unless you name it, for example `--prefix older-output/`. Each prefix
+is treated as a folder, and an empty prefix is refused, so it can never empty the
+whole bucket. If it ends with `INCOMPLETE`, objects remain; on a versioned bucket,
+old versions or delete markers may need your store's console. A bucket with object
+lock or a retention policy will refuse the deletes, and no script works around that.

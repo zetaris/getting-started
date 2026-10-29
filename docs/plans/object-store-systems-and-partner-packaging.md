@@ -1,6 +1,6 @@
 # Object store test kit: `systems/object_stores/` and partner packaging plan
 
-**Status:** decisions resolved (see the last section). Phase 1 is done on branch `systems-object-stores` (29 October 2026) and awaits review; phases 2 to 6 are not started.
+**Status:** decisions resolved (see the last section). Phases 1 and 2 are done on branch `systems-object-stores` (29 October 2026) and await review; phases 3 to 6 are not started.
 
 ## Goal and scope
 
@@ -72,13 +72,17 @@ systems/
   object_stores/
     README.md                        what the kit does, the settings table, the run order
     HOWTO.md.tmpl                    end-to-end test, step by step (templated)
+    PACKAGE_README.md.tmpl           the README a built package carries (templated)
     settings.json                    the single schema of settings (see below)
+    .env.example                     generated from settings.json
+    requirements.txt                 jaydebeapi, boto3, pyarrow
     scripts/                         moved from scripts/s3_compat/
       s3_settings.py                 one place that reads settings and builds the client
       probe_s3.py  storage_setting.py  materialize_usl_table.py
       verify_bucket.py  verify_chain.py  cleanup_bucket.py
       serve_viewer.py                moved from the package; renders the viewer at request time
       render.py                      template renderer used by the server and the packager
+      settings_docs.py               generates .env.example and the README table; --check finds drift
       package.py                     the packager
       report.py                      runs the steps in order and writes the conformance report
     viewer/
@@ -160,6 +164,8 @@ The packager only writes under `dist/`, which is already gitignored.
 | 4 | Packager | `package.py` with dry run, deterministic ZIP and leak checks | Unit tests below pass, and a build with no `S3_STORE_*` set is fully generic |
 | 5 | Acceptance | Build a package for a made-up partner, unzip it into an empty folder, and walk its HOWTO from step 1 on a clean Zetaris instance, as a partner would | Chain ends `CHAIN OK` and `cleanup_bucket.py` ends `CLEAN` |
 | 6 | Conformance report | `report.py` (details below), packaged with the kit | A report is generated against the first store, and its checks agree with what the individual scripts print |
+
+**Changes made while doing phase 2.** `render.py` was built in phase 2 instead of phase 3, because the templates could not be tested without it. The HOWTO and package README templates already name `serve_viewer.py` and `viewer/index.html`, which phase 3 adds, so they point at files that do not exist yet; nothing should be merged or packaged before phase 3. The preflight check for the S3 settings, listed as a fourth consumer of the schema, moves to phase 4, where the packager needs it. `settings_docs.py --check` also fails if a script reads a setting name that is not in `settings.json`, which keeps the schema honest.
 
 Phases 1 to 4 can be reviewed and committed separately, and phase 6 follows the same way. Each is small enough for one pull request.
 

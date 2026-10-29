@@ -1,0 +1,98 @@
+# Zetaris USL materialized to {{STORE_NAME}}: test package
+
+A self-contained package that builds a Unified Semantic Layer (USL) on a Zetaris
+instance, materializes its tables as Parquet to a bucket on {{STORE_NAME}}, and
+proves the result from the source API to the Parquet file. It also holds a viewer
+with a live SQL tab.
+
+Start with **[HOWTO.md](HOWTO.md)**. It is the step-by-step test, with the
+command to copy and the output to expect at every step.
+
+## What the test does
+
+```
+company-dns API ──► COMPANY_DNS ──► sic_code ──┐
+                                                ├─► USL sic_edgar_usl ──► Parquet in the bucket
+SEC EDGAR API ────► SEC_DATA ─────► company ───┘                           (verified end to end)
+```
+
+1. Onboards the public SIC and EDGAR sources and builds the `sic_edgar_usl` USL
+   (50 SQL statements, from `open_data/`).
+2. Probes the object store, so you know the endpoint, keys, bucket and TLS work.
+3. Creates a Zetaris storage setting and runs `MATERIALIZE USL TABLE` for the
+   `sic_code` and `company` tables.
+4. Verifies each table at every stage: live API, Lightning view, USL table and
+   the Parquet files read back from the bucket.
+5. Lets you query the instance from a browser, read-only.
+
+## What is in the package
+
+```
+README.md                           this file
+HOWTO.md                            the end-to-end test, step by step
+systems/object_stores/
+  README.md                         the kit: settings, scripts, your own folder in the bucket
+  .env.example                      settings to copy to .env.local (never share .env.local)
+  requirements.txt                  jaydebeapi, boto3, pyarrow
+  settings.json                     the list of settings the scripts read
+  scripts/                          probe, storage setting, materialize, verify, cleanup, viewer server
+  issues/                           findings for Zetaris engineering
+  viewer/index.html                 analysis, topology and ERD, proof and recipe, live SQL
+scripts/                            preflight, onboarding and SQL helpers shared with the repository
+open_data/                          the SQL for the sources and the USL, and the manifest that orders them
+docs/guides/                        Zetaris SQL command reference and SQL companion
+```
+
+Comments inside the SQL files refer to documents from the full repository that
+are not in this package. They are only comments.
+
+## Quick start
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r systems/object_stores/requirements.txt
+cp systems/object_stores/.env.example .env.local     # then fill it in
+python3 scripts/preflight.py --jdbc
+```
+
+Then follow [HOWTO.md](HOWTO.md) from step 5.
+
+To open the viewer without running anything, open `systems/object_stores/viewer/index.html`
+in a browser. Its first three tabs work as a static page. The **Live SQL** tab
+needs `.venv/bin/python systems/object_stores/scripts/serve_viewer.py` running, and you
+then open `http://127.0.0.1:8765`.
+
+## If your store behaves differently
+
+Three optional settings in `.env.local` adapt the scripts: `S3_ADDRESSING`
+(`path` or `virtual`), `S3_REGION` and `S3_CA_BUNDLE` (for a private certificate
+authority). The probe in step 8 of the HOWTO tells you which values your store
+accepts. TLS verification is never turned off.
+
+## Safety
+
+- `.env.local` holds your keys. It is not part of this package. Do not add it to
+  an archive you share.
+- The viewer server listens on `127.0.0.1` only, keeps credentials on the server,
+  and refuses anything but SELECT, WITH, SHOW, DESCRIBE, EXPLAIN and LIST unless
+  you start it with `--allow-write`.
+- The onboarding scripts create objects on the Zetaris instance and call public
+  APIs once. Read each dry run before the real run.
+- `MATERIALIZE USL TABLE` puts the S3 credentials inside the statement, and the
+  instance may keep it in query history. Use a key you can rotate. See
+  [ISSUE-01](systems/object_stores/issues/ISSUE-01-materialize-ignores-storage-setting.md).
+
+## Cleaning up afterwards
+
+See the last section of [HOWTO.md](HOWTO.md): it removes the USL and sources from
+the instance, deletes the storage setting and clears the bucket with
+`systems/object_stores/scripts/cleanup_bucket.py`, which is a dry run until you
+add `--yes`.
+
+## Several people, one bucket
+
+Each person writes into their own folder in the bucket (`S3_PREFIX` in
+`.env.local`, or `usl-test-` plus their login name by default), and the scripts
+create it. Probe output, Parquet files, the verification and the cleanup all stay
+inside that folder, so people who share a bucket do not collide. It is a naming
+convention, not access control.

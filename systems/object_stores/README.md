@@ -6,22 +6,36 @@ from the repository root.
 
 ## Settings
 
-Set these in `.env.local` (gitignored). The scripts never print the keys.
+Set these in `.env.local` (gitignored). The scripts never print the keys. The table below is generated from [`settings.json`](settings.json), and [`.env.example`](.env.example) is generated from the same file, so copy that to start.
 
-| Name | Meaning |
-|---|---|
-| `S3_ENDPOINT_URL` | Endpoint, for example `https://s3.example.com` |
-| `S3_ACCESS_KEY` | Access key ID |
-| `S3_SECRET_KEY` | Secret key |
-| `S3_BUCKET` | Bucket name |
-| `S3_PREFIX` | Optional. Your own folder in the bucket, for example `jane-usl-test`. Blank means `usl-test-` plus your login name |
-| `S3_REGION` | Optional. Region name sent to the store. Default `us-east-1`; most non-AWS stores ignore it |
-| `S3_ADDRESSING` | Optional. `path` (default) or `virtual`. Also sets `useS3PathStyleAccess` for Zetaris. The probe shows which one your store accepts |
-| `S3_CA_BUNDLE` | Optional. PEM file of trusted CAs, for a store with a private certificate authority. Default is the CA file Python trusts |
-| `S3_STORAGE_SETTING_ID` | Optional. The id printed by `storage_setting.py create`, so you can omit `--setting-id` |
+<!-- settings-table:start -->
+| Setting | Required | Secret | Default | Meaning |
+|---|---|---|---|---|
+| `ZETARIS_USERNAME` | yes | no |  | Your Zetaris user id, normally an email address. Used for JDBC and to fetch the OpenAPI spec. |
+| `ZETARIS_PASSWORD` | yes | yes |  | Your Zetaris password. |
+| `ZETARIS_API_KEY` | yes | yes |  | An API key you create yourself in the Zetaris GUI. Used by storage_setting.py and by the viewer server over REST. The scripts never create one. |
+| `ZETARIS_USER_AGENT` | yes | no |  | Sent to the public SEC EDGAR and company-dns APIs, which ask callers to identify themselves. Use an app name and a real contact email. The scripts refuse the placeholder. |
+| `ZETARIS_JDBC_JAR` | yes | no |  | Full path to the Zetaris JDBC driver JAR. Needed for JDBC, which is the default channel. |
+| `ZETARIS_JDBC_URL` | no | no | `jdbc:zetaris:lightning@localhost:10000` | JDBC URL of the instance. |
+| `ZETARIS_REST_URL` | no | no | `http://localhost:8888/api/v1.0` | REST API base URL of the instance. |
+| `ZETARIS_ORG_ID` | no | no | `1` | Organization id sent with REST calls. |
+| `S3_ENDPOINT_URL` | yes | no |  | The S3 endpoint URL, with https:// and no bucket or path. |
+| `S3_BUCKET` | yes | no |  | An existing bucket. |
+| `S3_ACCESS_KEY` | yes | yes |  | Access key id. |
+| `S3_SECRET_KEY` | yes | yes |  | The access key's secret. The MATERIALIZE statement carries it, and the instance may keep that statement in query history, so use a key you can rotate. |
+| `S3_PREFIX` | no | no |  | Your own folder in the bucket. Everything the test writes goes under it, so people who share a bucket do not collide. Blank means usl-test- plus your login name. Letters, digits, - _ . and / only; it is lower-cased. |
+| `S3_REGION` | no | no | `us-east-1` | Region name sent to the store. Most non-AWS stores ignore it, but some check it. |
+| `S3_ADDRESSING` | no | no | `path` | path or virtual. Also sets useS3PathStyleAccess for Zetaris. probe_s3.py shows which one your store accepts. |
+| `S3_CA_BUNDLE` | no | no |  | PEM file of trusted CAs, for a store with a private certificate authority. Default is the CA file Python trusts. TLS verification is never turned off. |
+| `S3_STORAGE_SETTING_ID` | no | no |  | The Zetaris storage setting id, so materialize_usl_table.py does not need --setting-id. |
+| `S3_STORE_VENDOR` | no | no |  | Vendor of the object store, shown in the viewer and the documents. Blank leaves it out. |
+| `S3_STORE_PRODUCT` | no | no |  | Product name of the object store, shown in the viewer and the documents. Blank shows a generic name. |
+<!-- settings-table:end -->
 
 Install the helpers in the venv:
 `.venv/bin/pip install -r systems/object_stores/requirements.txt`.
+
+After editing `settings.json`, run `python3 systems/object_stores/scripts/settings_docs.py --write`. `--check` fails if the example env file, this table, the setting names used in the scripts, or the templates have drifted.
 
 ## The scripts
 
@@ -33,6 +47,16 @@ Install the helpers in the venv:
 | `verify_bucket.py` | Lists your folder (or a prefix you name) and reads Parquet row counts and schemas. | No |
 | `verify_chain.py` | Checks the SIC and EDGAR data end to end: live source API, Lightning view, USL table and Parquet files. | No |
 | `cleanup_bucket.py` | Deletes the objects the test wrote. Dry run by default; `--yes` deletes. Only touches the folders you name (default: your own folder) and refuses an empty prefix. | Deletes, with `--yes` |
+
+### Helpers
+
+| File | What it is |
+|---|---|
+| `s3_settings.py` | Reads the settings above and builds the S3 client, so every script uses the same addressing style, region and CA trust. |
+| `settings_docs.py` | Generates `.env.example` and the settings table from `settings.json`, and checks for drift. |
+| `render.py` | Fills `{{STORE_NAME}}`-style tokens in templates such as `HOWTO.md.tmpl`. |
+
+For a walk-through from a clean instance to a verified Parquet file, see [`HOWTO.md.tmpl`](HOWTO.md.tmpl). It is a template, so the packager fills in the store name; `render.py` renders it by hand.
 
 ## Your own folder in the bucket
 
