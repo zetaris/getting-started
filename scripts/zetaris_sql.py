@@ -194,8 +194,9 @@ def apply_user_agent(statements: list[str]) -> list[str]:
 
 
 class Result:
-    def __init__(self, rows: list[list[Any]] | None):
+    def __init__(self, rows: list[list[Any]] | None, columns: list[str] | None = None):
         self.rows = rows or []
+        self.columns = columns or []  # column names, when the channel reports them
 
 
 class RestChannel:
@@ -235,7 +236,9 @@ class RestChannel:
             "/sql-editor/sqls/run",
             {"queryId": str(uuid.uuid4()), "sql": sql, "source": "SqlEditor", "limit": limit},
         )
-        return Result(out.get("data") if isinstance(out, dict) else None)
+        if not isinstance(out, dict):
+            return Result(None)
+        return Result(out.get("data"), [str(h) for h in out.get("headers") or []])
 
     def close(self) -> None:
         pass
@@ -308,7 +311,8 @@ class JdbcChannel:
             rows = self._cur.fetchall()
         except Exception:
             return Result(None)
-        return Result([list(r) for r in rows[:limit]])
+        cols = [str(d[0]) for d in (self._cur.description or [])]
+        return Result([list(r) for r in rows[:limit]], cols)
 
     def close(self) -> None:
         self._conn.close()
