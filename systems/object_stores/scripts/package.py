@@ -146,12 +146,65 @@ def read(path: Path) -> bytes:
     return path.read_bytes()
 
 
+REPO_ONLY_LINE = "<!--repo-only-->"          # at the end of a line: drop the line
+REPO_ONLY_START, REPO_ONLY_END = "<!--repo-only-start-->", "<!--repo-only-end-->"  # each on its own line: drop everything between
+
+
+def strip_repo_only(text: str) -> str:
+    """The kit README without the parts that are about maintaining this repository
+    (building packages, the tests, the drift check), which name files a package lacks."""
+    out, skipping = [], False
+    for line in text.split("\n"):
+        if line.strip() == REPO_ONLY_START:
+            if skipping:
+                raise BuildError("README.md has a repo-only block inside another")
+            skipping = True
+        elif line.strip() == REPO_ONLY_END:
+            if not skipping:
+                raise BuildError("README.md has a repo-only end without a start")
+            skipping = False
+        elif not skipping and not line.rstrip().endswith(REPO_ONLY_LINE):
+            out.append(line)
+    if skipping:
+        raise BuildError("README.md has a repo-only start without an end")
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out))
+
+
+# A path a document or script names, to be checked against what the package holds.
+PATH_REF = re.compile(r"(?<![\w./<-])((?:scripts|systems|open_data|docs|website|reports|examples)/[A-Za-z0-9_./*<>{}-]*[A-Za-z0-9_])")
+PATH_CHECKED = (".md", ".py", ".html", ".json", ".txt", ".example")
+PATH_EXEMPT_FILES = {"MANIFEST.txt", "SHA256SUMS"}  # provenance: names the builder
+PATH_EXEMPT_REFS = {("scripts/zetaris_sql.py", "scripts/requirements.txt")}  # a branch that is only taken where the file exists
+PATH_MADE_AT_RUN_TIME = ("reports",)  # written by report.py, not shipped
+
+
+def dangling_paths(files: dict[str, bytes]) -> list[str]:
+    """Paths that a shipped document, script or message names but the package does
+    not hold, as 'file: path'. A partner who follows one hits a missing file. SQL
+    comments are skipped: they refer to the full repository and say so in README.md."""
+    names = set(files)
+    dirs = {"/".join(n.split("/")[:i]) for n in names for i in range(1, n.count("/") + 1)}
+    bad: list[str] = []
+    for name in sorted(files):
+        if name in PATH_EXEMPT_FILES or not name.endswith(PATH_CHECKED):
+            continue
+        for m in PATH_REF.finditer(files[name].decode("utf-8", "replace")):
+            ref = m.group(1)
+            if any(c in ref for c in "<>{}*") or ref in names or ref in dirs or ref.split("/")[0] in PATH_MADE_AT_RUN_TIME:
+                continue
+            if (name, ref) in PATH_EXEMPT_REFS:
+                continue
+            bad.append(f"{name}: {ref}")
+    return sorted(set(bad))
+
+
 def kit_files() -> dict[str, bytes]:
     """The kit, verbatim: scripts, schema, issues, the viewer template and its fixture."""
     out: dict[str, bytes] = {}
     base = "systems/object_stores/"
     for rel in ("README.md", "requirements.txt", "settings.json"):
         out[base + rel] = read(KIT / rel)
+    out[base + "README.md"] = strip_repo_only(out[base + "README.md"].decode()).encode()
     for p in sorted((KIT / "scripts").glob("*.py")):
         if p.name not in MAINTAINER_SCRIPTS:
             out[base + "scripts/" + p.name] = read(p)
@@ -313,6 +366,9 @@ def build(env: dict[str, str], partner: str | None, date: datetime.date, out_dir
         raise BuildError("settings.json has problems: " + "; ".join(problems))
     cfg = Config(env, partner, date)
     files = build_files(cfg)
+    dangling = dangling_paths(files)
+    if dangling:
+        raise BuildError("the package names files it does not hold (fix the document or ship the file):\n  " + "\n  ".join(dangling))
     values, short = forbidden_values(env, schema, cfg)
     found = leak_check(files, values, cfg.deny)
     zdata = zip_bytes(files, cfg)

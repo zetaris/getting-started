@@ -84,7 +84,7 @@ def env_example(schema: dict, overrides: dict[str, str] | None = None) -> str:
         "# Copy this file to .env.local and fill it in.",
         "# .env.local holds secrets. Never commit it and never put it in a ZIP you share.",
         "# Every script reads it and never prints the keys.",
-        "# Generated from settings.json by scripts/settings_docs.py. Edit settings.json, not this file.",
+        "# Generated from settings.json. Edit settings.json, not this file.",
         "# A line without a leading # is required. A line with one is optional, and shows the default.",
     ]
     for g in schema["groups"]:

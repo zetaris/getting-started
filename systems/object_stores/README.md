@@ -35,7 +35,7 @@ Set these in `.env.local` (gitignored). The scripts never print the keys. The ta
 Install the helpers in the venv:
 `.venv/bin/pip install -r systems/object_stores/requirements.txt`.
 
-After editing `settings.json`, run `python3 systems/object_stores/scripts/settings_docs.py --write`. `--check` fails if the example env file, this table, the setting names used in the scripts, or the templates have drifted.
+After editing `settings.json`, run `python3 systems/object_stores/scripts/settings_docs.py --write`. `--check` fails if the example env file, this table, the setting names used in the scripts, or the templates have drifted. <!--repo-only-->
 
 ## The scripts
 
@@ -53,12 +53,12 @@ After editing `settings.json`, run `python3 systems/object_stores/scripts/settin
 | File | What it is |
 |---|---|
 | `report.py` | Runs the probe, storage setting, materialization, chain check and cleanup in order and writes a PASS/FAIL report (JSON and Markdown) you can send back. See "The conformance report" below. |
-| `leaks.py` | Finds values from `.env.local` that must never appear in something you hand to someone else. Used by `package.py` and `report.py`. |
+| `leaks.py` | Finds values from `.env.local` that must never appear in something you hand to someone else. Used by `report.py`. |
 | `s3_settings.py` | Reads the settings above and builds the S3 client, so every script uses the same addressing style, region and CA trust. |
-| `settings_docs.py` | Repository only. Generates `.env.example` and the settings table from `settings.json`, and checks for drift. |
+| `settings_docs.py` | Repository only. Generates `.env.example` and the settings table from `settings.json`, and checks for drift. | <!--repo-only-->
 | `render.py` | Fills `{{STORE_NAME}}`-style tokens in templates such as `HOWTO.md.tmpl`. |
 | `serve_viewer.py` | Serves the viewer and runs read-only SQL against your instance for its Live SQL tab. Renders the page with `S3_STORE_VENDOR` and `S3_STORE_PRODUCT` from `.env.local` on every request. |
-| `check_viewer.py` | Repository only. Static checks of the viewer template: it renders, a hostile name is escaped, ids and references resolve, nothing loads from another site, and the text colors keep WCAG AA contrast. |
+| `check_viewer.py` | Repository only. Static checks of the viewer template: it renders, a hostile name is escaped, ids and references resolve, nothing loads from another site, and the text colors keep WCAG AA contrast. | <!--repo-only-->
 
 For a walk-through from a clean instance to a verified Parquet file, see the HOWTO: `HOWTO.md.tmpl` in this folder in the repository (a template; `render.py` renders it by hand), or `HOWTO.md` at the root of a built package.
 
@@ -87,6 +87,7 @@ It writes `reports/<store>-<date>-<time>.json`, the contract (a `schema_version`
 
 **The report is safe to send.** Keys, passwords, bucket, endpoint, folder, user agent, login name and home folder from `.env.local` are replaced by placeholders such as `<bucket>`, and the report is not written at all (exit code 2) if one is still found afterwards. The store is named only by `S3_STORE_VENDOR` and `S3_STORE_PRODUCT`.
 
+<!--repo-only-start-->
 ## Building a package for a partner
 
 `scripts/package.py` builds a test package of this kit for one partner, as a folder and a ZIP under `dist/` (gitignored). It reads `.env.local`; add these lines to it:
@@ -116,9 +117,11 @@ Tests (no instance and no `.env.local`). The report tests use a fake S3 client a
 .venv/bin/python -m unittest discover systems/object_stores/tests
 ```
 
+<!--repo-only-end-->
+
 ## The viewer
 
-`viewer/index.html.tmpl` is a four-tab page about the `sic_edgar_usl` USL: analysis of its tables, topology and entity relationship diagram, the proof and recipe for this test, and a live SQL tab. It uses the Zetaris light theme and the self-hosted Plus Jakarta Sans font and Zetaris logo from `website/assets/`.
+`viewer/index.html.tmpl` is a four-tab page about the `sic_edgar_usl` USL: analysis of its tables, topology and entity relationship diagram, the proof and recipe for this test, and a live SQL tab. It uses the Zetaris light theme and a self-hosted Plus Jakarta Sans font and Zetaris logo.
 
 ```bash
 .venv/bin/python systems/object_stores/scripts/serve_viewer.py      # then open http://127.0.0.1:8765
@@ -126,10 +129,12 @@ Tests (no instance and no `.env.local`). The report tests use a fake S3 client a
 
 The page names your object store from `S3_STORE_VENDOR` and `S3_STORE_PRODUCT` in `.env.local` (both optional; blank shows "S3 object store"). Edit them and reload the page; no restart is needed. The Proof tab shows `viewer/fixtures/verify_chain_example.txt`, an example run with placeholder names, clearly labeled as an example.
 
+<!--repo-only-start-->
 Two checks keep the page honest:
 
 - `scripts/check_viewer.py` runs without a browser. Repository only.
 - `viewer/check_fit.js` runs in a browser. Repository only. Open the page, paste the file into the console and run `await checkViewerFit()`. It must say `ok: true` at desktop and phone width and with a long store name. It checks that every diagram label stays inside its box, that no connector crosses a label, that no two labels overlap, and that the page does not scroll sideways.
+<!--repo-only-end-->
 
 ## Your own folder in the bucket
 

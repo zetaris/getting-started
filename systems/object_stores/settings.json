@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "The single list of settings for the object store kit. The example env file and the README settings table are generated from it (scripts/settings_docs.py), and the packager reads it to decide which settings are safe to read and which are secret. A setting with \"bake\": true may have its value written into a built package (as a document default or a name). Every other value in .env.local is never copied, and the packager fails the build if one appears anywhere in the package. Change a setting here, then run settings_docs.py --write.",
+  "about": "The single list of settings for the object store kit. The example env file and the README settings table are generated from it, and the scripts read it to decide which settings are secret. Secret values are never written to a report or a package.",
   "groups": [
     {
       "id": "zetaris",

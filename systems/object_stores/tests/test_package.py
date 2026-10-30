@@ -126,6 +126,30 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(undefined_globals("def f():\n    return MISSING\n", "x.py"), ["f: MISSING"])
         self.assertEqual(undefined_globals("X = 1\ndef f():\n    return X + len([])\n", "x.py"), [])
 
+    def test_no_shipped_file_names_a_path_the_package_lacks(self):
+        self.assertEqual(pk.dangling_paths(self.files), [])
+
+    def test_the_path_check_can_fail_and_skips_what_it_should(self):
+        files = {"README.md": b"run scripts/gone.py and see systems/here.txt and reports/x.json and scripts/<name>.py",
+                 "systems/here.txt": b"x", "scripts/zetaris_sql.py": b"scripts/requirements.txt", "MANIFEST.txt": b"scripts/package.py",
+                 "a.sql": b"-- docs/missing.md"}
+        self.assertEqual(pk.dangling_paths(files), ["README.md: scripts/gone.py"])
+
+    def test_repo_only_parts_of_the_kit_readme_are_stripped(self):
+        readme = self.files["systems/object_stores/README.md"].decode()
+        for word in ("package.py", "check_viewer", "settings_docs", "unittest discover", "repo-only", "website/assets"):
+            self.assertNotIn(word, readme)
+        self.assertIn("## The viewer", readme)
+        self.assertIn("## Your own folder in the bucket", readme)
+
+    def test_strip_repo_only_rules(self):
+        text = "a\nkeep\ndrop me <!--repo-only-->\n<!--repo-only-start-->\nx\ny\n<!--repo-only-end-->\nz"
+        self.assertEqual(pk.strip_repo_only(text), "a\nkeep\nz")
+        for bad in ("<!--repo-only-start-->\nx", "x\n<!--repo-only-end-->",
+                    "<!--repo-only-start-->\n<!--repo-only-start-->\n<!--repo-only-end-->"):
+            with self.assertRaises(pk.BuildError):
+                pk.strip_repo_only(bad)
+
     def test_install_hint_names_a_file_the_package_holds(self):
         """The preflight tells people which requirements file to install. In the
         package that must be one that is inside it (a partner hit a missing path)."""
