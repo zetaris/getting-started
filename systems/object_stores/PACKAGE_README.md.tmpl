@@ -35,7 +35,7 @@ systems/object_stores/
   .env.example                      settings to copy to .env.local (never share .env.local)
   requirements.txt                  jaydebeapi, boto3, pyarrow
   settings.json                     the list of settings the scripts read
-  scripts/                          probe, storage setting, materialize, verify, cleanup, viewer server
+  scripts/                          probe, storage setting, materialize, verify, cleanup, report, viewer server
   issues/                           findings for Zetaris engineering
   viewer/index.html                 analysis, topology and ERD, proof and recipe, live SQL
 scripts/                            preflight, onboarding and SQL helpers shared with the repository
@@ -61,6 +61,13 @@ To open the viewer without running anything, open `systems/object_stores/viewer/
 in a browser. Its first three tabs work as a static page. The **Live SQL** tab
 needs `.venv/bin/python systems/object_stores/scripts/serve_viewer.py` running, and you
 then open `http://127.0.0.1:8765`.
+
+## The report to send back
+
+After the test, `.venv/bin/python systems/object_stores/scripts/report.py --cleanup` repeats the probe,
+the materialization, the chain check and the cleanup, and writes `reports/<store>-<date>-<time>.json`
+and a `.md`. It holds no keys, bucket, endpoint, folder or login name, so it is safe to send. See the end
+of [HOWTO.md](HOWTO.md).
 
 ## If your store behaves differently
 

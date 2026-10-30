@@ -49,6 +49,8 @@ PAIRS = [  # (text token, background token, what it is)
     ("#ffffff", "--ent-head", "ERD header text"),
     ("--ent-sub", "--ent-head", "ERD header subtitle"),
     ("--muted", "--surface-2", "idle status dot"),
+    ("--bad", "--bad-tint", "FAIL pills and a failed verdict"),
+    ("--bad", "--bg", "failed text on white"),
 ]
 
 

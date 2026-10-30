@@ -52,6 +52,8 @@ After editing `settings.json`, run `python3 systems/object_stores/scripts/settin
 
 | File | What it is |
 |---|---|
+| `report.py` | Runs the probe, storage setting, materialization, chain check and cleanup in order and writes a PASS/FAIL report (JSON and Markdown) you can send back. See "The conformance report" below. |
+| `leaks.py` | Finds values from `.env.local` that must never appear in something you hand to someone else. Used by `package.py` and `report.py`. |
 | `s3_settings.py` | Reads the settings above and builds the S3 client, so every script uses the same addressing style, region and CA trust. |
 | `settings_docs.py` | Repository only. Generates `.env.example` and the settings table from `settings.json`, and checks for drift. |
 | `render.py` | Fills `{{STORE_NAME}}`-style tokens in templates such as `HOWTO.md.tmpl`. |
@@ -59,6 +61,31 @@ After editing `settings.json`, run `python3 systems/object_stores/scripts/settin
 | `check_viewer.py` | Repository only. Static checks of the viewer template: it renders, a hostile name is escaped, ids and references resolve, nothing loads from another site, and the text colors keep WCAG AA contrast. |
 
 For a walk-through from a clean instance to a verified Parquet file, see the HOWTO: `HOWTO.md.tmpl` in this folder in the repository (a template; `render.py` renders it by hand), or `HOWTO.md` at the root of a built package.
+
+## The conformance report
+
+`report.py` runs steps 8 to 11 and 14 of the HOWTO in order and records what happened, so a partner can send back one file instead of a transcript.
+
+```bash
+.venv/bin/python systems/object_stores/scripts/report.py              # everything; the cleanup is a dry run
+.venv/bin/python systems/object_stores/scripts/report.py --cleanup    # also clear your own folder at the end
+.venv/bin/python systems/object_stores/scripts/report.py --store-only # only the object store, before Zetaris is involved
+```
+
+It needs the USL from HOWTO step 5 (except with `--store-only`) and takes about a minute. Each check is **PASS**, **FAIL**, **SKIP** (not run, with the reason) or **INFO** (a fact, not a verdict):
+
+| Group | Checks |
+|---|---|
+| Object store | bucket reachable; TLS trusted; addressing style; region name; list; put, get and delete; batch delete (INFO if only single deletes work); object lock and versioning (INFO) |
+| Zetaris | connection; the `sic_edgar_usl` USL present; a storage setting created (and removed again afterwards) |
+| The data | `MATERIALIZE USL TABLE` for `sic_code` and `company`; the Parquet files read back; the row counts equal at every stage from the source API to the Parquet file |
+| Cleanup | your own folder cleared, only with `--cleanup` |
+
+A failure that makes later steps meaningless (no connection to the bucket, no Zetaris, no USL) stops them, and they are recorded as SKIP. Anything unexpected goes under "observations". The result is **PASS**, **FAIL** (a required check failed) or **INCOMPLETE** (a required check was skipped); the exit code is 0, 1 or 3. It touches only your own folder, and only the objects it wrote or, with `--cleanup`, everything in that folder.
+
+It writes `reports/<store>-<date>-<time>.json`, the contract (a `schema_version`, the checks, the stages), and a `.md` rendered from it. `reports/` is gitignored. Load the JSON in the viewer's Proof tab to see it formatted; the file is read in your browser and goes nowhere.
+
+**The report is safe to send.** Keys, passwords, bucket, endpoint, folder, user agent, login name and home folder from `.env.local` are replaced by placeholders such as `<bucket>`, and the report is not written at all (exit code 2) if one is still found afterwards. The store is named only by `S3_STORE_VENDOR` and `S3_STORE_PRODUCT`.
 
 ## Building a package for a partner
 
@@ -83,10 +110,10 @@ The package keeps this repository's paths, so every command in its documents run
 
 Only the settings above shape the package. Every other value in `.env.local` (keys, passwords, bucket, endpoint, folder, your login name, home folder) is never copied, and **the build fails and writes nothing if any of them appears in any file**, in memory or in the ZIP read back from disk. It also fails on a file that must never be packaged (`.env.local`, `.venv`, `__pycache__` and the like), on an unresolved template token, and on a denied word. Values shorter than five characters are too likely to match ordinary words, so they are reported as skipped.
 
-Tests (standard library only; no instance and no `.env.local`):
+Tests (no instance and no `.env.local`). The report tests use a fake S3 client and a fake Zetaris channel, and need `boto3`, so run them with the venv; without it they are skipped:
 
 ```bash
-python3 -m unittest discover systems/object_stores/tests
+.venv/bin/python -m unittest discover systems/object_stores/tests
 ```
 
 ## The viewer

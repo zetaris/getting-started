@@ -534,3 +534,25 @@ is treated as a folder, and an empty prefix is refused, so it can never empty th
 whole bucket. If it ends with `INCOMPLETE`, objects remain; on a versioned bucket,
 old versions or delete markers may need your store's console. A bucket with object
 lock or a retention policy will refuse the deletes, and no script works around that.
+
+## Record the run (optional)
+
+One command repeats steps 8 to 11 and 14 and writes a report you can send back: the
+probe, a storage setting (removed again afterwards), the materialization of both
+tables, the Parquet files read back, the row counts from the source API to the
+Parquet file, and the cleanup. The cleanup is a dry run until you add `--cleanup`.
+
+```bash
+.venv/bin/python systems/object_stores/scripts/report.py --cleanup
+```
+
+It needs the USL from step 5. Add `--store-only` to test only the object store,
+before Zetaris is involved. It prints the report and writes `reports/<store>-<date>-<time>.json`
+and a `.md` next to it. Each check is PASS, FAIL, SKIP (not run, with the reason) or
+INFO (a fact, not a verdict), and the last line is the result: PASS, FAIL or INCOMPLETE.
+
+The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or
+login name. They are replaced with placeholders such as `<bucket>`, and the report is
+not written at all if one is still found. To read it formatted, start the viewer
+(step 12), open the **Proof and recipe** tab and choose the `.json` file under
+"Your conformance report"; the file is read in your browser and goes nowhere.

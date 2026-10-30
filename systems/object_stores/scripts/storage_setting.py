@@ -56,6 +56,25 @@ def call(method: str, path: str, body=None):
         return 0, str(e.reason)
 
 
+def default_name() -> str:
+    """s3-compat- plus your folder, so each person has their own setting."""
+    return "s3-compat-" + s3.base_prefix().rstrip("/").replace("/", "-")
+
+
+def create_body(st: s3.Settings, name: str | None = None, path: str | None = None, scope: str = "Owner", path_style: bool = True) -> dict:
+    """The POST /storage-setting request body."""
+    config = {"awsAccessKeyId": st.access_key, "awsSecretAccessKey": st.secret_key, "s3Endpoint": st.endpoint}
+    if st.addressing == "path" and path_style:
+        config["useS3PathStyleAccess"] = "true"
+    return {
+        "storageName": name or default_name(),
+        "storageType": "S3",
+        "storagePath": path or f"s3a://{st.bucket}/{s3.base_prefix().rstrip('/')}",
+        "scope": scope,
+        "config": config,
+    }
+
+
 def redact(obj):
     if isinstance(obj, dict):
         return {k: ("<redacted>" if k in SECRET_FIELDS else redact(v)) for k, v in obj.items()}
@@ -92,20 +111,7 @@ def main() -> int:
         show(*call("DELETE", f"/storage-setting/{a.id}"))
     else:
         st = s3.load()
-        config = {
-            "awsAccessKeyId": st.access_key,
-            "awsSecretAccessKey": st.secret_key,
-            "s3Endpoint": st.endpoint,
-        }
-        if st.addressing == "path" and not a.no_path_style:
-            config["useS3PathStyleAccess"] = "true"
-        body = {
-            "storageName": a.name or "s3-compat-" + s3.base_prefix().rstrip("/").replace("/", "-"),
-            "storageType": "S3",
-            "storagePath": a.path or f"s3a://{st.bucket}/{s3.base_prefix().rstrip('/')}",
-            "scope": a.scope,
-            "config": config,
-        }
+        body = create_body(st, a.name, a.path, a.scope, path_style=not a.no_path_style)
         if a.dry_run:
             print("POST /storage-setting (dry run, nothing sent)")
             print(json.dumps(redact(body), indent=2))

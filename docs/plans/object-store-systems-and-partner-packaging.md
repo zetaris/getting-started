@@ -1,6 +1,6 @@
 # Object store test kit: `systems/object_stores/` and partner packaging plan
 
-**Status:** decisions resolved (see the last section). Phases 1 to 5 are done on branch `systems-object-stores` (29 to 30 October 2026) and await review; phase 6 is not started.
+**Status:** decisions resolved (see the last section). All six phases are done on branch `systems-object-stores` (29 to 30 October 2026) and await review.
 
 ## Goal and scope
 
@@ -204,6 +204,18 @@ The walkthrough found five problems, all fixed and re-verified on a rebuilt pack
 Confirmed as documented: the macOS Java stub is bypassed by the scripts, the S3 preflight passes with no network call, and a fresh partner folder needs no `.env.local` beyond what the example generates.
 
 Not tested: a store that needs `virtual` addressing or a private CA (only one store was available), and a run from a truly empty Zetaris (the Data Explorer leftovers remained).
+
+**Phase 6 results (30 October 2026, Zetaris 2.4.3.1).** `report.py` is built, tested and was run from an unzipped package against the first store: 18 PASS, 1 INFO, result PASS, with the cleanup deleting 10 objects (52,699 bytes) and the folder left empty. Its numbers agree with the individual scripts, because it calls the same functions (`probe_attempts`, `materialize.build`, the chain functions, `list_prefix` and `delete_keys`).
+
+- **Design as built.** Orchestration lives in `report.py`; the probe loop and the storage-setting request were turned into functions (`probe_attempts`, `create_body`) with the CLI output unchanged. The leak-check helpers moved from `package.py` to a shared `leaks.py`, because `package.py` is repository-only and the report runs on a partner's machine. A failure that makes later steps meaningless stops them (recorded as SKIP with the reason); the verdict is PASS, FAIL (a required check failed) or INCOMPLETE (a required check was skipped).
+- **Differences from the plan.** The file name is `reports/<store>-<date>-<time>.json`, not `<partner>-<date>`, because a partner package has no partner setting and the plan says the store is named only by its display name. `--store-only` was added so a partner can test the bucket before Zetaris is available. The storage setting the report creates is removed again automatically, since it is the report's own scaffolding.
+- **Safe to send.** Every string in the report goes through the redactor, and the finished files are scanned again; if a value from `.env.local` is still found, nothing is written (exit 2). Checked independently on real runs against 24 values, including the old env files: no hits. A hostile-content test of the viewer's loader (markup in every field) produced no elements and ran no script.
+- **What this store reported.** Batch delete works, no object lock is configured, versioning was never enabled, and every region name was accepted (so the store most likely ignores the region).
+- **Failure path on the real store.** A nonexistent bucket gives FAIL with a one-line reason, TLS correctly PASS (the store answered), everything else SKIP, Zetaris never contacted, and the bad name appears in neither file.
+- **Tests.** 34 new tests with a fake S3 client and a fake Zetaris channel (74 in all, run with the venv). With the redactor, the final guard, the cleanup scoping or the verdict logic disabled, tests fail in each case.
+- **Viewer.** The Proof tab loads a report JSON chosen by the user, in the browser only, built with `textContent`; bad files (not JSON, wrong kind, wrong schema version, too large, incomplete) show a clear message.
+
+Still not covered, because only one store was available: a store that needs `virtual` addressing, a private CA, object lock or versioning enabled, or no batch delete. The tests cover those branches with fakes; a real store would confirm them.
 
 **Open item.** The recipe HTML and `HOWTO.md.tmpl` can drift apart. Generating one from the other, or checking that every command in the HOWTO appears in the viewer, would close that. It is small; say if you want it in phase 4.
 

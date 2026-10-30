@@ -36,6 +36,8 @@
   --orange-tint: #fff3dc;
   --good: #0b7a43;
   --good-tint: #e2f8ec;
+  --bad: #b42318;
+  --bad-tint: #fee4e2;
   --ent-head: var(--z-ink-3);
   --ent-sub: #9aa0b0;
   --code-bg: var(--z-ink-3);
@@ -249,6 +251,17 @@ details > .code { margin: 0 12px 12px; }
 .res-wrap td { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; max-width: 520px; overflow: hidden; text-overflow: ellipsis; }
 .res-wrap td.nul { color: var(--muted); font-style: italic; }
 .res-wrap td.rn, .res-wrap th.rn { color: var(--muted); text-align: right; width: 1%; }
+
+/* conformance report (loaded from a file in this browser) */
+.verdict.bad { background: var(--bad-tint); border-color: #f5b5ae; }
+.verdict.bad .big { color: var(--bad); }
+.pill.bad { color: var(--bad); background: var(--bad-tint); }
+.pill.skip { color: var(--muted); background: var(--surface-2); }
+.rep-note { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+.rep-opt { color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+#reportView { display: flex; flex-direction: column; gap: 18px; }
+#reportView details table { font-size: 13.5px; }
+#reportView ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 </style>
 </head>
 <body>
@@ -687,6 +700,21 @@ details > .code { margin: 0 12px 12px; }
 <!-- ============================ TAB 3 ============================ -->
 <div class="panel" id="panel-proof" role="tabpanel" aria-labelledby="tab-proof" hidden>
 
+  <section aria-labelledby="h-report">
+    <div class="sec-head">
+      <h2 id="h-report">Your conformance report</h2>
+      <p class="lede">Run <code>report.py</code> (see the end of the recipe below) and choose the <code>.json</code> file it wrote to see your own result here. The file is read in this browser and goes nowhere. Until you load one, the sections below are an example run, not your data.</p>
+    </div>
+    <div class="actions">
+      <label class="btn" for="reportFile">Choose a report file</label>
+      <input type="file" id="reportFile" accept="application/json,.json" hidden>
+      <button class="btn alt" type="button" id="reportClear" hidden>Clear the report</button>
+      <span class="hint" id="reportHint">No report loaded.</span>
+    </div>
+    <div class="callout-box" id="reportErr" hidden></div>
+    <div id="reportView" hidden></div>
+  </section>
+
   <section aria-labelledby="h-proof">
     <div class="sec-head">
       <h2 id="h-proof">Verified from the source API to the Parquet file</h2>
@@ -1071,6 +1099,11 @@ python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_
       </li>
     </ol>
 
+    <h3>Record the run</h3>
+    <p>One command repeats the probe, the storage setting, the materialization, the chain check and the cleanup, and writes a report you can send back. The cleanup is a dry run until you add <code>--cleanup</code>. Load the <code>.json</code> file it writes into the section at the top of this tab.</p>
+    <div class="code"><button class="copy" type="button" data-target="c-rep">Copy</button><pre id="c-rep">.venv/bin/python systems/object_stores/scripts/report.py --cleanup</pre></div>
+    <div class="callout-box info"><b>Safe to send</b> The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or login name. Those are replaced with placeholders, and the report is not written at all if one is still found. Add <code>--store-only</code> to test just the object store, before Zetaris is involved.</div>
+
     <p class="disclaimer">Independent integration notes. Product and company names used here belong to their owners and appear only to identify the product the steps were run against; this page is not an endorsement or an official document of any of them. The example output comes from a test run against Zetaris 2.4.3.1 and may differ on other versions.</p>
   </section>
 </div>
@@ -1171,6 +1204,68 @@ ORDER BY entity_name</textarea>
     });
   });
 
+  /* conformance report loader: the file is read here and goes nowhere; everything is added with textContent */
+  (function () {
+    var input = document.getElementById('reportFile'), hint = document.getElementById('reportHint'), err = document.getElementById('reportErr');
+    var view = document.getElementById('reportView'), clear = document.getElementById('reportClear');
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+    function fail(msg) { err.textContent = msg; err.hidden = false; view.hidden = true; clear.hidden = true; }
+    var PILL = { PASS: 'good', INFO: 'info', SKIP: 'skip', FAIL: 'bad' };
+    function table(heads, rows) {
+      var wrap = el('div', 'tbl-wrap'), tb = el('table'), th = el('thead'), tr = el('tr');
+      heads.forEach(function (h) { tr.appendChild(el('th', null, h)); }); th.appendChild(tr); tb.appendChild(th);
+      var body = el('tbody'); rows.forEach(function (r) { body.appendChild(r); }); tb.appendChild(body); wrap.appendChild(tb); return wrap;
+    }
+    function render(d) {
+      view.textContent = '';
+      var bad = d.result !== 'PASS', s = d.summary || {};
+      var v = el('div', 'verdict' + (bad ? ' bad' : '')), meta = el('div', 'meta');
+      v.appendChild(el('div', 'big', d.result));
+      [['Store', (d.store || {}).name], ['Generated', d.generated_at], ['Scope', d.scope],
+       ['Checks', (s.pass || 0) + ' PASS, ' + (s.fail || 0) + ' FAIL, ' + (s.skip || 0) + ' SKIP, ' + (s.info || 0) + ' INFO']].forEach(function (m) {
+        var sp = el('span'); sp.appendChild(el('b', null, m[0] + ' ')); sp.appendChild(document.createTextNode(String(m[1] == null ? '' : m[1]))); meta.appendChild(sp);
+      });
+      v.appendChild(meta); view.appendChild(v);
+      var rows = d.checks.map(function (c) {
+        var tr = el('tr'), a = el('td'), b = el('td'), x = el('td');
+        a.appendChild(el('span', 'pill ' + (PILL[c.status] || 'skip'), c.status));
+        b.appendChild(document.createTextNode(String(c.title))); if (c.required === false) b.appendChild(el('span', 'rep-opt', 'optional'));
+        x.appendChild(document.createTextNode(String(c.detail || '')));
+        (c.notes || []).forEach(function (n) { x.appendChild(el('span', 'rep-note', n)); });
+        tr.appendChild(a); tr.appendChild(b); tr.appendChild(x); return tr;
+      });
+      view.appendChild(table(['Status', 'Check', 'Detail'], rows));
+      d.checks.forEach(function (c) {
+        var st = c.data && c.data.stages; if (!Array.isArray(st) || !st.length) return;
+        var det = el('details'), sm = el('summary', null, c.title + ': stages');
+        det.appendChild(sm);
+        det.appendChild(table(['Stage', 'Rows', 'Result'], st.map(function (g) {
+          var tr = el('tr'); tr.appendChild(el('td', null, g.stage)); tr.appendChild(el('td', 'num', g.rows)); tr.appendChild(el('td', null, g.result)); return tr;
+        })));
+        view.appendChild(det);
+      });
+      if ((d.observations || []).length) {
+        var h = el('h3', null, 'Observations'), ul = el('ul'); view.appendChild(h);
+        d.observations.forEach(function (o) { ul.appendChild(el('li', null, o)); }); view.appendChild(ul);
+      }
+      err.hidden = true; view.hidden = false; clear.hidden = false;
+    }
+    function load(text, name) {
+      var d;
+      try { d = JSON.parse(text); } catch (e) { return fail('That file is not valid JSON.'); }
+      if (!d || d.kind !== 'zetaris-object-store-report') return fail('That is not a conformance report written by report.py.');
+      if (d.schema_version !== 1) return fail('This viewer reads report schema version 1; the file is version ' + d.schema_version + '.');
+      if (!Array.isArray(d.checks) || !['PASS', 'FAIL', 'INCOMPLETE'].includes(d.result)) return fail('The report is incomplete: it has no checks or no result.');
+      render(d); hint.textContent = 'Showing ' + name + '. Nothing was uploaded.';
+    }
+    input.addEventListener('change', function () {
+      var f = input.files && input.files[0]; if (!f) return;
+      if (f.size > 1024 * 1024) return fail('That file is larger than 1 MB, so it is not a report.');
+      var rd = new FileReader(); rd.onload = function () { load(String(rd.result), f.name); }; rd.onerror = function () { fail('The file could not be read.'); };
+      rd.readAsText(f);
+    });
+    clear.addEventListener('click', function () { view.textContent = ''; view.hidden = true; err.hidden = true; clear.hidden = true; input.value = ''; hint.textContent = 'No report loaded.'; });
+  })();
   /* live SQL tab */
   (function () {
     var dot = document.getElementById('liveDot'), info = document.getElementById('liveInfo'), help = document.getElementById('liveHelp');

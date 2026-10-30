@@ -45,6 +45,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(HERE))
 import onboard  # noqa: E402  (scripts/onboard.py: manifest and dependency order)
+import leaks  # noqa: E402
 import render as renderer  # noqa: E402
 import settings_docs as sd  # noqa: E402
 import zetaris_sql as z  # noqa: E402
@@ -63,7 +64,7 @@ FORBIDDEN_NAMES = {".env", ".env.local", ".envrc", ".venv", "__pycache__", ".DS_
 FORBIDDEN_SUFFIXES = (".pyc", ".swp", ".swo", "~", ".pem", ".key")
 SLUG = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?")
 REGION = re.compile(r"[a-z0-9-]{2,30}")
-MIN_SECRET, MIN_IDENTITY = 6, 5  # shorter values are too likely to match ordinary words
+MIN_SECRET, MIN_IDENTITY = leaks.MIN_SECRET, leaks.MIN_IDENTITY
 MAX_LOGO = 512 * 1024
 HEADER = "Zetaris object store test package"
 
@@ -74,19 +75,7 @@ class BuildError(Exception):
 
 # --- settings ---------------------------------------------------------------
 
-def read_env(path: Path) -> dict[str, str]:
-    """Every NAME=value in the file. The values are not put in os.environ."""
-    out: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        v = v.strip()
-        if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
-            v = v[1:-1]
-        out[k.strip()] = v
-    return out
+read_env = leaks.read_env  # kept here for callers of package.read_env
 
 
 class Config:
@@ -242,39 +231,8 @@ def manifest_text(cfg: Config, files: dict[str, bytes]) -> str:
 # --- the leak check ---------------------------------------------------------
 
 def forbidden_values(env: dict[str, str], schema: dict, cfg: Config) -> tuple[list[tuple[str, str]], list[str]]:
-    """Values that must not appear anywhere: every value in .env.local that is not
-    allowed to be baked, plus the login name and home folder. Returns the list and
-    the names skipped because they are too short to check reliably."""
-    defaults = {s["name"]: (s["default"] or "") for s in schema["settings"]}
-    bake = {s["name"] for s in schema["settings"] if s.get("bake")}
-    skip_names = bake | {"PACKAGE_PARTNER", "PACKAGE_DENY_WORDS"}
-    found: list[tuple[str, str]] = []
-    short: list[str] = []
-
-    def add(label: str, value: str, minimum: int) -> None:
-        value = value.strip()
-        if not value:
-            return
-        if len(value) < minimum:
-            short.append(label)
-        elif (label, value) not in found:
-            found.append((label, value))
-
-    for name, value in env.items():
-        if name in skip_names or value == defaults.get(name, None):
-            continue
-        add(name, value, MIN_SECRET if next((s["secret"] for s in schema["settings"] if s["name"] == name), True) else MIN_IDENTITY)
-    endpoint = env.get("S3_ENDPOINT_URL", "")
-    if endpoint:
-        add("S3_ENDPOINT_URL (host)", re.sub(r"^https?://", "", endpoint).split("/")[0].split(":")[0], MIN_IDENTITY)
-    for m in re.findall(r"[\w.+-]+@[\w.-]+\.\w+", env.get("ZETARIS_USER_AGENT", "")):
-        add("ZETARIS_USER_AGENT (email)", m, MIN_IDENTITY)
-    try:
-        add("your login name", getpass.getuser(), MIN_IDENTITY)
-    except Exception:  # noqa: BLE001
-        pass
-    add("your home folder", str(Path.home()), MIN_IDENTITY)
-    return found, sorted(set(short))
+    """See leaks.forbidden_values. (`cfg` is unused; kept for the existing callers.)"""
+    return leaks.forbidden_values(env, schema)
 
 
 def leak_check(files: dict[str, bytes], values: list[tuple[str, str]], deny: list[str]) -> list[str]:

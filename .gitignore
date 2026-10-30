@@ -36,6 +36,9 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Object store conformance reports (systems/object_stores/scripts/report.py)
+reports/
+
 # Unit test / coverage reports
 htmlcov/
 .tox/

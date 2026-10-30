@@ -27,6 +27,35 @@ from botocore.exceptions import BotoCoreError, ClientError  # noqa: E402
 REGIONS = ["us-east-1", "us-west-2", "eu-west-1"]
 
 
+class Attempt:
+    """One style and region tried against the bucket. `client` is set when it worked."""
+
+    def __init__(self, style: str, region: str, client=None, error: BaseException | None = None, keys: int = 0) -> None:
+        self.style, self.region, self.client, self.error, self.keys = style, region, client, error, keys
+
+    @property
+    def ok(self) -> bool:
+        return self.client is not None
+
+
+def probe_attempts(st: s3.Settings, verify) -> list[Attempt]:
+    """Try the configured addressing style and region first, then the other style
+    and three region names, each with head_bucket and a small list."""
+    styles = [st.addressing] + [a for a in s3.ADDRESSING_STYLES if a != st.addressing]
+    regions = [st.region] + [r for r in REGIONS if r != st.region]
+    out: list[Attempt] = []
+    for style in styles:
+        for region in regions:
+            c = s3.client(st.endpoint, st.access_key, st.secret_key, region, style, verify)
+            try:
+                c.head_bucket(Bucket=st.bucket)
+                r = c.list_objects_v2(Bucket=st.bucket, MaxKeys=5)
+                out.append(Attempt(style, region, c, keys=r.get("KeyCount", 0)))
+            except (ClientError, BotoCoreError) as e:
+                out.append(Attempt(style, region, error=e))
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--no-write", action="store_true", help="read-only probe")
@@ -41,24 +70,16 @@ def main() -> int:
     print(f"configured: addressing={st.addressing} region={st.region}")
     print(f"your folder: s3://{st.bucket}/{folder}")
 
-    # Try the configured style and region first, then the rest, so the write
-    # test below uses the configured combination whenever it works.
-    styles = [st.addressing] + [a for a in s3.ADDRESSING_STYLES if a != st.addressing]
-    regions = [st.region] + [r for r in REGIONS if r != st.region]
-
+    # The configured style and region come first, so the write test below uses
+    # the configured combination whenever it works.
     working = []
-    for style in styles:
-        for region in regions:
-            c = s3.client(st.endpoint, st.access_key, st.secret_key, region, style, verify)
-            tag = f"style={style:<7} region={region:<10}"
-            try:
-                c.head_bucket(Bucket=st.bucket)
-                r = c.list_objects_v2(Bucket=st.bucket, MaxKeys=5)
-                n = r.get("KeyCount", 0)
-                print(f"[PASS] {tag} head_bucket + list ok ({n} keys shown)")
-                working.append((style, region, c))
-            except (ClientError, BotoCoreError) as e:
-                print(f"[FAIL] {tag} {s3.short(e)}")
+    for at in probe_attempts(st, verify):
+        tag = f"style={at.style:<7} region={at.region:<10}"
+        if at.ok:
+            print(f"[PASS] {tag} head_bucket + list ok ({at.keys} keys shown)")
+            working.append((at.style, at.region, at.client))
+        else:
+            print(f"[FAIL] {tag} {s3.short(at.error)}")
 
     if not working:
         print("\nNo combination worked. Check the endpoint, keys and bucket name.")
