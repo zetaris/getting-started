@@ -64,7 +64,7 @@ For a walk-through from a clean instance to a verified Parquet file, see the HOW
 
 ## The conformance report
 
-`report.py` runs steps 8 to 11 and 14 of the HOWTO in order and records what happened, so a partner can send back one file instead of a transcript.
+`report.py` runs steps 8 to 11 of the HOWTO and the bucket part of step 15 (step 14 is the report) in order and records what happened, so a partner can send back one file instead of a transcript.
 
 ```bash
 .venv/bin/python systems/object_stores/scripts/report.py              # everything; the cleanup is a dry run

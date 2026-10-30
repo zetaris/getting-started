@@ -703,7 +703,7 @@ details > .code { margin: 0 12px 12px; }
   <section aria-labelledby="h-report">
     <div class="sec-head">
       <h2 id="h-report">Your conformance report</h2>
-      <p class="lede">Run <code>report.py</code> (see the end of the recipe below) and see your own result here. With the viewer server running (step 12) the newest report in <code>reports/</code> appears by itself when you open or return to this page. Without the server, choose the <code>.json</code> file it wrote; the file is read in this browser and goes nowhere. Until you load one, the sections below are an example run, not your data.</p>
+      <p class="lede">Run <code>report.py</code> (the step "Record the run and send it back" in the recipe below) and see your own result here. With the viewer server running (step 12) the newest report in <code>reports/</code> appears by itself when you open or return to this page. Without the server, choose the <code>.json</code> file it wrote; the file is read in this browser and goes nowhere. Until you load one, the sections below are an example run, not your data.</p>
     </div>
     <div class="actions">
       <label class="btn" for="reportFile">Choose a report file</label>
@@ -789,7 +789,7 @@ details > .code { margin: 0 12px 12px; }
   <section aria-labelledby="h-recipe">
     <div class="sec-head">
       <h2 id="h-recipe">Recipe: repeat this at your site</h2>
-      <p class="lede">Fourteen steps from an unpacked package to a verified Parquet object in a bucket on {{STORE_NAME}}, ending with a troubleshooting table and the cleanup. Each step has the command to copy and the output to expect. Replace anything in angle brackets with your own value. Values such as timestamps, ids and file names will differ.</p>
+      <p class="lede">Fifteen steps from an unpacked package to a verified Parquet object in a bucket on {{STORE_NAME}}, ending with the report to send back, a troubleshooting table and the cleanup. Each step has the command to copy and the output to expect. Replace anything in angle brackets with your own value. Values such as timestamps, ids and file names will differ.</p>
     </div>
 
     <ol class="steps">
@@ -1079,6 +1079,19 @@ ORDER BY entity_name</pre></div>
       </li>
 
       <li class="step">
+        <h3>Record the run and send it back</h3>
+        <div class="body">
+          <p>This produces the result to send back. One command repeats the probe, the storage setting, the materialization, the chain check and the cleanup of your own folder, and writes a report. Run it before the clean up below, because it needs the USL. Before you run it, check that the preflight passes and that <code>SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.company</code> returns 7. If you removed the Zetaris objects, rebuild them with step 5. The cleanup part is a dry run until you add <code>--cleanup</code>.</p>
+          <div class="code"><button class="copy" type="button" data-target="c-rep">Copy</button><pre id="c-rep">.venv/bin/python systems/object_stores/scripts/report.py --cleanup</pre></div>
+          <div class="code out"><span class="lbl">Expected output ends with</span><pre>Wrote reports/&lt;store&gt;-&lt;date&gt;-&lt;time&gt;.json
+Wrote reports/&lt;store&gt;-&lt;date&gt;-&lt;time&gt;.md
+<span class="okc">Result: PASS</span></pre></div>
+          <p>The result is <b>PASS</b> (exit code 0), <b>FAIL</b> (1: a required check failed, for example the USL is missing, and the checks that depend on it were skipped with the reason), or <b>INCOMPLETE</b> (3: nothing failed, but a required check did not run, for example with <code>--store-only</code>). Exit code 2 means nothing was written because a value from <code>.env.local</code> was still in the report; send the error text, not the report. Send the <code>.json</code> and the <code>.md</code> from <code>reports/</code>. A FAIL is worth sending too.</p>
+          <div class="callout-box info"><b>Safe to send</b> The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or login name. Those are replaced with placeholders, and the report is not written at all if one is still found. Add <code>--store-only</code> to test just the object store, before Zetaris is involved. With this viewer server running, the newest report appears at the top of this tab by itself.</div>
+        </div>
+      </li>
+
+      <li class="step">
         <h3>Clean up</h3>
         <div class="body">
           <p>Confirm what you want gone first. These steps change the instance and the bucket. Show the Zetaris plan, read it, then run it with <code>--yes</code>:</p>
@@ -1098,11 +1111,6 @@ python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_
         </div>
       </li>
     </ol>
-
-    <h3>Record the run</h3>
-    <p>One command repeats the probe, the storage setting, the materialization, the chain check and the cleanup, and writes a report you can send back. The cleanup is a dry run until you add <code>--cleanup</code>. Load the <code>.json</code> file it writes into the section at the top of this tab.</p>
-    <div class="code"><button class="copy" type="button" data-target="c-rep">Copy</button><pre id="c-rep">.venv/bin/python systems/object_stores/scripts/report.py --cleanup</pre></div>
-    <div class="callout-box info"><b>Safe to send</b> The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or login name. Those are replaced with placeholders, and the report is not written at all if one is still found. Add <code>--store-only</code> to test just the object store, before Zetaris is involved.</div>
 
     <p class="disclaimer">Independent integration notes. Product and company names used here belong to their owners and appear only to identify the product the steps were run against; this page is not an endorsement or an official document of any of them. The example output comes from a test run against Zetaris 2.4.3.1 and may differ on other versions.</p>
   </section>

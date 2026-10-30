@@ -1,6 +1,7 @@
 # HOWTO: build a USL, materialize it to {{STORE_NAME}}, and prove it
 
-Fourteen steps from an unpacked package to a verified Parquet object in a bucket.
+Fifteen steps from an unpacked package to a verified Parquet object in a bucket,
+ending with the report to send back.
 Each step has the command to copy and the output to expect. Replace anything in
 angle brackets with your own value. Timestamps, ids and file names in the output
 will differ.
@@ -27,7 +28,8 @@ themselves when they need it.
 11. [Verify the whole chain](#11-verify-the-whole-chain)
 12. [Explore the data in the viewer](#12-explore-the-data-in-the-viewer)
 13. [If something fails](#13-if-something-fails)
-14. [Clean up](#14-clean-up)
+14. [Record the run and send it back](#14-record-the-run-and-send-it-back)
+15. [Clean up](#15-clean-up)
 
 ## 1. What you need
 
@@ -468,9 +470,68 @@ fetch from the public API again unless they are cached.
 | The Live SQL tab says **Not connected** | The viewer server is not running, or you opened the file directly. Run `.venv/bin/python systems/object_stores/scripts/serve_viewer.py` and use the address it prints. |
 | `SLF4J: Failed to load class StaticLoggerBinder` | Harmless. The driver bundles no logging backend. `verify_chain.py` and `serve_viewer.py` hide it. |
 
-## 14. Clean up
+## 14. Record the run and send it back
+
+This is the step that produces the result to send back: one command runs the test
+again from start to finish and writes a report. Run it after steps 1 to 6 (and you
+do not need to have run steps 8 to 11 first, though it does no harm if you did).
+
+Before you run it, check that:
+
+- the preflight in step 4 passes, including `--s3`;
+- the USL from step 5 is on the instance. `SELECT COUNT(*) FROM lightning.metastore.usl_demo.sic_edgar_usl.company`
+  returns 7 (step 6). If you removed the Zetaris objects, rebuild them with step 5;
+- `.env.local` is complete and you are in the package folder, using the venv from step 2.
+
+Run it:
+
+```bash
+.venv/bin/python systems/object_stores/scripts/report.py --cleanup
+```
+
+It takes about a minute. It repeats the probe (step 8), creates a storage setting
+and removes it again (step 9), materializes `sic_code` and `company` (step 10),
+reads the Parquet files back and compares the row counts from the source API to the
+Parquet file (step 11), and then clears your own folder in the bucket (the bucket
+part of step 15). Without `--cleanup` that last part is a dry run and the Parquet
+files stay in the bucket. It touches only your own folder. Add `--store-only` to test
+only the object store, before Zetaris is involved.
+
+It prints the report and writes `reports/<store>-<date>-<time>.json` and a `.md`
+next to it. Each check is PASS, FAIL, SKIP (not run, with the reason) or INFO (a
+fact, not a verdict). The last lines look like this:
+
+```
+Wrote reports/<store>-<date>-<time>.json
+Wrote reports/<store>-<date>-<time>.md
+Result: PASS
+```
+
+| Result | Meaning | What to do |
+|---|---|---|
+| `PASS` (exit code 0) | Every required check passed. | Send the two files. |
+| `FAIL` (1) | A required check failed, for example the USL is not on the instance, and the checks that depend on it were skipped with the reason. | Read the first FAIL line, fix it (step 13), run it again. A FAIL is also worth sending: it shows where the store differs. |
+| `INCOMPLETE` (3) | Nothing failed, but a required check did not run, for example because you used `--store-only`. | Read the SKIP lines; if they are not what you intended, fix that and run it again. |
+| exit code 2 | Not written: the report still held a value from `.env.local` after redaction. | Do not work around it. Send the error text, not the report. |
+
+The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or
+login name. They are replaced with placeholders such as `<bucket>`, and the report is
+not written at all if one is still found. Send the `.json` and the `.md` from
+`reports/`.
+
+To read the report formatted, start the viewer (step 12) and open the **Proof and
+recipe** tab: the server shows the newest `reports/*.json` under "Your conformance
+report" by itself, and again when you return to the page after a new run. It checks
+the file against your `.env.local` values again before sending it. Without the
+server, choose the `.json` file there; it is read in your browser and goes nowhere.
+
+## 15. Clean up
 
 Confirm what you want gone first. These steps change the instance and the bucket.
+
+If you are validating the store, do step 14 first and keep its report: it needs the
+USL, and removing the Zetaris objects below removes the USL. If you cleaned up
+already, rebuild it with step 5 before step 14.
 
 **Zetaris objects.** Show the plan, read it, then run it with `--yes`:
 
@@ -534,28 +595,3 @@ is treated as a folder, and an empty prefix is refused, so it can never empty th
 whole bucket. If it ends with `INCOMPLETE`, objects remain; on a versioned bucket,
 old versions or delete markers may need your store's console. A bucket with object
 lock or a retention policy will refuse the deletes, and no script works around that.
-
-## Record the run (optional)
-
-One command repeats steps 8 to 11 and 14 and writes a report you can send back: the
-probe, a storage setting (removed again afterwards), the materialization of both
-tables, the Parquet files read back, the row counts from the source API to the
-Parquet file, and the cleanup. The cleanup is a dry run until you add `--cleanup`.
-
-```bash
-.venv/bin/python systems/object_stores/scripts/report.py --cleanup
-```
-
-It needs the USL from step 5. Add `--store-only` to test only the object store,
-before Zetaris is involved. It prints the report and writes `reports/<store>-<date>-<time>.json`
-and a `.md` next to it. Each check is PASS, FAIL, SKIP (not run, with the reason) or
-INFO (a fact, not a verdict), and the last line is the result: PASS, FAIL or INCOMPLETE.
-
-The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or
-login name. They are replaced with placeholders such as `<bucket>`, and the report is
-not written at all if one is still found. To read it formatted, start the viewer
-(step 12) and open the **Proof and recipe** tab: the server shows the newest
-`reports/*.json` under "Your conformance report" by itself, and again when you return
-to the page after a new run. It checks the file against your `.env.local` values
-again before sending it. Without the server, choose the `.json` file there; it is
-read in your browser and goes nowhere.

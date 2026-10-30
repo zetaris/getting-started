@@ -4,7 +4,7 @@
     .venv/bin/python systems/object_stores/scripts/report.py --cleanup    # also clear your folder afterwards
     .venv/bin/python systems/object_stores/scripts/report.py --store-only # only the object store, no Zetaris
 
-It performs steps 8 to 11 and 14 of the HOWTO in order, using the same functions
+It performs steps 8 to 11 of the HOWTO and the bucket part of step 15 (this is step 14) in order, using the same functions
 as the individual scripts, and records each outcome as PASS, FAIL, SKIP or INFO:
 
     the object store    reachable, TLS trusted, addressing style, region, list, put/get/delete,
