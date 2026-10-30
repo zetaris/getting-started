@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sic_edgar_usl · Zetaris Unified Semantic Layer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+:root {
+  --bg: #07070c;
+  --bg-2: #0c0c14;
+  --surface: #12121c;
+  --surface-2: #181826;
+  --line: #2a2a3d;
+  --fg: #f4f4f8;
+  --muted: #9a9aaf;
+  --accent: #4c6fff;
+  --accent-2: #6d7cff;
+  --accent-tint: #1a2148;
+  --cyan: #3ec4e8;
+  --violet: #8b7cff;
+  --good: #3dd68c;
+  --warn: #e8b84a;
+  --bad: #ff5d73;
+  --bad-tint: #2a1218;
+  --font: Inter, ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+body {
+  min-height: 100vh;
+  background-image: radial-gradient(circle, #2a2a40 0.7px, transparent 0.8px);
+  background-size: 22px 22px;
+}
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 28px 24px 64px; }
+h1, h2, h3, p { margin: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top {
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+  gap: 20px 32px; padding-bottom: 24px; border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.mark {
+  width: 28px; height: 28px; border-radius: 8px; background: var(--accent);
+  display: grid; place-items: center; flex: none;
+}
+.word { font-weight: 800; letter-spacing: 0.08em; font-size: 13px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-2); }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-top: 8px; }
+.path { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600;
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.good { background: var(--good); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+
+.tabs { display: flex; gap: 4px; margin-top: 22px; border-bottom: 1px solid var(--line); }
+.tab {
+  appearance: none; background: none; border: 0; color: var(--muted); font: inherit; font-weight: 600;
+  padding: 12px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+[hidden] { display: none !important; }
+.panel { padding-top: 28px; display: flex; flex-direction: column; gap: 32px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+.stat .n { display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stat .l { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.stat.flag { border-color: #5a2430; background: var(--bad-tint); }
+.stat.flag .n { color: var(--bad); }
+
+.sec { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sec > h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.sec > p { color: var(--muted); max-width: 72ch; }
+
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; overflow: hidden; }
+.card-h { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.card-h h3 { font-size: 15px; font-family: var(--mono); font-weight: 600; }
+.card-h p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.cols { width: 100%; border-collapse: collapse; }
+.cols td { padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.cols tr:last-child td { border-bottom: 0; }
+.cols td:first-child { width: 48px; }
+.cols td:nth-child(2) { font-family: var(--mono); font-size: 12.5px; }
+.cols td:last-child { text-align: right; color: var(--muted); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.key { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 4px; }
+.key.pk { background: var(--accent-tint); color: var(--accent-2); }
+.key.fk { color: var(--cyan); border: 1px solid var(--cyan); }
+
+.bars { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 16px 14px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 28px minmax(120px, 200px) minmax(80px, 1fr) 40px minmax(90px, 160px);
+  gap: 8px 12px; align-items: center; min-height: 38px; padding: 6px 0; border-bottom: 1px solid var(--line);
+}
+.bar-row:last-child { border-bottom: 0; }
+.bar-code { font-family: var(--mono); font-weight: 600; color: var(--accent-2); }
+.bar-name { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { height: 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; background: #2a2a40; border-radius: 2px; }
+.bar-fill.hit { background: var(--accent); }
+.bar-n { font-family: var(--mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.tag { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--accent-tint); color: var(--accent-2); white-space: nowrap; }
+.legend { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.grid { width: 100%; min-width: 880px; border-collapse: collapse; font-size: 13px; }
+.grid th {
+  text-align: left; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.grid td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.grid tr:last-child td { border-bottom: 0; }
+.grid tr.bad td { background: var(--bad-tint); }
+.pill { display: inline-flex; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.good { color: var(--good); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+
+.notes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.note h3 { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.note p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.diagram svg { display: block; height: auto; min-width: 1080px; width: 100%; }
+.erd-wrap svg { min-width: 760px; max-width: 920px; margin: 0 auto; }
+svg text { font-family: var(--font); fill: var(--fg); }
+svg .muted { fill: var(--muted); }
+svg .acc { fill: var(--accent-2); }
+svg .mono { font-family: var(--mono); }
+.foot { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+
+@media (max-width: 900px) {
+  .stats, .cards, .notes { grid-template-columns: 1fr; }
+  .bar-row { grid-template-columns: 28px minmax(0, 1fr) 40px; }
+  .bar-track, .tags { grid-column: 1 / -1; }
+  .tags { justify-content: flex-start; }
+}
+@media (max-width: 560px) { .tab { padding-inline: 10px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3.5h10L8.2 8.2 13 12.5H3l4.8-4.3L3 3.5Z" fill="#fff"/></svg>
+        </span>
+        <span class="word">ZETARIS</span>
+      </div>
+      <div class="eyebrow">Unified Semantic Layer</div>
+      <h1>sic_edgar_usl</h1>
+      <p class="path">lightning.metastore.usl_demo.sic_edgar_usl</p>
+    </div>
+    <div class="chips" aria-label="Status">
+      <span class="chip"><span class="dot good"></span>Activated</span>
+      <span class="chip">2 tables</span>
+      <span class="chip">1 foreign key</span>
+      <span class="chip"><span class="dot warn"></span>DQ: 1 invalid</span>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button class="tab" role="tab" id="tab-analysis" aria-controls="panel-analysis" aria-selected="true">USL analysis</button>
+    <button class="tab" role="tab" id="tab-topology" aria-controls="panel-topology" aria-selected="false" tabindex="-1">Topology and ERD</button>
+  </div>
+
+  <section class="panel" id="panel-analysis" role="tabpanel" aria-labelledby="tab-analysis">
+    <div class="stats">
+      <div class="stat"><span class="n">1,005</span><span class="l">rows in <code>sic_code</code></span></div>
+      <div class="stat"><span class="n">7</span><span class="l">rows in <code>company</code></span></div>
+      <div class="stat"><span class="n">10 · 83 · 416</span><span class="l">divisions · major groups · industry groups</span></div>
+      <div class="stat flag"><span class="n">6 of 7</span><span class="l">companies pass the foreign-key rule</span></div>
+    </div>
+
+    <div class="sec">
+      <h2>Tables in this USL</h2>
+      <p>Two activated tables. <code>company</code> is one row per filer from EDGAR submissions. <code>sic_code</code> is the SIC hierarchy from company_dns. The foreign key is <code>company.sic → sic_code.sic_code</code>.</p>
+      <div class="cards">
+        <article class="card">
+          <div class="card-h">
+            <h3>company</h3>
+            <p>CIK, name, and the SIC code EDGAR reports. 7 rows.</p>
+          </div>
+          <table class="cols">
+            <tr><td><span class="key pk">PK</span></td><td>cik</td><td>varchar(10) not null</td></tr>
+            <tr><td></td><td>entity_name</td><td>varchar(200) not null</td></tr>
+            <tr><td><span class="key fk">FK</span></td><td>sic</td><td>varchar(4) not null</td></tr>
+            <tr><td></td><td>sic_description_edgar</td><td>varchar(200)</td></tr>
+          </table>
+        </article>
+        <article class="card">
+          <div class="card-h">
+            <h3>sic_code</h3>
+            <p>Division → major group → industry group → code. 1,005 rows.</p>
+          </div>
+          <table class="cols">
+            <tr><td><span class="key pk">PK</span></td><td>sic_code</td><td>varchar(4) not null</td></tr>
+            <tr><td></td><td>description</td><td>varchar(200)</td></tr>
+            <tr><td></td><td>division</td><td>varchar(1)</td></tr>
+            <tr><td></td><td>division_desc</td><td>varchar(200)</td></tr>
+            <tr><td></td><td>major_group</td><td>varchar(2)</td></tr>
+            <tr><td></td><td>major_group_desc</td><td>varchar(200)</td></tr>
+            <tr><td></td><td>industry_group</td><td>varchar(3)</td></tr>
+            <tr><td></td><td>industry_group_desc</td><td>varchar(200)</td></tr>
+          </table>
+        </article>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>SIC codes by division</h2>
+      <p>Counts from <code>sic_code</code>. Highlighted bars are divisions that contain at least one of the six companies whose SIC exists in the reference list. IBM’s 3570 is not in the list, so it is not tagged here.</p>
+      <div class="bars" id="bars" role="img" aria-label="Bar chart of SIC codes per division"></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Division with a matched company</span>
+        <span><i style="background:#2a2a40;border:1px solid var(--line)"></i>No matched company</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Company to SIC match</h2>
+      <p>EDGAR’s code and description versus the company_dns reference. The foreign-key rule only tests that the code exists. Wording is a separate join.</p>
+      <div class="scroll">
+        <table class="grid">
+          <thead>
+            <tr><th>Company</th><th>CIK</th><th>SIC</th><th>EDGAR description</th><th>Reference description</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Apple Inc.</td><td class="mono">0000320193</td><td class="mono">3571</td><td>Electronic Computers</td><td>Electronic Computers</td><td><span class="pill good">Exact match</span></td></tr>
+            <tr><td>FORD MOTOR CO</td><td class="mono">0000037996</td><td class="mono">3711</td><td>Motor Vehicles &amp; Passenger Car Bodies</td><td>Motor Vehicles and Passenger Car Bodies</td><td><span class="pill warn">Wording differs</span></td></tr>
+            <tr class="bad"><td>INTERNATIONAL BUSINESS MACHINES CORP</td><td class="mono">0000051143</td><td class="mono">3570</td><td>Computer &amp; office Equipment</td><td class="muted">No row for 3570</td><td><span class="pill bad">FK invalid</span></td></tr>
+            <tr><td>ORACLE CORP</td><td class="mono">0001341439</td><td class="mono">7372</td><td>Services-Prepackaged Software</td><td>Prepackaged Software</td><td><span class="pill warn">Wording differs</span></td></tr>
+            <tr><td>TARGET CORP</td><td class="mono">0000027419</td><td class="mono">5331</td><td>Retail-Variety Stores</td><td>Variety Stores</td><td><span class="pill warn">Wording differs</span></td></tr>
+            <tr><td>Tesla, Inc.</td><td class="mono">0001318605</td><td class="mono">3711</td><td>Motor Vehicles &amp; Passenger Car Bodies</td><td>Motor Vehicles and Passenger Car Bodies</td><td><span class="pill warn">Wording differs</span></td></tr>
+            <tr><td>Walmart Inc.</td><td class="mono">0000104169</td><td class="mono">5331</td><td>Retail-Variety Stores</td><td>Variety Stores</td><td><span class="pill warn">Wording differs</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Data quality</h2>
+      <div class="notes">
+        <div class="note">
+          <h3><span class="dot good"></span> Primary keys pass</h3>
+          <p><code>company.cik</code> and <code>sic_code.sic_code</code> each have an auto-generated PK rule. No invalid records.</p>
+        </div>
+        <div class="note">
+          <h3><span class="dot bad"></span> One foreign-key failure</h3>
+          <p>IBM reports SIC 3570. company_dns has no such code, so <code>SHOW DQ ALL INVALID TABLE</code> returns that one row. The other six pass.</p>
+        </div>
+        <div class="note">
+          <h3><span class="dot warn"></span> Wording is not a DQ rule</h3>
+          <p>Five companies match on code, not on text (<code>&amp;</code> vs <code>and</code>; EDGAR <code>Retail-</code> / <code>Services-</code> prefixes). The FK does not catch that.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-topology" role="tabpanel" aria-labelledby="tab-topology" hidden>
+    <div class="sec">
+      <h2>Where the data comes from</h2>
+      <p>Two public REST APIs register as Lightning databases. Each USL table is one <code>ACTIVATE</code> query. The foreign key lives only inside the USL, drawn between the two tables on the right.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 1280 470" role="img" aria-labelledby="lin-t lin-d">
+          <title id="lin-t">Data lineage for sic_edgar_usl</title>
+          <desc id="lin-d">company-dns API to COMPANY_DNS to ACTIVATE sic_code. SEC EDGAR to SEC_DATA to ACTIVATE company. company.sic foreign key to sic_code.sic_code.</desc>
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L10 5 L0 9 z" fill="#9a9aaf"/></marker>
+            <marker id="arrc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L10 5 L0 9 z" fill="#3ec4e8"/></marker>
+          </defs>
+
+          <text class="muted" x="24" y="22" font-size="10" font-weight="700" letter-spacing="1.4">EXTERNAL SOURCE</text>
+          <text class="muted" x="344" y="22" font-size="10" font-weight="700" letter-spacing="1.4">LIGHTNING DATABASE</text>
+          <text class="muted" x="664" y="22" font-size="10" font-weight="700" letter-spacing="1.4">ACTIVATION</text>
+          <text class="muted" x="984" y="22" font-size="10" font-weight="700" letter-spacing="1.4">USL TABLE</text>
+
+          <!-- Lane 1 -->
+          <rect x="24" y="40" width="250" height="126" rx="10" fill="#07070c" stroke="#9a9aaf" stroke-dasharray="5 4"/>
+          <text x="40" y="66" font-size="14" font-weight="700">company-dns API</text>
+          <text class="mono muted" x="40" y="88" font-size="11">company-dns.mediumroast.io</text>
+          <text class="mono muted" x="40" y="106" font-size="11">GET /V3.0/na/sic/code/%</text>
+          <text class="acc" x="40" y="144" font-size="12" font-weight="600">1 request · JSON</text>
+
+          <rect x="344" y="40" width="250" height="126" rx="10" fill="#181826" stroke="#3ec4e8"/>
+          <text x="360" y="66" font-size="14" font-weight="700">COMPANY_DNS</text>
+          <text class="muted" x="360" y="88" font-size="12">Lightning database</text>
+          <text class="mono muted" x="360" y="106" font-size="11">sic_codes_raw</text>
+          <text class="muted" x="360" y="124" font-size="12">REST table, cached</text>
+          <text class="acc" x="360" y="144" font-size="12" font-weight="600">1 table</text>
+
+          <rect x="664" y="40" width="250" height="126" rx="10" fill="#181826" stroke="#8b7cff"/>
+          <text x="680" y="66" font-size="14" font-weight="700">ACTIVATE sic_code</text>
+          <text class="muted" x="680" y="88" font-size="12">Explode the sics map</text>
+          <text class="muted" x="680" y="106" font-size="12">into one row per code</text>
+          <text class="acc" x="680" y="144" font-size="12" font-weight="600">1 query</text>
+
+          <rect x="984" y="40" width="250" height="126" rx="10" fill="#1a2148" stroke="#4c6fff"/>
+          <text x="1000" y="66" font-size="14" font-weight="700">sic_code</text>
+          <text class="muted" x="1000" y="88" font-size="12">8 columns · PK sic_code</text>
+          <text class="acc" x="1000" y="144" font-size="12" font-weight="600">1,005 rows</text>
+
+          <line x1="274" y1="103" x2="336" y2="103" stroke="#9a9aaf" stroke-width="1.6" marker-end="url(#arr)"/>
+          <line x1="594" y1="103" x2="656" y2="103" stroke="#9a9aaf" stroke-width="1.6" marker-end="url(#arr)"/>
+          <line x1="914" y1="103" x2="976" y2="103" stroke="#9a9aaf" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text class="muted" x="305" y="94" font-size="10" text-anchor="middle">HTTPS</text>
+          <text class="muted" x="625" y="94" font-size="10" text-anchor="middle">reads</text>
+          <text class="muted" x="945" y="94" font-size="10" text-anchor="middle">writes</text>
+
+          <!-- Lane 2 -->
+          <rect x="24" y="292" width="250" height="150" rx="10" fill="#07070c" stroke="#9a9aaf" stroke-dasharray="5 4"/>
+          <text x="40" y="318" font-size="14" font-weight="700">SEC EDGAR</text>
+          <text class="mono muted" x="40" y="340" font-size="11">data.sec.gov/submissions</text>
+          <text class="muted" x="40" y="360" font-size="12">CIK{cik}.json</text>
+          <text class="muted" x="40" y="380" font-size="12">Apple, IBM, Oracle, Walmart,</text>
+          <text class="muted" x="40" y="396" font-size="12">Target, Ford, Tesla</text>
+          <text class="acc" x="40" y="420" font-size="12" font-weight="600">7 requests · JSON</text>
+
+          <rect x="344" y="292" width="250" height="150" rx="10" fill="#181826" stroke="#3ec4e8"/>
+          <text x="360" y="318" font-size="14" font-weight="700">SEC_DATA</text>
+          <text class="muted" x="360" y="340" font-size="12">Lightning database</text>
+          <text class="mono muted" x="360" y="360" font-size="11">&lt;co&gt;_submissions_raw</text>
+          <text class="muted" x="360" y="380" font-size="12">One REST table per company</text>
+          <text class="acc" x="360" y="420" font-size="12" font-weight="600">7 tables</text>
+
+          <rect x="664" y="292" width="250" height="150" rx="10" fill="#181826" stroke="#8b7cff"/>
+          <text x="680" y="318" font-size="14" font-weight="700">ACTIVATE company</text>
+          <text class="muted" x="680" y="340" font-size="12">UNION ALL of the 7 tables</text>
+          <text class="muted" x="680" y="360" font-size="12">COALESCE on cik, name, sic</text>
+          <text class="acc" x="680" y="420" font-size="12" font-weight="600">1 query</text>
+
+          <rect x="984" y="292" width="250" height="150" rx="10" fill="#1a2148" stroke="#4c6fff"/>
+          <text x="1000" y="318" font-size="14" font-weight="700">company</text>
+          <text class="muted" x="1000" y="340" font-size="12">4 columns · PK cik</text>
+          <text class="muted" x="1000" y="360" font-size="12">FK sic</text>
+          <text class="acc" x="1000" y="420" font-size="12" font-weight="600">7 rows</text>
+
+          <line x1="274" y1="367" x2="336" y2="367" stroke="#9a9aaf" stroke-width="1.6" marker-end="url(#arr)"/>
+          <line x1="594" y1="367" x2="656" y2="367" stroke="#9a9aaf" stroke-width="1.6" marker-end="url(#arr)"/>
+          <line x1="914" y1="367" x2="976" y2="367" stroke="#9a9aaf" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text class="muted" x="305" y="358" font-size="10" text-anchor="middle">HTTPS</text>
+          <text class="muted" x="625" y="358" font-size="10" text-anchor="middle">reads</text>
+          <text class="muted" x="945" y="358" font-size="10" text-anchor="middle">writes</text>
+
+          <!-- FK between USL boxes, in the open gutter, not over boxes -->
+          <line x1="1109" y1="292" x2="1109" y2="176" stroke="#3ec4e8" stroke-width="1.8" marker-end="url(#arrc)"/>
+          <text fill="#3ec4e8" x="1120" y="228" font-size="11" font-weight="600">FK</text>
+          <text fill="#3ec4e8" x="1120" y="244" font-size="11" font-weight="600">sic → sic_code</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="border:1.5px dashed #9a9aaf;background:transparent"></i>External API</span>
+        <span><i style="border:1.5px solid var(--cyan)"></i>Lightning database</span>
+        <span><i style="border:1.5px solid var(--violet)"></i>Activation query</span>
+        <span><i style="border:1.5px solid var(--accent);background:var(--accent-tint)"></i>USL table</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Entity relationship diagram</h2>
+      <p>Many companies may share one SIC code (Ford and Tesla are both 3711; Walmart and Target are both 5331). IBM’s 3570 has no parent row.</p>
+      <div class="diagram erd-wrap">
+        <svg viewBox="0 0 900 360" role="img" aria-labelledby="erd-t erd-d">
+          <title id="erd-t">Entity relationship diagram for sic_edgar_usl</title>
+          <desc id="erd-d">company.sic many-to-one foreign key to sic_code.sic_code.</desc>
+
+          <!-- company -->
+          <rect x="40" y="48" width="340" height="176" rx="10" fill="#181826" stroke="#2a2a3d"/>
+          <path d="M40 56a8 8 0 0 1 8-8h324a8 8 0 0 1 8 8v28H40z" fill="#4c6fff"/>
+          <text x="56" y="76" font-size="14" font-weight="700" fill="#fff">company</text>
+          <line x1="40" y1="116" x2="380" y2="116" stroke="#2a2a3d"/>
+          <line x1="40" y1="148" x2="380" y2="148" stroke="#2a2a3d"/>
+          <line x1="40" y1="180" x2="380" y2="180" stroke="#2a2a3d"/>
+          <rect x="52" y="92" width="26" height="14" rx="3" fill="#1a2148"/>
+          <text class="acc" x="65" y="103" font-size="9" font-weight="700" text-anchor="middle">PK</text>
+          <text class="mono" x="86" y="103" font-size="12">cik</text>
+          <text class="mono muted" x="364" y="103" font-size="11" text-anchor="end">varchar(10)</text>
+          <text class="mono" x="86" y="135" font-size="12">entity_name</text>
+          <text class="mono muted" x="364" y="135" font-size="11" text-anchor="end">varchar(200)</text>
+          <rect x="52" y="156" width="26" height="14" rx="3" fill="none" stroke="#3ec4e8"/>
+          <text fill="#3ec4e8" x="65" y="167" font-size="9" font-weight="700" text-anchor="middle">FK</text>
+          <text class="mono" x="86" y="167" font-size="12">sic</text>
+          <text class="mono muted" x="364" y="167" font-size="11" text-anchor="end">varchar(4)</text>
+          <text class="mono" x="86" y="207" font-size="12">sic_description_edgar</text>
+          <text class="mono muted" x="364" y="207" font-size="11" text-anchor="end">varchar(200)</text>
+
+          <!-- sic_code -->
+          <rect x="520" y="48" width="340" height="292" rx="10" fill="#181826" stroke="#2a2a3d"/>
+          <path d="M520 56a8 8 0 0 1 8-8h324a8 8 0 0 1 8 8v28H520z" fill="#4c6fff"/>
+          <text x="536" y="76" font-size="14" font-weight="700" fill="#fff">sic_code</text>
+          <line x1="520" y1="116" x2="860" y2="116" stroke="#2a2a3d"/>
+          <line x1="520" y1="148" x2="860" y2="148" stroke="#2a2a3d"/>
+          <line x1="520" y1="180" x2="860" y2="180" stroke="#2a2a3d"/>
+          <line x1="520" y1="212" x2="860" y2="212" stroke="#2a2a3d"/>
+          <line x1="520" y1="244" x2="860" y2="244" stroke="#2a2a3d"/>
+          <line x1="520" y1="276" x2="860" y2="276" stroke="#2a2a3d"/>
+          <line x1="520" y1="308" x2="860" y2="308" stroke="#2a2a3d"/>
+          <rect x="532" y="92" width="26" height="14" rx="3" fill="#1a2148"/>
+          <text class="acc" x="545" y="103" font-size="9" font-weight="700" text-anchor="middle">PK</text>
+          <text class="mono" x="566" y="103" font-size="12">sic_code</text>
+          <text class="mono muted" x="844" y="103" font-size="11" text-anchor="end">varchar(4)</text>
+          <text class="mono" x="566" y="135" font-size="12">description</text>
+          <text class="mono muted" x="844" y="135" font-size="11" text-anchor="end">varchar(200)</text>
+          <text class="mono" x="566" y="167" font-size="12">division</text>
+          <text class="mono muted" x="844" y="167" font-size="11" text-anchor="end">varchar(1)</text>
+          <text class="mono" x="566" y="199" font-size="12">division_desc</text>
+          <text class="mono muted" x="844" y="199" font-size="11" text-anchor="end">varchar(200)</text>
+          <text class="mono" x="566" y="231" font-size="12">major_group</text>
+          <text class="mono muted" x="844" y="231" font-size="11" text-anchor="end">varchar(2)</text>
+          <text class="mono" x="566" y="263" font-size="12">major_group_desc</text>
+          <text class="mono muted" x="844" y="263" font-size="11" text-anchor="end">varchar(200)</text>
+          <text class="mono" x="566" y="295" font-size="12">industry_group</text>
+          <text class="mono muted" x="844" y="295" font-size="11" text-anchor="end">varchar(3)</text>
+          <text class="mono" x="566" y="327" font-size="12">industry_group_desc</text>
+          <text class="mono muted" x="844" y="327" font-size="11" text-anchor="end">varchar(200)</text>
+
+          <!-- relationship in the 140px gutter (380–520). sic row center y=194; pk row center y=100 -->
+          <path d="M380 194 H430 V100 H520" fill="none" stroke="#3ec4e8" stroke-width="1.8"/>
+          <path d="M380 194 L398 186 M380 194 L398 202 M380 194 H400" fill="none" stroke="#3ec4e8" stroke-width="1.8"/>
+          <path d="M512 92 V108 M520 92 V108" fill="none" stroke="#3ec4e8" stroke-width="1.8"/>
+          <text fill="#3ec4e8" x="450" y="218" font-size="11" font-weight="600" text-anchor="middle">many</text>
+          <text fill="#3ec4e8" x="450" y="86" font-size="11" font-weight="600" text-anchor="middle">one</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Also on the instance, not in this USL</h2>
+      <div class="notes" style="grid-template-columns:1fr 1fr">
+        <div class="note">
+          <h3>Revenue facts unused</h3>
+          <p><code>SEC_DATA</code> also has seven <code>*_revenue_facts</code> tables from onboard <code>edgar_facts</code>. This USL activates only the submissions tables.</p>
+        </div>
+        <div class="note">
+          <h3>Own copy of SIC</h3>
+          <p><code>sic_code</code> is duplicated inside this USL rather than referencing <code>sic_usl</code>, because foreign keys across USLs are unconfirmed.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">Counts and DQ results from JDBC on this instance after activation. Independent check: company_dns API returned 1,005 SIC codes, matching <code>sic_code</code>.</p>
+</div>
+<script>
+(function () {
+  var divisions = [
+    ["A", "Agriculture, Forestry, And Fishing", 58, []],
+    ["B", "Mining", 31, []],
+    ["C", "Construction", 26, []],
+    ["D", "Manufacturing", 459, ["Apple", "Ford", "Tesla"]],
+    ["E", "Transportation, Communications, Electric, Gas, And Sanitary Services", 67, []],
+    ["F", "Wholesale Trade", 69, []],
+    ["G", "Retail Trade", 64, ["Target", "Walmart"]],
+    ["H", "Finance, Insurance, And Real Estate", 53, []],
+    ["I", "Services", 150, ["Oracle"]],
+    ["J", "Public Administration", 28, []]
+  ];
+  var max = 459, bars = document.getElementById("bars");
+  divisions.forEach(function (d) {
+    var row = document.createElement("div");
+    row.className = "bar-row";
+    var code = document.createElement("div");
+    code.className = "bar-code";
+    code.textContent = d[0];
+    var name = document.createElement("div");
+    name.className = "bar-name";
+    name.textContent = d[1];
+    name.title = d[1];
+    var track = document.createElement("div");
+    track.className = "bar-track";
+    track.style.gridColumn = "2";
+    var fill = document.createElement("div");
+    fill.className = "bar-fill" + (d[3].length ? " hit" : "");
+    fill.style.width = (100 * d[2] / max) + "%";
+    track.appendChild(fill);
+    var n = document.createElement("div");
+    n.className = "bar-n";
+    n.textContent = d[2];
+    var tags = document.createElement("div");
+    tags.className = "tags";
+    d[3].forEach(function (label) {
+      var t = document.createElement("span");
+      t.className = "tag";
+      t.textContent = label;
+      tags.appendChild(t);
+    });
+    row.appendChild(code);
+    row.appendChild(name);
+    row.appendChild(n);
+    row.appendChild(tags);
+    row.insertBefore(track, n);
+    bars.appendChild(row);
+  });
+
+  var tabs = [].slice.call(document.querySelectorAll(".tab"));
+  function show(id, focus) {
+    tabs.forEach(function (t) {
+      var on = t.id === "tab-" + id;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+      if (on && focus) t.focus();
+    });
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { show(t.id.replace("tab-", "")); });
+    t.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        var n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        show(n.id.replace("tab-", ""), true);
+      }
+    });
+  });
+  var h = (location.hash || "").replace("#", "");
+  if (h === "topology" || h === "analysis") show(h);
+})();
+</script>
+</body>
+</html>
