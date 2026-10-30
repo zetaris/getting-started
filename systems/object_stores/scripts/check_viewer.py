@@ -11,6 +11,9 @@ with a hostile name) and checks that:
   * every asset the page loads is one the server will serve, and exists
   * nothing is loaded from another site
   * the text colors keep WCAG AA contrast (4.5:1) on the backgrounds they sit on
+  * the recipe in the page and HOWTO.md.tmpl give the same commands: every command in
+    the HOWTO appears in the recipe, and every python3 or .venv/bin/python command in
+    a recipe copy box is in the HOWTO
 
 Layout (text that must stay inside its box, connectors that must not cross a
 label, a page that must not scroll sideways) needs a real browser. Open the page
@@ -21,6 +24,7 @@ and with a long store name.
 
 from __future__ import annotations
 
+import html
 import re
 import sys
 from html.parser import HTMLParser
@@ -100,6 +104,44 @@ class Scan(HTMLParser):
                 self.urls.append(a[k])
 
 
+HOWTO = HERE.parent / "HOWTO.md.tmpl"
+RUNNABLE = ("python3 ", ".venv/bin/")
+
+
+def squash(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def howto_commands(howto: str) -> list[str]:
+    """Each command line in the HOWTO's bash blocks, continuations joined, comments dropped."""
+    cmds: list[str] = []
+    for m in re.finditer(r"```bash\n(.*?)```", howto, re.S):
+        for line in m.group(1).replace("\\\n", " ").split("\n"):
+            line = line.strip()
+            if line and not line.startswith("#"):
+                cmds.append(squash(line))
+    return cmds
+
+
+def recipe_copy_commands(template: str) -> list[str]:
+    """Each command line in the recipe's copy boxes (the ones with a Copy button)."""
+    out: list[str] = []
+    for m in re.finditer(r'<div class="code"><button[^>]*data-target="([^"]+)"[^>]*>.*?</button><pre id="\1">(.*?)</pre>', template, re.S):
+        text = html.unescape(re.sub(r"<[^>]+>", "", m.group(2))).replace("\\\n", " ")
+        out += [squash(l) for l in text.split("\n") if l.strip() and not l.strip().startswith("#")]
+    return out
+
+
+def recipe_differences(howto: str, template: str) -> list[str]:
+    """Commands that one of the two lacks. Empty when the recipe and HOWTO agree."""
+    visible = squash(html.unescape(re.sub(r"<[^>]+>", " ", template)).replace("\\\n", " "))
+    hcmds = howto_commands(howto)
+    diffs = [f"in the HOWTO but not in the recipe: {c}" for c in hcmds if c not in visible]
+    diffs += [f"in the recipe but not in the HOWTO: {c}" for c in recipe_copy_commands(template)
+              if c.startswith(RUNNABLE) and c not in hcmds]
+    return diffs
+
+
 def main() -> int:
     problems: list[str] = []
     ok: list[str] = []
@@ -152,6 +194,9 @@ def main() -> int:
     for fg, bg, what in PAIRS:
         ratio = contrast(resolve(fg, tok), resolve(bg, tok))
         check(ratio >= 4.5, f"contrast {ratio:.1f}:1  {what}", f"contrast {ratio:.2f}:1 is below 4.5:1  {what} ({fg} on {bg})")
+
+    diffs = recipe_differences(HOWTO.read_text(encoding="utf-8"), sv.TEMPLATE.read_text(encoding="utf-8"))
+    check(not diffs, "the recipe and the HOWTO give the same commands", "the recipe and the HOWTO differ: " + "; ".join(diffs))
 
     for line in ok:
         print("[PASS]", line)

@@ -109,3 +109,33 @@ class Viewer(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecipeMatchesHowto(unittest.TestCase):
+    """The page's recipe and HOWTO.md.tmpl give the same commands."""
+
+    def setUp(self):
+        import check_viewer as cv
+        self.cv = cv
+
+    def test_the_real_files_agree(self):
+        self.assertEqual(self.cv.recipe_differences(self.cv.HOWTO.read_text(encoding="utf-8"),
+                                                    self.cv.sv.TEMPLATE.read_text(encoding="utf-8")), [])
+
+    def test_a_command_missing_from_the_recipe_is_found(self):
+        howto = "```bash\npython3 scripts/a.py --x \\\n  --y\n# comment\n.venv/bin/python b.py\n```"
+        page = '<p>python3 scripts/a.py --x --y</p>'
+        self.assertEqual(self.cv.recipe_differences(howto, page), ["in the HOWTO but not in the recipe: .venv/bin/python b.py"])
+
+    def test_a_changed_flag_in_the_recipe_is_found_both_ways(self):
+        howto = "```bash\npython3 scripts/a.py --x\n```"
+        page = '<div class="code"><button class="copy" data-target="c1">Copy</button><pre id="c1">python3 scripts/a.py --z</pre></div>'
+        got = self.cv.recipe_differences(howto, page)
+        self.assertEqual(len(got), 2)
+        self.assertTrue(got[0].startswith("in the HOWTO but not in the recipe"))
+        self.assertTrue(got[1].startswith("in the recipe but not in the HOWTO"))
+
+    def test_html_escapes_and_non_commands_are_ignored(self):
+        howto = "```bash\npython3 run.py -e \"SELECT 1 FROM t WHERE a < 2\"\n```"
+        page = '<div class="code"><button class="copy" data-target="c1">Copy</button><pre id="c1">python3 run.py -e "SELECT 1 FROM t WHERE a &lt; 2"\nS3_BUCKET=&lt;bucket&gt;</pre></div>'
+        self.assertEqual(self.cv.recipe_differences(howto, page), [])
