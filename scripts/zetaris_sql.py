@@ -20,11 +20,13 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
-PLACEHOLDER_UA = "YOUR_APP_NAME YOUR_CONTACT_EMAIL"
-DEFAULT_REST_URL = "http://localhost:8888/api/v1.0"
-DEFAULT_JDBC_URL = "jdbc:zetaris:lightning@localhost:10000"
-DRIVER_CLASS = "com.zetaris.lightning.jdbc.LightningDriver"
-ALREADY_EXISTS = re.compile(r"already exists", re.I)
+
+
+def requirements_file() -> str:
+    """The requirements file to name in install hints. A partner package has no
+    scripts/requirements.txt; it holds the object store kit's own (JDBC, boto3, pyarrow)."""
+    main = "scripts/requirements.txt"
+    return main if (ROOT / main).is_file() else "systems/object_stores/requirements.txt"
 
 
 class ZetarisError(RuntimeError):
@@ -292,7 +294,7 @@ class JdbcChannel:
         except ImportError as e:
             raise ZetarisError(
                 "jaydebeapi is not installed in this Python. Create a venv and run "
-                "`.venv/bin/pip install -r scripts/requirements.txt`."
+                f"`.venv/bin/pip install -r {requirements_file()}`."
             ) from e
         self._conn = jaydebeapi.connect(
             DRIVER_CLASS,

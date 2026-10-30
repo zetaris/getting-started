@@ -94,6 +94,17 @@ class SelectionTests(unittest.TestCase):
             self.assertNotIn(name, self.files)
         self.assertFalse([n for n in self.files if n.startswith("systems/object_stores/tests/")])
 
+    def test_install_hint_names_a_file_the_package_holds(self):
+        """The preflight tells people which requirements file to install. In the
+        package that must be one that is inside it (a partner hit a missing path)."""
+        self.assertNotIn("scripts/requirements.txt", self.files)
+        self.assertIn("systems/object_stores/requirements.txt", self.files)
+        src = self.files["scripts/zetaris_sql.py"].decode()
+        self.assertIn("def requirements_file", src)
+        self.assertIn('"systems/object_stores/requirements.txt"', src)
+        pre = self.files["scripts/preflight.py"].decode()
+        self.assertNotIn("install -r scripts/requirements.txt", pre)
+
     def test_manifest_lists_exactly_the_resolved_sources(self):
         import json
         ids = [s["id"] for s in json.loads(self.files["open_data/manifest.json"])["sources"]]

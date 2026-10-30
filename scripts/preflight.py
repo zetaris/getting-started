@@ -104,13 +104,13 @@ def check_jdbc(args) -> None:
     home = z.find_java_home()
     report(home is not None, "Java (JDK 11+)", home or "none found. On macOS `java` can be a stub; try `brew install openjdk@17` (the temurin cask needs sudo)")
     venv = z.venv_python()
-    report(venv is not None, ".venv", str(venv) if venv else "missing; run `python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt`")
+    report(venv is not None, ".venv", str(venv) if venv else f"missing; run `python3 -m venv .venv && .venv/bin/pip install -r {z.requirements_file()}`")
     try:
         import jaydebeapi  # noqa: F401
         have = True
     except ImportError:
         have = False
-    report(have, "jaydebeapi", "importable" if have else "not installed in this Python (create .venv and install scripts/requirements.txt)")
+    report(have, "jaydebeapi", "importable" if have else f"not installed in this Python (create .venv and install {z.requirements_file()})")
     jar = args.jar or os.environ.get("ZETARIS_JDBC_JAR")
     if not jar:
         report(False, "driver JAR", "path not set. Ask the user; pass --jar or set ZETARIS_JDBC_JAR")
