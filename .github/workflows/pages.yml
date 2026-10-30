@@ -8,6 +8,7 @@ on:
       - 'docs/**'
       - 'open_data/**'
       - 'scripts/HOWTO.md'
+      - 'systems/object_stores/**'
       - 'website/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:

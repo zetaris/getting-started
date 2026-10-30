@@ -1,4 +1,5 @@
 import { Marked, Renderer } from 'marked';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, statSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,14 @@ const groups = [
     ['open_data/usl/HOWTO.md', 'USL cookbook'],
     ['open_data/usl/usl-sources.md', 'USL model catalog'],
     ['docs/guides/create-edgar-pudl-noaa-usl.md', 'EDGAR, PUDL and NOAA'],
+    ['docs/guides/object-store-cookbook.md', 'Object store cookbook'],
+    // Rendered from a template at build time, so the page and the kit's own HOWTO cannot differ.
+    // Its links are relative to the repository root, because the HOWTO runs from there.
+    ['systems/object_stores/HOWTO.md.tmpl', 'Object store step by step', {
+      render: ['systems/object_stores/scripts/render.py', 'systems/object_stores/HOWTO.md.tmpl'],
+      route: 'systems/object_stores/HOWTO.html',
+      base: '.',
+    }],
   ]],
   ['Agents and scripts', [
     ['docs/connections/client-setup.md', 'Client setup'],
@@ -53,7 +62,8 @@ const groups = [
   ]],
 ];
 const pages = groups.flatMap(([, entries]) => entries);
-const routes = new Map(pages.map(([source]) => [source, source === 'START-HERE.md' ? 'index.html' : source.replace(/\.md$/, '.html')]));
+const rendered = new Map(pages.filter(([, , options]) => options).map(([source, , options]) => [source, options]));
+const routes = new Map(pages.map(([source, , options]) => [source, options?.route ?? (source === 'START-HERE.md' ? 'index.html' : source.replace(/\.md$/, '.html'))]));
 const contentLinks = new Map(pages.map(([source]) => [source, new Set()]));
 const journey = ['START-HERE.md', 'docs/connections/README.md', 'docs/connections/lightning-recipe-reference.md', 'docs/guides/first-dataset.md', 'docs/guides/project-paths.md', 'docs/guides/demo-template.md'];
 const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
@@ -88,6 +98,7 @@ writeFileSync(path.join(output, '.nojekyll'), '');
 
 for (const [source, label] of pages) {
   const route = routes.get(source);
+  const generated = rendered.get(source);
   const headings = [];
   const slugs = new Map();
   let setupProtocol;
@@ -113,7 +124,7 @@ for (const [source, label] of pages) {
       if (token.type !== 'link' && token.type !== 'image') return;
       if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(token.href)) return;
       const [target, fragment = ''] = token.href.split('#');
-      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(source), decodeURI(target)));
+      const resolved = path.posix.normalize(path.posix.join(generated?.base ?? path.posix.dirname(source), decodeURI(target)));
       const fullPath = path.join(root, resolved);
       if (resolved.startsWith('../') || !existsSync(fullPath)) throw new Error(`${source}: missing link target ${token.href}`);
       const suffix = fragment ? `#${fragment}` : '';
@@ -126,7 +137,9 @@ for (const [source, label] of pages) {
       }
     },
   });
-  const markdown = readFileSync(path.join(root, source), 'utf8');
+  const markdown = generated
+    ? execFileSync('python3', generated.render, { cwd: root, encoding: 'utf8' })
+    : readFileSync(path.join(root, source), 'utf8');
   let content;
   if (source === 'docs/connections/client-setup.md') {
     const [intro, jdbc, rest] = markdown.split(/<!-- protocol: (?:jdbc|rest) -->/);
