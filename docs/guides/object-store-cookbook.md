@@ -34,10 +34,9 @@ Everything the test writes goes under your own folder in the bucket, so several 
 
 ## Know before you start
 
-- `MATERIALIZE USL TABLE` ignores the credentials of a saved storage setting on 2.4.3.1, so the statement carries the keys. The instance may keep it in query history. See the [write-up for Zetaris engineering](../../systems/object_stores/issues/ISSUE-01-materialize-ignores-storage-setting.md).
+- `MATERIALIZE USL TABLE` ignores the credentials of a saved storage setting on 2.4.3.1, so the statement carries the keys. The instance may keep it in query history.
 - A second `MATERIALIZE` into a folder you did not clear replaces its output. The guide clears the folder first.
 - A bucket with object lock or a retention policy refuses the cleanup. No script works around that.
-- Not yet checked on a real store: virtual-host addressing only, a private certificate authority, object lock or versioning switched on, and no batch delete.
 
 ## Testing a store for someone else
 
