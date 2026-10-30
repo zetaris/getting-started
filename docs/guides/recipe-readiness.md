@@ -16,7 +16,7 @@ Run recipes on your own local or AWS Zetaris instance.
 - [REST cookbook](../../open_data/rest_apis/HOWTO.md): connect, flatten and query API data, including SIC industry classifications. The [REST catalog](../../open_data/rest_apis/rest-api-sources.md) records readiness; NASA DONKI is known to fail; Singapore PM2.5 is verified, with a tight burst limit.
 - [File cookbook](../../open_data/parquet_csv/HOWTO.md): register and query files such as NOAA weather and AWS Public Blockchain. Check the [file catalog](../../open_data/parquet_csv/parquet-csv-data-sources.md) for failures, size and licensing.
 - [Upload a PDF](upload-pdf.md): register your own PDF in File Store, read its text preview and extract text from its bytes.
-- [Object store cookbook](object-store-cookbook.md): write USL tables to an S3-compatible bucket as Parquet and verify them from the source API to the file. It ends with a report you can send to someone else. Verified against one store; the page lists what is not yet checked.
+- [Object store cookbook](object-store-cookbook.md): write USL tables to an S3-compatible bucket as Parquet and verify them from the source API to the file. It ends with a report you can send to someone else. Verified on Zetaris 2.4.3.1 against one S3-compatible store.
 - [USL cookbook](../../open_data/usl/HOWTO.md): build SIC and SIC/EDGAR models. The [model catalog](../../open_data/usl/usl-sources.md) records a foreign-key data-quality failure and open materialisation questions.
 
 Check size, rate limits, licence and setup before adding each source.

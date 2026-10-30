@@ -203,7 +203,7 @@ The walkthrough found five problems, all fixed and re-verified on a rebuilt pack
 
 Confirmed as documented: the macOS Java stub is bypassed by the scripts, the S3 preflight passes with no network call, and a fresh partner folder needs no `.env.local` beyond what the example generates.
 
-Not tested: a store that needs `virtual` addressing or a private CA (only one store was available), and a run from a truly empty Zetaris (the Data Explorer leftovers remained).
+Not exercised on the store used so far: a store that needs `virtual` addressing or a private CA, and a run from a truly empty Zetaris (the Data Explorer leftovers remained).
 
 **Phase 6 results (30 October 2026, Zetaris 2.4.3.1).** `report.py` is built, tested and was run from an unzipped package against the first store: 18 PASS, 1 INFO, result PASS, with the cleanup deleting 10 objects (52,699 bytes) and the folder left empty. Its numbers agree with the individual scripts, because it calls the same functions (`probe_attempts`, `materialize.build`, the chain functions, `list_prefix` and `delete_keys`).
 
@@ -215,7 +215,7 @@ Not tested: a store that needs `virtual` addressing or a private CA (only one st
 - **Tests.** 34 new tests with a fake S3 client and a fake Zetaris channel (74 in all, run with the venv). With the redactor, the final guard, the cleanup scoping or the verdict logic disabled, tests fail in each case.
 - **Viewer.** The Proof tab loads a report JSON chosen by the user, in the browser only, built with `textContent`; bad files (not JSON, wrong kind, wrong schema version, too large, incomplete) show a clear message.
 
-Still not covered, because only one store was available: a store that needs `virtual` addressing, a private CA, object lock or versioning enabled, or no batch delete. The tests cover those branches with fakes; a real store would confirm them.
+Not exercised on the store used so far: a store that needs `virtual` addressing, a private CA, object lock or versioning enabled, or no batch delete. The tests cover those branches with fakes; running them against a store that behaves that way would confirm them.
 
 **Open item (closed).** The recipe HTML and `HOWTO.md.tmpl` could drift apart. A check now compares their commands; see "After phase 6".
 
