@@ -28,9 +28,12 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts"))
 import zetaris_sql  # noqa: E402
 
-import boto3  # noqa: E402
-from botocore.config import Config  # noqa: E402
-from botocore.exceptions import ClientError  # noqa: E402
+try:
+    import boto3  # noqa: E402
+    from botocore.config import Config  # noqa: E402
+    from botocore.exceptions import ClientError  # noqa: E402
+except ImportError as e:
+    raise SystemExit(f"{e.name} is not installed in this Python. Use the venv from step 2 of the HOWTO: .venv/bin/python <script>")
 
 REQUIRED = ("S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET")
 ADDRESSING_STYLES = ("path", "virtual")

@@ -29,8 +29,8 @@ A storage setting of type `S3` was created with `POST /storage-setting` (`storag
 Re-run with the dry run first (`--dry-run` prints the statement with the credentials masked), for example:
 
 ```bash
-python3 systems/object_stores/scripts/storage_setting.py create --name repro
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/storage_setting.py create --name repro
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.sic_code --setting-id <id> --variant setting-id
 ```
 

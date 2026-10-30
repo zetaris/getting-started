@@ -1,6 +1,6 @@
 # Object store test kit: `systems/object_stores/` and partner packaging plan
 
-**Status:** decisions resolved (see the last section). Phases 1 to 4 are done on branch `systems-object-stores` (29 to 30 October 2026) and await review; phases 5 and 6 are not started.
+**Status:** decisions resolved (see the last section). Phases 1 to 5 are done on branch `systems-object-stores` (29 to 30 October 2026) and await review; phase 6 is not started.
 
 ## Goal and scope
 
@@ -188,6 +188,22 @@ The packager only writes under `dist/`, which is already gitignored.
 - 40 standard-library tests cover the renderer and the packager. With the leak check disabled in memory, seven of them fail, so they are not vacuous.
 - Checked against the earlier hand-built package: every SQL script and both guides are byte-identical, nothing is missing, and the only changes are the intended ones.
 - Finding: the example user agent quoted in the repo's own help text (`zetaris dev@zetaris.com`) is flagged if someone uses it as a real value, because it appears in the repo's scripts. That is correct behavior, and it matches the rule that the user agent must be a real contact.
+
+**Phase 5 results (29 October 2026, Zetaris 2.4.3.1).** A package was built for a made-up partner with no store names (zero vendor names in it), unzipped into an empty folder, and its HOWTO followed from step 1 with a fresh venv. The instance had the phase 1 objects, so the teardown from step 14 ran first. Acceptance was met: step 11 ended `CHAIN OK` (10 objects, 52,699 bytes, all stages PASS) and the cleanup ended `CLEAN` with the bucket empty. The viewer was served from the package and ran a live query.
+
+The walkthrough found five problems, all fixed and re-verified on a rebuilt package:
+
+1. **`python3` for scripts that need `boto3`.** The HOWTO ran `storage_setting.py` and `materialize_usl_table.py` with `python3`, but both import the S3 helper, which imports `boto3`, which is only in the venv. A partner who had not activated the venv got a traceback on the first command of step 9. The HOWTO and recipe now use `.venv/bin/python` for the S3 scripts, say which commands need the venv, and a missing `boto3` now prints "Use the venv from step 2".
+2. **Default storage setting name.** `s3-compat` was not unique, so a second person, or a second run, got `HTTP 400 already exists`. The default is now `s3-compat-<your folder>`, and the HOWTO explains `--name`.
+3. **`--skip-exists` was overstated.** Dependencies skip "already exists" by themselves; only the named target needs the flag. Leftover REST tables after a teardown do no harm. Both warnings were corrected.
+4. **Step 4 expected output was wrong.** It lacked the `ZETARIS_USER_AGENT` line and the INFO block appears twice. A check now compares the HOWTO's 26 expected lines with the real preflight output, label by label and in order, and they match.
+5. **The server's startup lines did not appear when its output was piped.** Both now flush.
+
+**Tested behavior: a second `MATERIALIZE` replaces, it does not append.** For `sic_code` (1 file) and `company` (7 files) the object count and the row count were identical after a second run into an uncleared folder, and the chain still passed. The HOWTO and README no longer tell people to clear before a re-run; they say when clearing is still useful (files from tables no longer written).
+
+Confirmed as documented: the macOS Java stub is bypassed by the scripts, the S3 preflight passes with no network call, and a fresh partner folder needs no `.env.local` beyond what the example generates.
+
+Not tested: a store that needs `virtual` addressing or a private CA (only one store was available), and a run from a truly empty Zetaris (the Data Explorer leftovers remained).
 
 **Open item.** The recipe HTML and `HOWTO.md.tmpl` can drift apart. Generating one from the other, or checking that every command in the HOWTO appears in the viewer, would close that. It is small; say if you want it in phase 4.
 

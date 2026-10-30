@@ -152,10 +152,10 @@ s3://<bucket>/<your folder>/usl_demo/<usl>/<table>/   materialized Parquet
 
 ```bash
 .venv/bin/python systems/object_stores/scripts/probe_s3.py                       # TLS, keys, addressing; creates your folder
-python3 systems/object_stores/scripts/storage_setting.py create                  # once; prints the id
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/storage_setting.py create                  # once; prints the id
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
     lightning.metastore.usl_demo.sic_edgar_usl.sic_code --variant options-json --dry-run
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
     lightning.metastore.usl_demo.sic_edgar_usl.sic_code --variant options-json
 .venv/bin/python systems/object_stores/scripts/verify_chain.py                   # whole chain, API to Parquet
 ```
@@ -167,8 +167,7 @@ and the `sic_edgar_usl` USL from `open_data/` to exist first.
 
 ## Clearing the bucket
 
-Clear your folder before a re-run, so old and new files cannot sit side by side
-and `verify_chain.py` proves the new run, not the old one.
+A second `MATERIALIZE` replaces a table's output; it does not append (tested on Zetaris 2.4.3.1 with both tables), so a re-run needs no clearing first. Clear your folder to remove files from earlier runs that the new run does not write, such as a table you no longer materialize, so that `verify_chain.py` proves this run and nothing else.
 
 ```bash
 .venv/bin/python systems/object_stores/scripts/cleanup_bucket.py          # dry run: lists what would go

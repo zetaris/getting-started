@@ -531,7 +531,7 @@ details > .code { margin: 0 12px 12px; }
         <text class="bs" x="34" y="544">Revenue facts: 7 REST tables in SEC_DATA, 7 views in the edgar container.</text>
         <text class="bs" x="34" y="560">Profile view: all_companies_profile_table joins SIC and drops IBM (6 rows).</text>
         <rect class="box store" x="770" y="500" width="440" height="72" rx="4"/>
-        <text class="bt" x="784" y="524">Storage setting: s3-compat</text>
+        <text class="bt" x="784" y="524">Storage setting: s3-compat-&lt;your folder&gt;</text>
         <text class="bs" x="784" y="544">S3 path s3a://&lt;bucket&gt;/&lt;your folder&gt;</text>
         <text class="bs" x="784" y="560">Endpoint https://&lt;your S3 endpoint&gt;; files stay in your folder.</text>
       </svg>
@@ -576,7 +576,7 @@ details > .code { margin: 0 12px 12px; }
           <text class="bm" x="14" y="196">Lightning databases:</text>
           <text class="bm" x="14" y="214">  COMPANY_DNS, SEC_DATA</text>
           <text class="bm" x="14" y="242">Storage setting:</text>
-          <text class="bm" x="14" y="260">  s3-compat</text>
+          <text class="bm" x="14" y="260">  s3-compat-&lt;folder&gt;</text>
         </g>
         <g transform="translate(830,40)">
           <rect class="box ext" width="250" height="120" rx="4"/>
@@ -822,8 +822,12 @@ S3_PREFIX=&lt;your own folder, for example jane-usl-test&gt;</pre></div>
 <span class="pass">[PASS]</span> ZETARIS_API_KEY: set
 <span class="pass">[PASS]</span> ZETARIS_USERNAME: set
 <span class="pass">[PASS]</span> ZETARIS_PASSWORD: set
-<span class="pass">[PASS]</span> REST datasources: HTTP 200
+<span class="pass">[PASS]</span> ZETARIS_USER_AGENT: set, in the form app_name user@domain.tld
+<span class="pass">[PASS]</span> REST datasources: HTTP 200, 0 listed: 
 <span class="pass">[PASS]</span> REST SELECT 1
+[INFO] datasources: none
+[INFO] lightning databases: &lt;your databases&gt;
+[INFO] USL namespaces: none
 <span class="pass">[PASS]</span> JDBC port 10000: open
 <span class="pass">[PASS]</span> Java (JDK 11+): /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 <span class="pass">[PASS]</span> .venv: &lt;package&gt;/.venv/bin/python
@@ -840,6 +844,7 @@ S3_PREFIX=&lt;your own folder, for example jane-usl-test&gt;</pre></div>
 <span class="pass">[PASS]</span> S3_ADDRESSING: path
 [INFO] S3_CA_BUNDLE: not set (the CA file Python trusts is used)
 <span class="okc">READY</span></pre></div>
+          <div class="callout-box info"><b>Note</b> The three INFO lines show what is already on the instance. They appear twice, once after the REST checks and once after the JDBC check, and your lists will differ.</div>
           <div class="callout-box">If you see <b>NOT READY</b>, fix the line marked FAIL first. Every later step assumes READY.</div>
         </div>
       </li>
@@ -865,7 +870,7 @@ S3_PREFIX=&lt;your own folder, for example jane-usl-test&gt;</pre></div>
 === sic_edgar_usl (9 statements)
     <span class="pass">9 ok</span>
 done</pre></div>
-          <div class="callout-box info"><b>Note</b> Re-running on an instance that already has these objects needs <code>--skip-exists</code>. The line <code>SLF4J: Failed to load class</code> is a harmless warning from the driver, which bundles no logging backend.</div>
+          <div class="callout-box info"><b>Note</b> Sources that are only pulled in as dependencies skip "already exists" by themselves, so leftovers from an earlier run do no harm. Naming a source or USL that already exists needs <code>--skip-exists</code>, otherwise the run stops at the first duplicate. The line <code>SLF4J: Failed to load class</code> is a harmless warning from the driver, which bundles no logging backend.</div>
         </div>
       </li>
 
@@ -923,10 +928,10 @@ Write test with style=path region=us-east-1: &lt;your folder&gt;/zetaris-probe/&
         <h3>Create the storage setting in Zetaris</h3>
         <div class="body">
           <p>There is no SQL statement to create a storage setting, so this calls the REST endpoint <code>POST /storage-setting</code>. Look at the request first, with the keys hidden:</p>
-          <div class="code"><button class="copy" type="button" data-target="c-ss1">Copy</button><pre id="c-ss1">python3 systems/object_stores/scripts/storage_setting.py create --dry-run</pre></div>
+          <div class="code"><button class="copy" type="button" data-target="c-ss1">Copy</button><pre id="c-ss1">.venv/bin/python systems/object_stores/scripts/storage_setting.py create --dry-run</pre></div>
           <div class="code out"><span class="lbl">Expected output</span><pre>POST /storage-setting (dry run, nothing sent)
 {
-  "storageName": "s3-compat",
+  "storageName": "s3-compat-&lt;your folder&gt;",
   "storageType": "S3",
   "storagePath": "s3a://&lt;bucket&gt;/&lt;your folder&gt;",
   "scope": "Owner",
@@ -938,13 +943,13 @@ Write test with style=path region=us-east-1: &lt;your folder&gt;/zetaris-probe/&
   }
 }</pre></div>
           <p>With <code>S3_ADDRESSING=virtual</code> the <code>useS3PathStyleAccess</code> line is left out. Create it, then note the id it returns:</p>
-          <div class="code"><button class="copy" type="button" data-target="c-ss2">Copy</button><pre id="c-ss2">python3 systems/object_stores/scripts/storage_setting.py create
-python3 systems/object_stores/scripts/storage_setting.py list</pre></div>
+          <div class="code"><button class="copy" type="button" data-target="c-ss2">Copy</button><pre id="c-ss2">.venv/bin/python systems/object_stores/scripts/storage_setting.py create
+.venv/bin/python systems/object_stores/scripts/storage_setting.py list</pre></div>
           <div class="code out"><span class="lbl">Expected output</span><pre>HTTP 200
 {
   "id": "&lt;storage setting id&gt;"
 }</pre></div>
-          <div class="callout-box"><b>Creating a setting does not test it.</b> It is accepted even if the endpoint or keys are wrong. The real test is the materialize step. Use <code>storage_setting.py delete &lt;id&gt;</code> to remove one.</div>
+          <div class="callout-box"><b>Creating a setting does not test it.</b> It is accepted even if the endpoint or keys are wrong. The real test is the materialize step. Use <code>storage_setting.py delete &lt;id&gt;</code> to remove one. The setting is named <code>s3-compat-</code> plus your folder, so each person has their own. If you get <code>HTTP 400</code> and <code>already exists</code>, pass another name with <code>--name</code>.</div>
         </div>
       </li>
 
@@ -952,7 +957,7 @@ python3 systems/object_stores/scripts/storage_setting.py list</pre></div>
         <h3>Materialize the USL tables with SQL</h3>
         <div class="body">
           <p>The script builds the statement from <code>.env.local</code>. Dry-run first. It masks the credentials in what it prints.</p>
-          <div class="code"><button class="copy" type="button" data-target="c-mat1">Copy</button><pre id="c-mat1">python3 systems/object_stores/scripts/materialize_usl_table.py \
+          <div class="code"><button class="copy" type="button" data-target="c-mat1">Copy</button><pre id="c-mat1">.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
   --setting-id &lt;storage setting id&gt; --variant options-json --dry-run</pre></div>
           <div class="code out"><span class="lbl">Expected output</span><pre>MATERIALIZE USL TABLE lightning.metastore.usl_demo.sic_edgar_usl.sic_code TO STORAGE (
@@ -965,16 +970,17 @@ python3 systems/object_stores/scripts/storage_setting.py list</pre></div>
 
 <span class="dim">(dry run: nothing sent)</span></pre></div>
           <p>Run it for both tables:</p>
-          <div class="code"><button class="copy" type="button" data-target="c-mat2">Copy</button><pre id="c-mat2">python3 systems/object_stores/scripts/materialize_usl_table.py \
+          <div class="code"><button class="copy" type="button" data-target="c-mat2">Copy</button><pre id="c-mat2">.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
   --setting-id &lt;storage setting id&gt; --variant options-json
 
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.company \
   --setting-id &lt;storage setting id&gt; --variant options-json</pre></div>
           <div class="code out"><span class="lbl">Expected output (last line of each run)</span><pre>RESULT: s3a://&lt;bucket&gt;/&lt;your folder&gt;/usl_demo/sic_edgar_usl/sic_code | <span class="pass">SUCCESS</span> | None | None
 RESULT: s3a://&lt;bucket&gt;/&lt;your folder&gt;/usl_demo/sic_edgar_usl/company | <span class="pass">SUCCESS</span> | None | None</pre></div>
           <div class="callout-box"><b>The credentials must be inside the options.</b> The manual's example passes only <code>storageSettingId</code>. On Zetaris 2.4.3.1 that failed with <code>NoAuthWithAWSException: No AWS Credentials provided</code>, and so did extra top-level keys and <code>fs.s3a.*</code> names. It worked once the S3 keys, endpoint and <code>useS3PathStyleAccess</code> went into the <code>optionsBase64</code> JSON, which is what <code>--variant options-json</code> does. The statement therefore carries your keys, and the instance may keep it in query history, so use a key you can rotate. The details are in <code>systems/object_stores/issues/ISSUE-01-materialize-ignores-storage-setting.md</code>.</div>
+          <div class="callout-box info"><b>Running it again</b> A second run replaces each table's output; it does not append (tested on Zetaris 2.4.3.1 with both tables: the object count and the row count were the same after a second run). Clear your folder (the last step) when you want to remove files from earlier runs that this run no longer writes.</div>
         </div>
       </li>
 
@@ -1031,7 +1037,7 @@ ORDER BY entity_name</pre></div>
                 <tr><td>The probe passes but the materialize result is an error</td><td>The probe runs on your machine and Zetaris runs elsewhere. Check that the engine host can reach the endpoint and trusts its certificate chain.</td></tr>
                 <tr><td><code>NoAuthWithAWSException: No AWS Credentials provided</code> in the materialize result</td><td>The credentials were not inside <code>optionsBase64</code>. Use <code>--variant options-json</code>.</td></tr>
                 <tr><td>Materialize result says <code>Error</code> but the command printed ok</td><td>The statement returns one row per run. Read that row: <code>SUCCESS</code> or <code>Error</code> followed by the message.</td></tr>
-                <tr><td><code>No module named boto3</code> or <code>pyarrow</code></td><td>You used <code>python3</code>. Use <code>.venv/bin/python</code>.</td></tr>
+                <tr><td><code>boto3 is not installed in this Python</code>, or <code>No module named pyarrow</code></td><td>You used <code>python3</code>. Use <code>.venv/bin/python</code>.</td></tr>
                 <tr><td><code>Set ZETARIS_USER_AGENT</code></td><td>Add an app name and a contact email to <code>.env.local</code>.</td></tr>
                 <tr><td><code>MISSING ... S3_*</code></td><td>Add the missing name to <code>.env.local</code>.</td></tr>
                 <tr><td><code>Unable to locate a Java Runtime</code></td><td>macOS stub. Install a JDK, for example <code>brew install openjdk@17</code>; the scripts find it.</td></tr>
@@ -1050,10 +1056,10 @@ ORDER BY entity_name</pre></div>
           <p>Confirm what you want gone first. These steps change the instance and the bucket. Show the Zetaris plan, read it, then run it with <code>--yes</code>:</p>
           <div class="code"><button class="copy" type="button" data-target="c-td">Copy</button><pre id="c-td">python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_profiles --channel jdbc
 python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_profiles --channel jdbc --yes</pre></div>
-          <div class="callout-box info"><b>Note</b> The REST tables, the <code>COMPANY_DNS</code> and <code>SEC_DATA</code> Lightning databases and the containers can only be removed in the Zetaris Data Explorer, and the command lists them. A later re-run then needs <code>--skip-exists</code>. <code>--drop-namespace</code> also removes every other USL in <code>usl_demo</code>, so leave it off unless you want that.</div>
+          <div class="callout-box info"><b>Note</b> The REST tables, the <code>COMPANY_DNS</code> and <code>SEC_DATA</code> Lightning databases and the containers can only be removed in the Zetaris Data Explorer, and the command lists them. They do no harm if you onboard again, because dependencies skip "already exists". <code>--drop-namespace</code> also removes every other USL in <code>usl_demo</code>, so leave it off unless you want that.</div>
           <p>Delete the storage setting, then clear your own folder in the bucket. The cleanup script lists what it would delete and deletes nothing until you add <code>--yes</code>. It touches only your own folder, treats every prefix as a folder, and refuses an empty prefix, so it can never empty the whole bucket.</p>
-          <div class="code"><button class="copy" type="button" data-target="c-cl">Copy</button><pre id="c-cl">python3 systems/object_stores/scripts/storage_setting.py list
-python3 systems/object_stores/scripts/storage_setting.py delete &lt;storage setting id&gt;
+          <div class="code"><button class="copy" type="button" data-target="c-cl">Copy</button><pre id="c-cl">.venv/bin/python systems/object_stores/scripts/storage_setting.py list
+.venv/bin/python systems/object_stores/scripts/storage_setting.py delete &lt;storage setting id&gt;
 .venv/bin/python systems/object_stores/scripts/cleanup_bucket.py
 .venv/bin/python systems/object_stores/scripts/cleanup_bucket.py --yes</pre></div>
           <div class="code out"><span class="lbl">Expected output ends with</span><pre>Deleted. Checking again:

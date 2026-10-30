@@ -8,6 +8,10 @@ will differ.
 Run every command from the folder that holds `systems/`, `scripts/` and
 `open_data/`: the package folder, or the repository root.
 
+Commands that start with `.venv/bin/python` need the venv from step 2. Commands
+that start with `python3` use only the standard library, or switch into the venv
+themselves when they need it.
+
 ## Contents
 
 1. [What you need](#1-what-you-need)
@@ -108,8 +112,12 @@ Expected output:
 [PASS] ZETARIS_API_KEY: set
 [PASS] ZETARIS_USERNAME: set
 [PASS] ZETARIS_PASSWORD: set
-[PASS] REST datasources: HTTP 200
+[PASS] ZETARIS_USER_AGENT: set, in the form app_name user@domain.tld
+[PASS] REST datasources: HTTP 200, 0 listed: 
 [PASS] REST SELECT 1
+[INFO] datasources: none
+[INFO] lightning databases: <your databases>
+[INFO] USL namespaces: none
 [PASS] JDBC port 10000: open
 [PASS] Java (JDK 11+): /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 [PASS] .venv: <folder>/.venv/bin/python
@@ -128,7 +136,7 @@ Expected output:
 READY
 ```
 
-If it ends with **NOT READY**, fix the line marked FAIL first. Every later step
+The three INFO lines show what is already on the instance. They appear twice, once after the REST checks and once after the JDBC check, and your lists will differ. If it ends with **NOT READY**, fix the line marked FAIL first. Every later step
 assumes READY.
 
 ## 5. Onboard the sources and build the USL
@@ -170,7 +178,7 @@ Expected output:
 done
 ```
 
-Re-running on an instance that already has these objects needs `--skip-exists`.
+Sources that are only pulled in as dependencies skip "already exists" by themselves, so leftovers from an earlier run do no harm. Naming a source or USL that already exists needs `--skip-exists`, otherwise the run stops at the first duplicate.
 The line `SLF4J: Failed to load class` is a harmless warning from the driver, which
 bundles no logging backend.
 
@@ -263,7 +271,7 @@ There is no SQL statement to create a storage setting, so this calls the REST
 endpoint `POST /storage-setting`. Look at the request first, with the keys hidden:
 
 ```bash
-python3 systems/object_stores/scripts/storage_setting.py create --dry-run
+.venv/bin/python systems/object_stores/scripts/storage_setting.py create --dry-run
 ```
 
 Expected output:
@@ -271,7 +279,7 @@ Expected output:
 ```
 POST /storage-setting (dry run, nothing sent)
 {
-  "storageName": "s3-compat",
+  "storageName": "s3-compat-<your folder>",
   "storageType": "S3",
   "storagePath": "s3a://<bucket>/<your folder>",
   "scope": "Owner",
@@ -289,8 +297,8 @@ With `S3_ADDRESSING=virtual` the `useS3PathStyleAccess` line is left out.
 Create it, then note the id it returns:
 
 ```bash
-python3 systems/object_stores/scripts/storage_setting.py create
-python3 systems/object_stores/scripts/storage_setting.py list
+.venv/bin/python systems/object_stores/scripts/storage_setting.py create
+.venv/bin/python systems/object_stores/scripts/storage_setting.py list
 ```
 
 Expected output:
@@ -306,13 +314,17 @@ Creating a setting does not test it. It is accepted even when the endpoint or ke
 are wrong. The real test is step 10. Use `storage_setting.py delete <id>` to remove
 one.
 
+The setting is named `s3-compat-` plus your folder, so each person has their own. If
+you get `HTTP 400` and `already exists`, a setting with that name is already on the
+instance; pass another with `--name`.
+
 ## 10. Materialize the USL tables with SQL
 
 The script builds the statement from `.env.local`. Dry-run first. It masks the
 credentials in what it prints.
 
 ```bash
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
   --setting-id <storage setting id> --variant options-json --dry-run
 ```
@@ -334,11 +346,11 @@ MATERIALIZE USL TABLE lightning.metastore.usl_demo.sic_edgar_usl.sic_code TO STO
 Run it for both tables:
 
 ```bash
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.sic_code \
   --setting-id <storage setting id> --variant options-json
 
-python3 systems/object_stores/scripts/materialize_usl_table.py \
+.venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \
   lightning.metastore.usl_demo.sic_edgar_usl.company \
   --setting-id <storage setting id> --variant options-json
 ```
@@ -360,9 +372,11 @@ a key you can rotate. The details are in
 [ISSUE-01](systems/object_stores/issues/ISSUE-01-materialize-ignores-storage-setting.md).
 
 Everything lands in your own folder, so other people's output in the same bucket is
-not affected and does not affect you. If you are running this step again yourself,
-clear your folder first (step 14, the bucket cleanup), so that old and new files
-cannot sit side by side and step 11 proves this run, not the previous one.
+not affected and does not affect you. Running this step again replaces each table's
+output; it does not append (tested on Zetaris 2.4.3.1 with both tables: the object
+count and the row count were the same after a second run). Clear your folder (step
+14) when you want to remove files from earlier runs that this run no longer writes,
+so that step 11 proves this run and nothing else.
 
 The `company` table produces 7 Parquet files of one row each, because it is a
 `UNION ALL` of seven sources. That is harmless at this size.
@@ -446,7 +460,7 @@ fetch from the public API again unless they are cached.
 | Probe passes but materialize fails | The probe runs on your machine and Zetaris runs elsewhere. Check that the engine host can reach the endpoint and trusts its certificate chain. |
 | `NoAuthWithAWSException: No AWS Credentials provided` in the materialize result | The credentials were not inside `optionsBase64`. Use `--variant options-json`. See ISSUE-01. |
 | The materialize result says `Error` although the command printed ok | The statement returns one row per run. Read that row: `SUCCESS`, or `Error` followed by the message. |
-| `No module named boto3` or `pyarrow` | You used `python3`. Use `.venv/bin/python`. |
+| `boto3 is not installed in this Python`, or `No module named pyarrow` | You used `python3`. Use `.venv/bin/python`. |
 | `Set ZETARIS_USER_AGENT` | Add an app name and a contact email to `.env.local`. |
 | `Missing in the environment or .env.local: S3_...` | Add the missing name to `.env.local`. |
 | `Unable to locate a Java Runtime` | macOS stub. Install a JDK, for example `brew install openjdk@17`; the scripts find it. |
@@ -467,15 +481,15 @@ python3 scripts/onboard.py teardown sic_edgar_usl company_dns edgar_facts edgar_
 
 This drops the USL, the views and the other SQL-removable objects. The REST tables,
 the `COMPANY_DNS` and `SEC_DATA` Lightning databases and the containers can only be
-removed in the Zetaris Data Explorer, and the command lists them. A later re-run
-then needs `--skip-exists`. `--drop-namespace` also removes every other USL in
+removed in the Zetaris Data Explorer, and the command lists them. They do no harm
+if you onboard again, because dependencies skip "already exists". `--drop-namespace` also removes every other USL in
 `usl_demo`, so leave it off unless you want that.
 
 **Storage setting:**
 
 ```bash
-python3 systems/object_stores/scripts/storage_setting.py list
-python3 systems/object_stores/scripts/storage_setting.py delete <storage setting id>
+.venv/bin/python systems/object_stores/scripts/storage_setting.py list
+.venv/bin/python systems/object_stores/scripts/storage_setting.py delete <storage setting id>
 ```
 
 **Bucket.** The test wrote everything inside your own folder: the Parquet under

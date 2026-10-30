@@ -8,10 +8,10 @@ ZETARIS_ORG_ID, ZETARIS_API_KEY and S3_ENDPOINT_URL / S3_ACCESS_KEY / S3_SECRET_
 
 Run from the repository root:
 
-    python3 systems/object_stores/scripts/storage_setting.py list
-    python3 systems/object_stores/scripts/storage_setting.py create --name s3-compat
-    python3 systems/object_stores/scripts/storage_setting.py show <id>
-    python3 systems/object_stores/scripts/storage_setting.py delete <id>
+    .venv/bin/python systems/object_stores/scripts/storage_setting.py list
+    .venv/bin/python systems/object_stores/scripts/storage_setting.py create --name my-setting
+    .venv/bin/python systems/object_stores/scripts/storage_setting.py show <id>
+    .venv/bin/python systems/object_stores/scripts/storage_setting.py delete <id>
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list")
     c = sub.add_parser("create")
-    c.add_argument("--name", default="s3-compat")
+    c.add_argument("--name", help="setting name (default: s3-compat- plus your folder, so each person has their own)")
     c.add_argument("--path", help="storagePath (default s3a://<S3_BUCKET>/<your folder>)")
     c.add_argument("--scope", default="Owner", choices=["Owner", "Org"])
     c.add_argument("--no-path-style", action="store_true", help="omit useS3PathStyleAccess (it is omitted anyway when S3_ADDRESSING=virtual)")
@@ -100,7 +100,7 @@ def main() -> int:
         if st.addressing == "path" and not a.no_path_style:
             config["useS3PathStyleAccess"] = "true"
         body = {
-            "storageName": a.name,
+            "storageName": a.name or "s3-compat-" + s3.base_prefix().rstrip("/").replace("/", "-"),
             "storageType": "S3",
             "storagePath": a.path or f"s3a://{st.bucket}/{s3.base_prefix().rstrip('/')}",
             "scope": a.scope,

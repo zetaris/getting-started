@@ -274,8 +274,8 @@ def main() -> int:
         print(f"Cannot connect over {a.channel.upper()}: {e}", file=sys.stderr)
         return 2
     srv = HTTPServer(("127.0.0.1", a.port), make_handler(app, a.port, env, shell))
-    print(f"Connected over {a.channel.upper()} (settings from {env or 'the environment'}).")
-    print(f"Mode: {'READ-WRITE' if a.allow_write else 'read-only'}.  Viewer: http://127.0.0.1:{a.port}   (Ctrl+C to stop)")
+    print(f"Connected over {a.channel.upper()} (settings from {env or 'the environment'}).", flush=True)
+    print(f"Mode: {'READ-WRITE' if a.allow_write else 'read-only'}.  Viewer: http://127.0.0.1:{a.port}   (Ctrl+C to stop)", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

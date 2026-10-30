@@ -7,9 +7,9 @@ The manual's example passes only `storageSettingId`. On the S3-compatible store 
 that fails with "No AWS Credentials provided", so the working form
 (see --variant) also passes the S3 credentials and endpoint inline.
 
-    python3 systems/object_stores/scripts/materialize_usl_table.py \\
+    .venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \\
         lightning.metastore.usl_demo.sic_edgar_usl.sic_code --dry-run
-    python3 systems/object_stores/scripts/materialize_usl_table.py \\
+    .venv/bin/python systems/object_stores/scripts/materialize_usl_table.py \\
         lightning.metastore.usl_demo.sic_edgar_usl.sic_code --variant inline
 
 Variants: setting-id (manual example), inline and inline-hadoop (credentials as
