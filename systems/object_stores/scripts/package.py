@@ -287,12 +287,19 @@ def read_back(data: bytes, cfg: Config) -> dict[str, bytes]:
     return out
 
 
+# Things a person adds to an unzipped package: their settings, their venv, their reports.
+KEEP_ON_REBUILD = {".env.local", ".venv", "reports"}
+
+
 def write_tree(files: dict[str, bytes], dest: Path) -> None:
     marker = dest / "MANIFEST.txt"
     if dest.exists():
         if not (marker.is_file() and marker.read_text(encoding="utf-8", errors="replace").startswith(HEADER)):
             raise BuildError(f"{dest} exists and was not built by this script; move it away first.")
-        shutil.rmtree(dest)
+        for child in dest.iterdir():  # the person's own working files survive a rebuild
+            if child.name in KEEP_ON_REBUILD:
+                continue
+            shutil.rmtree(child) if child.is_dir() and not child.is_symlink() else child.unlink()
     for name, data in files.items():
         target = dest / name
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -73,6 +73,28 @@ class ConfigTests(unittest.TestCase):
                     pk.Config({**ENV, "PACKAGE_LOGO": str(bad)}, None, DATE)
 
 
+def undefined_globals(source: str, name: str) -> list[str]:
+    """Names a function reads as globals that the module never defines or imports
+    and that are not builtins: the NameError that only shows when the line runs."""
+    import builtins
+    import symtable
+
+    top = symtable.symtable(source, name, "exec")
+    known = {sym.get_name() for sym in top.get_symbols() if sym.is_assigned() or sym.is_imported() or sym.is_namespace()}
+    known |= set(dir(builtins)) | {"__file__", "__name__", "__doc__", "__spec__"}
+    bad: list[str] = []
+
+    def walk(t):
+        for child in t.get_children():
+            for sym in child.get_symbols():
+                if sym.is_global() and sym.is_referenced() and sym.get_name() not in known:
+                    bad.append(f"{child.get_name()}: {sym.get_name()}")
+            walk(child)
+
+    walk(top)
+    return bad
+
+
 class SelectionTests(unittest.TestCase):
     def setUp(self):
         self.cfg = pk.Config(ENV, None, DATE)
@@ -93,6 +115,16 @@ class SelectionTests(unittest.TestCase):
                      "systems/object_stores/PACKAGE_README.md.tmpl", ".env.local"):
             self.assertNotIn(name, self.files)
         self.assertFalse([n for n in self.files if n.startswith("systems/object_stores/tests/")])
+
+    def test_no_shipped_python_file_reads_an_undefined_name(self):
+        """Catches a deleted constant or a missing import in any file the package ships."""
+        for name, data in self.files.items():
+            if name.endswith(".py"):
+                self.assertEqual(undefined_globals(data.decode(), name), [], name)
+
+    def test_the_undefined_name_check_can_fail(self):
+        self.assertEqual(undefined_globals("def f():\n    return MISSING\n", "x.py"), ["f: MISSING"])
+        self.assertEqual(undefined_globals("X = 1\ndef f():\n    return X + len([])\n", "x.py"), [])
 
     def test_install_hint_names_a_file_the_package_holds(self):
         """The preflight tells people which requirements file to install. In the
@@ -225,6 +257,24 @@ class BuildTests(unittest.TestCase):
             first = (out / "zetaris-acme-object-store-test-20261030.zip").read_bytes()
             self.assertEqual(self.run_build(out), 0)
             self.assertEqual((out / "zetaris-acme-object-store-test-20261030.zip").read_bytes(), first)
+
+    def test_rebuild_keeps_the_persons_own_files_and_drops_stale_built_ones(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            self.run_build(out)
+            tree = out / "zetaris-acme-object-store-test"
+            (tree / ".env.local").write_text("S3_BUCKET=mine\n")
+            (tree / ".venv" / "bin").mkdir(parents=True)
+            (tree / ".venv" / "bin" / "python").write_text("x")
+            (tree / "reports").mkdir()
+            (tree / "reports" / "a-20260101-000000.json").write_text("{}")
+            (tree / "stale.txt").write_text("from an older build")
+            self.assertEqual(self.run_build(out), 0)
+            self.assertEqual((tree / ".env.local").read_text(), "S3_BUCKET=mine\n")
+            self.assertTrue((tree / ".venv" / "bin" / "python").is_file())
+            self.assertTrue((tree / "reports" / "a-20260101-000000.json").is_file())
+            self.assertFalse((tree / "stale.txt").exists())
+            self.assertTrue((tree / "MANIFEST.txt").is_file())
 
     def test_refuses_to_overwrite_a_folder_it_did_not_build(self):
         with tempfile.TemporaryDirectory() as d:

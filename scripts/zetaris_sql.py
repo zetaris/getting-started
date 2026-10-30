@@ -20,6 +20,11 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
+PLACEHOLDER_UA = "YOUR_APP_NAME YOUR_CONTACT_EMAIL"
+DEFAULT_REST_URL = "http://localhost:8888/api/v1.0"
+DEFAULT_JDBC_URL = "jdbc:zetaris:lightning@localhost:10000"
+DRIVER_CLASS = "com.zetaris.lightning.jdbc.LightningDriver"
+ALREADY_EXISTS = re.compile(r"already exists", re.I)
 
 
 def requirements_file() -> str:
