@@ -175,7 +175,7 @@ The packager only writes under `dist/`, which is already gitignored.
 - The partner-logo slot is in the template (hidden); filling it from `PACKAGE_LOGO` is phase 4. The in-browser "Add logo" uploader of the old viewer was removed, so no third-party mark is ever stored by the page.
 - `serve_viewer.py` now sends a Content-Security-Policy that blocks loading anything from another site, and hides the driver's harmless SLF4J warning, which the HOWTO had already said it did.
 - Layout is verified by `viewer/check_fit.js`, run in a browser, not by a script in the repo, to avoid a headless-browser dependency. Browser automation in the packager can adopt it later. `scripts/check_viewer.py` covers what needs no browser, including WCAG contrast of the text colors; it found one failing derived color (the amber), which was darkened.
-- The recipe on the Proof tab still duplicates the HOWTO as HTML. A check that the two agree is not built yet; see the open item below.
+- The recipe on the Proof tab duplicates the HOWTO as HTML. `check_viewer.py` now checks that the two give the same commands (see "After phase 6").
 
 **Changes made while doing phase 4.**
 
@@ -217,7 +217,7 @@ Not tested: a store that needs `virtual` addressing or a private CA (only one st
 
 Still not covered, because only one store was available: a store that needs `virtual` addressing, a private CA, object lock or versioning enabled, or no batch delete. The tests cover those branches with fakes; a real store would confirm them.
 
-**Open item.** The recipe HTML and `HOWTO.md.tmpl` can drift apart. Generating one from the other, or checking that every command in the HOWTO appears in the viewer, would close that. It is small; say if you want it in phase 4.
+**Open item (closed).** The recipe HTML and `HOWTO.md.tmpl` could drift apart. A check now compares their commands; see "After phase 6".
 
 Phases 1 to 4 can be reviewed and committed separately, and phase 6 follows the same way. Each is small enough for one pull request.
 
@@ -231,6 +231,20 @@ Because the report is built before we have seen a second store, it records what 
 - **Safe to send.** The report holds no secret, bucket name, endpoint host or login name. It uses the same leak check as the packager, and fails if one appears. It records the store only by the injected display name.
 - **Destructive steps.** Cleanup in the report run stays a dry run unless `--cleanup` is given, and it still touches only the user's own folder.
 - **Viewer.** The Proof tab can load a report file the user chooses, so the same page shows a real run without anyone editing the example fixture. The fixture stays the default.
+
+### After phase 6 (30 October 2026)
+
+Changes made after the first package was run by a partner colleague and the first real problems were found. All are on the same branch.
+
+- **Report in the viewer.** `serve_viewer.py` serves the newest `reports/<name>-<date>-<time>.json` at `GET /api/report/latest`, and the Proof tab loads it on open and when the browser tab regains focus. The route accepts only that file name pattern, no symlinks, at most 1 MB, a valid report, and checks the content against every `.env.local` value again before sending (409, with no value in the reply, if one is found). The file picker remains for the static page. A choice made by hand turns auto-load off for that page. Tests use a real server on a free port; disabling the leak check makes them fail.
+- **Report is its own HOWTO step.** The report is step 14 and the clean up is step 15, because the report needs the USL and the teardown removes it. Step 14 lists what to check first, what PASS, FAIL, INCOMPLETE and exit code 2 mean, and what to send. The viewer recipe follows the same order.
+- **Install hint.** The preflight and the JDBC error named `scripts/requirements.txt`, which a package does not hold. `requirements_file()` in `scripts/zetaris_sql.py` names the file that exists.
+- **A regression of mine, and the guard.** While fixing the hint I deleted five constants from `scripts/zetaris_sql.py` (the REST default URL among them) and shipped it; the partner's first preflight crashed with `NameError`. The tests use fake channels and never read them. `test_package.py` now checks every Python file in a built package for names a function reads but the module never defines, using `symtable`, and fails on exactly that case.
+- **A rebuild no longer deletes the person's files.** The packager removed the whole unzipped folder before writing it, which also removed a partner's `.env.local` and `.venv` during testing. It now keeps `.env.local`, `.venv` and `reports/` and removes only what it built.
+- **Dangling paths.** `package.py` fails the build if a shipped document, script or message names a `scripts/`, `systems/`, `open_data/`, `docs/`, `website/`, `reports/` or `examples/` path the package does not hold (SQL comments, `MANIFEST.txt` and one named fallback are exempt). It found that the kit README and `settings.json` named repository-only files (the packager, the drift check, the tests, `website/assets`). Those parts of the README are now marked `<!--repo-only-->` and removed from the package, and `settings.json` and the generated `.env.example` header no longer name a maintainer script.
+- **Recipe and HOWTO agree.** `check_viewer.py` compares them: every command in the HOWTO's bash blocks must appear in the recipe, and every `python3` or `.venv/bin/` command in a recipe copy box must be in the HOWTO. Changing a flag on one side makes it fail. Descriptions around the commands can still differ; only commands are compared.
+
+What the checks do not cover: wording around the commands, output samples, and any instruction that is not a command in a bash block.
 
 ## Verification
 
