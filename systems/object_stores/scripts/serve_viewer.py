@@ -20,6 +20,11 @@ Safety, by design:
     browser cannot send queries through it.
   * The page may load nothing from another site (Content-Security-Policy), and
     only three named asset files are served.
+  * GET /api/report/latest serves the newest conformance report from reports/
+    (written by report.py), so the Proof tab shows your own run without a file
+    picker. Only a file named like report.py names them, at most 1 MB, parsed as
+    a report, and checked again against every value in .env.local before it is
+    sent; a report that fails any of this is refused, not served.
 
 Run from the repository or package root, with the venv for JDBC:
 
@@ -42,6 +47,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(HERE))
+import leaks  # noqa: E402
 import render as renderer  # noqa: E402
 import zetaris_sql as z  # noqa: E402
 from quiet import quiet_stderr  # noqa: E402
@@ -66,6 +72,10 @@ WRITE_WORDS = re.compile(
     re.I,
 )
 MAX_BODY = 64 * 1024
+REPORT_NAME = re.compile(r"[a-z0-9][a-z0-9-]*-\d{8}-\d{6}\.json")
+REPORT_KIND = "zetaris-object-store-report"
+MAX_REPORT = 1024 * 1024
+SCHEMA_FILE = HERE.parent / "settings.json"
 HEADER = "X-SIC-Viewer"
 
 
@@ -142,6 +152,41 @@ def read_asset(rel: str) -> tuple[bytes, str] | None:
     return None
 
 
+def forbidden(env_file: Path | None) -> list[tuple[str, str]]:
+    """Every value that must never appear in a served report: the .env.local
+    values (read now) and the same settings from the shell, as report.py does."""
+    schema = json.loads(SCHEMA_FILE.read_text(encoding="utf-8"))
+    env = leaks.read_env(env_file) if env_file and env_file.is_file() else {}
+    env.update({s["name"]: os.environ[s["name"]] for s in schema["settings"] if os.environ.get(s["name"])})
+    return leaks.forbidden_values(env, schema)[0]
+
+
+def latest_report(reports_dir: Path, values: list[tuple[str, str]]) -> tuple[int, dict]:
+    """(HTTP status, body) for the newest report in reports_dir. Anything that is
+    not a plain, small, valid report with no leaked value is refused."""
+    try:
+        files = [f for f in reports_dir.iterdir()
+                 if REPORT_NAME.fullmatch(f.name) and f.is_file() and not f.is_symlink()]
+    except OSError:
+        files = []
+    if not files:
+        return 404, {"ok": False, "error": "No report yet. Run report.py first."}
+    f = max(files, key=lambda p: (p.stat().st_mtime, p.name))
+    if f.stat().st_size > MAX_REPORT:
+        return 422, {"ok": False, "error": f"{f.name} is larger than 1 MB, so it is not served."}
+    text = f.read_text(encoding="utf-8", errors="replace")
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return 422, {"ok": False, "error": f"{f.name} is not valid JSON."}
+    if not isinstance(doc, dict) or doc.get("kind") != REPORT_KIND:
+        return 422, {"ok": False, "error": f"{f.name} is not a conformance report."}
+    hits = leaks.found_in(text, values)
+    if hits:
+        return 409, {"ok": False, "error": f"{f.name} was not served: it still contains values from .env.local ({', '.join(hits)}). Delete it and run report.py again."}
+    return 200, {"ok": True, "name": f.name, "report": doc}
+
+
 class App:
     def __init__(self, channel_name: str, jar: str | None, allow_write: bool, row_limit: int) -> None:
         self.channel_name, self.jar, self.allow_write, self.row_limit = channel_name, jar, allow_write, row_limit
@@ -178,7 +223,7 @@ class App:
         }
 
 
-def make_handler(app: App, port: int, env_file: Path | None, shell: dict[str, str]):
+def make_handler(app: App, port: int, env_file: Path | None, shell: dict[str, str], reports_dir: Path | None = None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "SicViewer/2"
 
@@ -223,6 +268,9 @@ def make_handler(app: App, port: int, env_file: Path | None, shell: dict[str, st
                 if asset:
                     return self._send(200, asset[0], asset[1], asset=True)
                 return self._json(404, {"ok": False, "error": "Not found"})
+            if path == "/api/report/latest":
+                code, body = latest_report(reports_dir or ROOT / "reports", forbidden(env_file))
+                return self._json(code, body)
             if path == "/api/health":
                 return self._json(200, {"ok": True, "channel": app.channel_name, "readOnly": not app.allow_write})
             return self._json(404, {"ok": False, "error": "Not found"})
@@ -255,6 +303,7 @@ def main() -> int:
     ap.add_argument("--channel", default="jdbc", choices=["jdbc", "rest"])
     ap.add_argument("--jar", help="driver JAR for JDBC (default: ZETARIS_JDBC_JAR)")
     ap.add_argument("--limit", type=int, default=500, help="default rows returned (max 5000)")
+    ap.add_argument("--reports", default=str(ROOT / "reports"), help="folder holding the reports to show in the Proof tab (default: reports/)")
     ap.add_argument("--allow-write", action="store_true", help="also allow statements that change the instance")
     a = ap.parse_args()
 
@@ -273,7 +322,7 @@ def main() -> int:
     except (z.ZetarisError, ValueError) as e:
         print(f"Cannot connect over {a.channel.upper()}: {e}", file=sys.stderr)
         return 2
-    srv = HTTPServer(("127.0.0.1", a.port), make_handler(app, a.port, env, shell))
+    srv = HTTPServer(("127.0.0.1", a.port), make_handler(app, a.port, env, shell, Path(a.reports)))
     print(f"Connected over {a.channel.upper()} (settings from {env or 'the environment'}).", flush=True)
     print(f"Mode: {'READ-WRITE' if a.allow_write else 'read-only'}.  Viewer: http://127.0.0.1:{a.port}   (Ctrl+C to stop)", flush=True)
     try:

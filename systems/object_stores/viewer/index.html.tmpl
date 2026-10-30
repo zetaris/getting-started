@@ -703,7 +703,7 @@ details > .code { margin: 0 12px 12px; }
   <section aria-labelledby="h-report">
     <div class="sec-head">
       <h2 id="h-report">Your conformance report</h2>
-      <p class="lede">Run <code>report.py</code> (see the end of the recipe below) and choose the <code>.json</code> file it wrote to see your own result here. The file is read in this browser and goes nowhere. Until you load one, the sections below are an example run, not your data.</p>
+      <p class="lede">Run <code>report.py</code> (see the end of the recipe below) and see your own result here. With the viewer server running (step 12) the newest report in <code>reports/</code> appears by itself when you open or return to this page. Without the server, choose the <code>.json</code> file it wrote; the file is read in this browser and goes nowhere. Until you load one, the sections below are an example run, not your data.</p>
     </div>
     <div class="actions">
       <label class="btn" for="reportFile">Choose a report file</label>
@@ -1250,21 +1250,34 @@ ORDER BY entity_name</textarea>
       }
       err.hidden = true; view.hidden = false; clear.hidden = false;
     }
-    function load(text, name) {
+    function load(text, name, auto) {
       var d;
       try { d = JSON.parse(text); } catch (e) { return fail('That file is not valid JSON.'); }
       if (!d || d.kind !== 'zetaris-object-store-report') return fail('That is not a conformance report written by report.py.');
       if (d.schema_version !== 1) return fail('This viewer reads report schema version 1; the file is version ' + d.schema_version + '.');
       if (!Array.isArray(d.checks) || !['PASS', 'FAIL', 'INCOMPLETE'].includes(d.result)) return fail('The report is incomplete: it has no checks or no result.');
-      render(d); hint.textContent = 'Showing ' + name + '. Nothing was uploaded.';
+      render(d); hint.textContent = auto ? 'Showing the newest report, ' + name + ', from reports/ on this computer.' : 'Showing ' + name + '. Nothing was uploaded.';
     }
+    /* server mode: the newest report from reports/; on a static page or with no report this stays silent */
+    var manual = false, shown = '';
+    function auto() {
+      if (manual || !window.fetch) return;
+      fetch('/api/report/latest', { cache: 'no-store' }).then(function (r) { return r.json().then(function (b) { return [r.status, b]; }); }).then(function (x) {
+        var code = x[0], b = x[1];
+        if (code === 200 && b.ok && b.name !== shown) { shown = b.name; load(JSON.stringify(b.report), b.name, true); }
+        else if (code !== 200 && code !== 404 && b && b.error) { fail(String(b.error)); }
+      }).catch(function () {});
+    }
+    auto();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) auto(); });
     input.addEventListener('change', function () {
       var f = input.files && input.files[0]; if (!f) return;
+      manual = true;
       if (f.size > 1024 * 1024) return fail('That file is larger than 1 MB, so it is not a report.');
       var rd = new FileReader(); rd.onload = function () { load(String(rd.result), f.name); }; rd.onerror = function () { fail('The file could not be read.'); };
       rd.readAsText(f);
     });
-    clear.addEventListener('click', function () { view.textContent = ''; view.hidden = true; err.hidden = true; clear.hidden = true; input.value = ''; hint.textContent = 'No report loaded.'; });
+    clear.addEventListener('click', function () { manual = true; view.textContent = ''; view.hidden = true; err.hidden = true; clear.hidden = true; input.value = ''; hint.textContent = 'No report loaded.'; });
   })();
   /* live SQL tab */
   (function () {

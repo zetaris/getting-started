@@ -554,5 +554,8 @@ INFO (a fact, not a verdict), and the last line is the result: PASS, FAIL or INC
 The report holds no keys, passwords, bucket name, endpoint, folder name, user agent or
 login name. They are replaced with placeholders such as `<bucket>`, and the report is
 not written at all if one is still found. To read it formatted, start the viewer
-(step 12), open the **Proof and recipe** tab and choose the `.json` file under
-"Your conformance report"; the file is read in your browser and goes nowhere.
+(step 12) and open the **Proof and recipe** tab: the server shows the newest
+`reports/*.json` under "Your conformance report" by itself, and again when you return
+to the page after a new run. It checks the file against your `.env.local` values
+again before sending it. Without the server, choose the `.json` file there; it is
+read in your browser and goes nowhere.

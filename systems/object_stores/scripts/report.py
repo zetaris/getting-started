@@ -530,6 +530,7 @@ def main() -> int:
     if short_names:
         print(f"(Too short to check for leaks: {', '.join(short_names)})")
     print(f"Wrote {out / (stem + '.json')}\nWrote {out / (stem + '.md')}\nResult: {doc['result']}")
+    print("To see it formatted, start the viewer (serve_viewer.py) and open the Proof and recipe tab: it shows the newest report in reports/ by itself.")
     return {"PASS": 0, "FAIL": 1, "INCOMPLETE": 3}[doc["result"]]
 
 
