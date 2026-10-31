@@ -8,7 +8,7 @@ This file records the tests run against the [installation and configuration guid
 | --- | --- | --- |
 | §3 Path A: local Docker Compose, fresh install on empty volumes | ✅ Passed | 24 Sep 2026 |
 | §5 First login and `SELECT 7 AS seven` | ✅ Passed | 24 Sep 2026 |
-| §6 Parquet/CSV recipe (PUDL energy sources) | ⚠️ Passed at the time, no AWS credentials needed — contradicted by a later run; PUDL is now known to fail (see §6's own update) | 24 Sep 2026 |
+| §6 Parquet/CSV recipe (PUDL energy sources) | ⚠️ Passed at the time, no AWS credentials needed — contradicted by a later failure writeup, then passed again in a 2026-10-31 re-test on self-hosted 2.4.3.1; the difference is not reconciled (see §6) | 24 Sep 2026 |
 | §6 REST recipe (PokéAPI Pikachu abilities) | ✅ Passed | 24 Sep 2026 |
 | §7 Stop, start, down and up, with data retained | ✅ Passed | 24 Sep 2026 |
 
@@ -52,7 +52,7 @@ Signing in with the email and password set in `.env` returned a session token. `
 
 ### §6 Parquet/CSV: PUDL
 
-**Update — contradicted by a later run, not yet reconciled.** A later session against `03_pudl_create.sql` (now `sql/known_to_fail/03_pudl_create.sql`) found `CREATE LIGHTNING FILESTORE TABLE` fails against this exact `PATH` — PUDL's bucket name, `pudl.catalyst.coop`, contains dots, and Zetaris's S3 filestore connector does not accept a dotted bucket name, even with `useS3PathStyleAccess "true"` set (the standard client-side fix for this class of problem elsewhere). See [`open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md`](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md) for the full writeup. Whether something changed between this record's original run and the later one (a Zetaris version/connector update, a different deployment or region) or the original result below doesn't reflect what actually happened is unresolved — treat the table immediately below as this record's original, unverified claim, not as current guidance. The [installation guide](updated_zetaris_installation_guide.md)'s Parquet/CSV walkthrough now uses NOAA GHCN-Daily instead, which is confirmed working.
+**Update — passed again 2026-10-31, difference not reconciled.** A later writeup had marked `03_pudl_create.sql` known to fail because the bucket name `pudl.catalyst.coop` contains dots. A re-test that day registered a new filestore table on `s3a://pudl.catalyst.coop/stable/core_eia__codes_energy_sources.parquet` with `useS3PathStyleAccess "true"` (1.6 s) and read it on a self-hosted Zetaris 2.4.3.1 instance (hackathon Docker images). Why the earlier writeup failed is not established; it may have been a different environment. `SELECT * ... LIMIT 10` returned 10 rows, starting `AB`, `ANT`, `BFG`. `COUNT(*)` matched the Parquet footers: 42 rows in the energy-source file (12,326 bytes, last modified 2026-10-14) and 666,788 rows in `out_eia__yearly_generators.parquet`. The script is [`sql/03_pudl_create.sql`](../../open_data/parquet_csv/sql/03_pudl_create.sql). The table below is this record's original 2026-09-24 run. The `stable` object has since been replaced (it was 12,863 bytes on 12 Sep 2026). The [installation guide](updated_zetaris_installation_guide.md)'s Parquet/CSV walkthrough uses NOAA GHCN-Daily.
 
 | Step | Result |
 | --- | --- |

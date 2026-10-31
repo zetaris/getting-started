@@ -1,6 +1,6 @@
 # HOWTO: onboard these REST API sources into Zetaris
 
-Start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md). PUDL is currently known to fail. On your own local or AWS instance, use your chosen database and container names consistently.
+Start with [Start here](../../START-HERE.md) and [your first dataset](../../docs/guides/first-dataset.md). On your own local or AWS instance, use your chosen database and container names consistently.
 
 
 **File naming:** each source has a numbered `_create.sql` file for DDL and a matching `_select.sql` file for verification and examples. Run the create script first. Verification and optional queries in the select files are commented out by default.

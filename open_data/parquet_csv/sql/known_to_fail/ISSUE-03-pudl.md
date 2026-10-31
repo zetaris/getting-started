@@ -1,8 +1,8 @@
 # Failure case: Catalyst Cooperative PUDL — dotted S3 bucket name rejected by `CREATE LIGHTNING FILESTORE TABLE`
 
-**Status:** Known to fail — kept out of `sql/`'s main sequence. Not required for this package's goals (the other six sources already cover the Parquet/CSV onboarding pattern needed); kept here as a flagged item for engineering to debug rather than dropped silently.
+**Status:** Superseded on 2026-10-31. Re-tested on a self-hosted Zetaris 2.4.3.1 instance (the hackathon Docker images, Path A of the installation guide). The earlier failure was recorded on a different environment, and why it no longer reproduces is not established. A new filestore table on `s3a://pudl.catalyst.coop/stable/core_eia__codes_energy_sources.parquet` registered with `useS3PathStyleAccess "true"` (1.6 s). Both verification queries returned 10 rows. `COUNT(*)` matched the Parquet footers: 42 energy-source rows and 666,788 yearly-generator rows. The scripts moved to [`../03_pudl_create.sql`](../03_pudl_create.sql) and [`../03_pudl_select.sql`](../03_pudl_select.sql). The writeup below is the earlier failure record. The 2026-09-24 installation-test success and this later failure are reconciled by the 2026-10-31 re-test: the same dotted-bucket `PATH` form works on this instance.
 
-**Source script:** [`03_pudl_create.sql`](03_pudl_create.sql) (unchanged from its last working state, moved here as-is)
+**Source script:** [`../03_pudl_create.sql`](../03_pudl_create.sql) (moved back to `sql/` after the re-test; the version that was believed to fail is in git history)
 
 **Reported by:** Michael Hay
 
@@ -47,6 +47,6 @@ Skip `CREATE LIGHTNING FILESTORE TABLE` for this bucket. The other six Parquet/C
 
 ## References
 
-- Script: [`03_pudl_create.sql`](03_pudl_create.sql)
-- [`docs/install/zetaris-installation-test-record.md`](../../../../docs/install/zetaris-installation-test-record.md) §6 — the earlier, contradictory successful-run record
+- Script: [`03_pudl_create.sql`](../03_pudl_create.sql)
+- [`docs/install/zetaris-installation-test-record.md`](../../../../docs/install/zetaris-installation-test-record.md) §6 — the 2026-09-24 successful run, reconciled by the 2026-10-31 re-test above
 - `../../parquet-csv-data-sources.md` — source catalog entry updated to reflect this status

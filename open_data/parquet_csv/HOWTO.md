@@ -2,9 +2,9 @@
 
 Start with [Start here](../../START-HERE.md) and the [PokéAPI starter](../../docs/guides/first-dataset.md). On your own local or AWS instance, use your chosen database names. File sources are optional follow-up work.
 
-This guide covers the seven current CREATE/SELECT SQL pairs in `sql/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
+This guide covers the current CREATE/SELECT SQL pairs. All seven are in `sql/`. Earlier failure records stay under `sql/known_to_fail/`. The catalog lists each source and its script. The two Python fetchers in `scripts/` prepare local files but do not register tables in Zetaris; see §3.
 
-**Source folders:** NOAA and AWS Public Blockchain are in `sql/`; five sources with reproduced failures are in `sql/known_to_fail/`. PUDL and Ookla fail at registration, Foursquare and GBIF fail at query time, and Overture supports a bounded sample but not cache or analytical queries. See the [catalog](parquet-csv-data-sources.md) and the linked issue files for details.
+**Source folders:** NOAA, PUDL, Foursquare, Overture Maps, Ookla, GBIF, and AWS Public Blockchain are in `sql/`. Earlier failure records for sources that now verify stay in `sql/known_to_fail/`. See the [catalog](parquet-csv-data-sources.md).
 
 ---
 
@@ -45,7 +45,7 @@ OPTIONS (
 );
 ```
 
-These scripts use public S3 or S3-compatible paths and contain no AWS credentials. NOAA registration and queries were confirmed live without credentials. An earlier installation record reports a successful PUDL run, but the current script fails on the dotted bucket name; the conflict is unresolved ([ISSUE-03](sql/known_to_fail/ISSUE-03-pudl.md)). Scripts use each source's regional endpoint and the same logical database name in `CREATE LIGHTNING DATABASE` and `FROM`. Foursquare registration succeeds, but queries fail ([ISSUE-04](sql/known_to_fail/ISSUE-04-foursquare.md)).
+These scripts use public S3 or S3-compatible paths and contain no AWS credentials. NOAA, PUDL, and Foursquare registration and queries were confirmed live without credentials. On 2026-10-31 a new table on `pudl.catalyst.coop` registered with `useS3PathStyleAccess "true"` and both PUDL verification queries returned rows. The same day, Foursquare's Source Cooperative endpoint (`https://data.source.coop`, path-style) answered a bounded `SELECT` and the analytical queries. Scripts use each source's regional endpoint and the same logical database name in `CREATE LIGHTNING DATABASE` and `FROM`.
 
 ---
 
@@ -63,7 +63,7 @@ The seven SQL pairs use public-source options; endpoints and regions vary:
 
 The scripts contain no AWS credentials. For private buckets, use Zetaris's S3 credential options. NOAA's live run confirms that source works without credentials.
 
-**Dotted bucket names fail here.** Zetaris rejected PUDL's `pudl.catalyst.coop` bucket even with `useS3PathStyleAccess "true"`. See [ISSUE-03](sql/known_to_fail/ISSUE-03-pudl.md). Check new bucket names before using this pattern.
+**Dotted bucket names.** PUDL's `pudl.catalyst.coop` bucket registered and queried on 2026-10-31 with `useS3PathStyleAccess "true"` and `s3Endpoint "s3.us-west-2.amazonaws.com"`. Keep path-style access on for a bucket name that contains dots.
 
 ### Keep source URLs separate from the Zetaris `PATH`
 
@@ -120,9 +120,14 @@ Suggested order — confirmed-working, simplest license first, in case you want 
 | Order | Script | Why here |
 |---|---|---|
 | 1 | `02_noaa_ghcn_create.sql` | Live-tested and confirmed working. CC0, and shows CSV onboarding specifically — remember to `CACHE TABLE` before the analytical queries (see its own header). |
-| 2 | `09_aws_public_blockchain_create.sql` | Live-tested and confirmed working (both BTC and ETH tables). License genuinely unresolved — good "how we handle an ambiguous one" example. Caching is also confirmed to work here, but asymmetrically between tables and mechanisms — see its own header. |
+| 2 | `03_pudl_create.sql` | Live-tested 2026-10-31. CC-BY-4.0. Two small public Parquet files, including a dotted bucket name that works with path-style access. |
+| 3 | `09_aws_public_blockchain_create.sql` | Live-tested and confirmed working (both BTC and ETH tables). License genuinely unresolved — good "how we handle an ambiguous one" example. Caching is also confirmed to work here, but asymmetrically between tables and mechanisms — see its own header. |
+| 4 | `04_foursquare_places_create.sql` | Live-tested 2026-10-31 on release `2024-11-19`. Apache-2.0. Example queries keep a Manhattan lat/lon window. Each one still reads the release prefix (about 10.4 GiB, more than 100 million places in the full release) and took about 63–75 seconds. |
+| 5 | `05_overture_maps_create.sql` | Live-tested 2026-10-31 on release `2026-10-21.0`. Places theme is CDLA-Permissive-2.0. Example queries keep a Manhattan bbox. Each one still reads the release prefix (about 11 GB) and took about 84–95 seconds. |
+| 6 | `08_gbif_create.sql` | Live-tested 2026-10-31 on snapshot `2026-10-01`, file `004990` only. Aggregate CC-BY-NC. The snapshot directory is 10,448 files and 282.17 GiB, so the script does not register it. Example queries filter to Australian birds in that one file (17,402 rows) and took about 1.0–1.6 seconds. |
+| 7 | `07_ookla_speedtest_create.sql` | Live-tested 2026-10-31 on 2026 quarter=2, one file each for fixed and mobile. CC BY-NC-SA 4.0, non-commercial. Example queries keep a Manhattan window on `tile_x`/`tile_y`. Each one reads that one file and took about 4–19 seconds. |
 
-**Excluded sources:** PUDL and Ookla fail at registration; Foursquare and GBIF register but queries fail; Overture supports a bounded sample but cache and analytical queries fail or hang. See the [catalog](parquet-csv-data-sources.md) and [issue files](sql/known_to_fail/README.md).
+Earlier failure records for sources that now verify stay in [sql/known_to_fail/](sql/known_to_fail/README.md).
 
 ---
 

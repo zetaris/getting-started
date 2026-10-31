@@ -1,8 +1,8 @@
 # Failure case: Foursquare Open Source Places — table creates, but `CACHE TABLE` and every query fail with a 500 error
 
-**Status:** Known to fail — kept out of `sql/`'s main sequence. Not required for this package's goals (the other six sources already cover the Parquet/CSV onboarding pattern needed); kept here as a flagged item for engineering to debug rather than dropped silently.
+**Status:** Superseded on 2026-10-31. Re-tested on a self-hosted Zetaris 2.4.3.1 instance (the hackathon Docker images, Path A of the installation guide). The earlier failure was recorded on a different environment, and why it no longer reproduces is not established. The same `PATH` (`s3a://fused/fsq-os-places/2024-11-19/places/`, still listed; 81 Parquet files, 11159985690 bytes) registered already and then answered `DESCRIBE` (24 columns), `SELECT * LIMIT 10` (10 rows), and every analytical query in the updated select script. The release README says more than 100 million places, so those aggregations used a Manhattan window (`latitude` 40.70–40.82, `longitude` -74.02–-73.93): 352,530 places, 1 country, 142,272 with a website, 88,445 with `date_closed` set. Each aggregation read the prefix in about 63–75 seconds. `CREATE` of the existing database and table returned HTTP 400 already exists. `CACHE TABLE` was not re-run. The scripts moved to [`../04_foursquare_places_create.sql`](../04_foursquare_places_create.sql) and [`../04_foursquare_places_select.sql`](../04_foursquare_places_select.sql). The writeup below is the earlier failure record.
 
-**Source script:** [`04_foursquare_places_create.sql`](04_foursquare_places_create.sql) / [`04_foursquare_places_select.sql`](04_foursquare_places_select.sql) (unchanged from their last working state, moved here as-is)
+**Source script:** [`../04_foursquare_places_create.sql`](../04_foursquare_places_create.sql) / [`../04_foursquare_places_select.sql`](../04_foursquare_places_select.sql) (moved back to `sql/` after the re-test)
 
 **Reported by:** Michael Hay
 
@@ -10,7 +10,7 @@
 
 ## Summary
 
-Unlike PUDL (`sql/known_to_fail/ISSUE-03-pudl.md`), this source's `CREATE LIGHTNING FILESTORE TABLE` statement **succeeds**. The failure shows up one step later:
+Unlike the earlier PUDL registration failure ([`03_pudl_create.sql`](../03_pudl_create.sql) now succeeds; see the re-test note above), this source's `CREATE LIGHTNING FILESTORE TABLE` statement **succeeds**. The failure shows up one step later:
 
 1. `CREATE LIGHTNING DATABASE FSQ_SOURCE_COOP ...` — succeeds.
 2. `CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT PARQUET OPTIONS (...)` — succeeds.
@@ -21,7 +21,7 @@ Unlike PUDL (`sql/known_to_fail/ISSUE-03-pudl.md`), this source's `CREATE LIGHTN
 
 ## What this is NOT
 
-- **Not a table-registration problem.** The `CREATE LIGHTNING FILESTORE TABLE` statement itself succeeds — this is not the same failure shape as PUDL's dotted-bucket-name rejection, which fails at `CREATE` time. Whatever's wrong here is downstream of registration.
+- **Not a table-registration problem.** The `CREATE LIGHTNING FILESTORE TABLE` statement itself succeeds. An earlier PUDL run failed at `CREATE` time on a dotted bucket name; that registration succeeded on 2026-10-31 ([`03_pudl_create.sql`](../03_pudl_create.sql)). Whatever's wrong here is downstream of registration.
 - **Not (as far as confirmed) a missing-data or access-permission problem at the source.** Source Cooperative's endpoint (`https://data.source.coop`) is publicly reachable and the release path (`s3a://fused/fsq-os-places/2024-11-19/places/`) was confirmed to exist via the listing command in `04_foursquare_places_create.sql`'s header before this table was created — the data itself is not known to be the issue, though this hasn't been independently re-verified against the exact same shards used in the failing query.
 - **Not resolved by skipping `CACHE TABLE`.** The plain uncached `SELECT * ... LIMIT 10` fails the same way, so this isn't the "large uncached table is just slow" pattern seen with NOAA GHCN-Daily (`sql/02_noaa_ghcn_create.sql`) — that case returned results, just slowly; this case returns a server error regardless of caching.
 
@@ -49,6 +49,6 @@ Skip `CACHE TABLE` and querying for this source. The other six Parquet/CSV sourc
 
 ## References
 
-- Scripts: [`04_foursquare_places_create.sql`](04_foursquare_places_create.sql), [`04_foursquare_places_select.sql`](04_foursquare_places_select.sql)
-- [`ISSUE-03-pudl.md`](ISSUE-03-pudl.md) — the other known-to-fail source in this package, a different failure shape (fails at `CREATE` time, not at query time)
+- Scripts: [`04_foursquare_places_create.sql`](../04_foursquare_places_create.sql), [`04_foursquare_places_select.sql`](../04_foursquare_places_select.sql)
+- [`03_pudl_create.sql`](../03_pudl_create.sql) — previously a different failure shape (failed at `CREATE` time). Re-tested 2026-10-31: registration and queries succeed.
 - `../../parquet-csv-data-sources.md` — source catalog entry updated to reflect this status

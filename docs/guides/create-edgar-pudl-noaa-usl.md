@@ -1,6 +1,6 @@
 # Create an EDGAR, PUDL, and NOAA Unified Semantic Layer
 
-**Current prerequisite warning:** PUDL registration is [known to fail](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md). The successful run below is historical and conflicts with that result. Verify PUDL registration on your instance before using this example.
+**Prerequisite:** PUDL registration was re-tested on 2026-10-31 and succeeded. Use [`03_pudl_create.sql`](../../open_data/parquet_csv/sql/03_pudl_create.sql) and confirm the `stable` objects before relying on this walkthrough.
 
 
 This guide records a model created and queried over JDBC on 2026-10-01. Treat its outputs as historical examples.
@@ -94,7 +94,7 @@ For a fresh model, use the namespace and name shown here. If it exists, inspect 
 
 ## 3. Register the required sources
 
-These are the minimum registrations from the successful run. See the [PUDL](../../open_data/parquet_csv/sql/known_to_fail/03_pudl_create.sql), [EDGAR](../../open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql), and [NOAA](../../open_data/parquet_csv/sql/02_noaa_ghcn_create.sql) scripts. Register only the tables used here.
+These are the minimum registrations from the successful run. See the [PUDL](../../open_data/parquet_csv/sql/03_pudl_create.sql), [EDGAR](../../open_data/rest_apis/sql/rate_limited/01_edgar_company_facts_create.sql), and [NOAA](../../open_data/parquet_csv/sql/02_noaa_ghcn_create.sql) scripts. Register only the tables used here.
 
 ### 3.1 SEC EDGAR revenue facts
 
@@ -572,4 +572,4 @@ commands that failed or timed out, and the steps you took.
 
 The recorded JDBC run returned a row for `SELECT 1`, completed three NOAA cache commands, aggregated three stations, compiled the USL, registered four activations, returned three weather rows, and joined nine rows. DQ did not complete within the bounded wait. No local Spark session or application-code changes were used.
 
-The guide reconstructs that run; it has not been rerun from an empty instance. Its successful PUDL result conflicts with the current known failure noted above.
+The guide reconstructs that run; it has not been rerun from an empty instance. PUDL registration was re-tested successfully on 2026-10-31, which agrees with this guide's earlier PUDL result.

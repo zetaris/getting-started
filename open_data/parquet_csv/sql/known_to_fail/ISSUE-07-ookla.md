@@ -1,8 +1,8 @@
 # Failure case: Ookla Speedtest Global Performance — both tables fail `CREATE LIGHTNING FILESTORE TABLE` with a 500 error
 
-**Status:** Known to fail — kept out of `sql/`'s main sequence. Not required for this package's goals (the other sources already cover the Parquet/CSV onboarding pattern needed); kept here as a flagged item for engineering to debug rather than dropped silently.
+**Status:** Superseded on 2026-10-31. Re-tested on a self-hosted Zetaris 2.4.3.1 instance (the hackathon Docker images, Path A of the installation guide). The earlier failure was recorded on a different environment, and why it no longer reproduces is not established. A public listing of `parquet/performance/type=fixed/year=2026/quarter=2/` and `type=mobile/year=2026/quarter=2/` still contained the script's files: `2026-04-01_performance_fixed_tiles.parquet` (353,986,294 bytes) and `2026-04-01_performance_mobile_tiles.parquet` (184,560,046 bytes). `year=2026` also listed `quarter=1` and `quarter=3` (`2026-07-01`). `OOKLA_S3`, `ookla_speedtest_fixed`, and `ookla_speedtest_mobile` were already registered on those exact quarter=2 paths. Re-running the three CREATE statements returned HTTP 400 `already exists`, not HTTP 500. A new table, `ookla_speedtest_fixed_probe`, with the same OPTIONS as `ookla_speedtest_fixed` registered (`timeUsed` 1523 ms) and `SELECT quadkey, tile_x, tile_y, avg_d_kbps, tests ... LIMIT 1` returned one row; that probe table was then dropped. `DESCRIBE` returned 11 columns on both kept tables. `SELECT * ... LIMIT 10` returned 10 rows on each (about 3.9–4.0 s). A Manhattan window (`tile_x` -74.02 to -73.93, `tile_y` 40.70 to 40.82) held 406 fixed tiles (77,758 tests; tests-weighted average download 385,150 kbps) and 385 mobile tiles (15,686 tests; tests-weighted average download 315,488 kbps). The fixed download-band and top-10 queries in the updated select script also succeeded. The scripts moved to [`../07_ookla_speedtest_create.sql`](../07_ookla_speedtest_create.sql) and [`../07_ookla_speedtest_select.sql`](../07_ookla_speedtest_select.sql). The writeup below is the earlier failure record.
 
-**Source script:** [`07_ookla_speedtest_create.sql`](07_ookla_speedtest_create.sql) / [`07_ookla_speedtest_select.sql`](07_ookla_speedtest_select.sql) (unchanged from their last working state, moved here as-is)
+**Source script:** [`../07_ookla_speedtest_create.sql`](../07_ookla_speedtest_create.sql) / [`../07_ookla_speedtest_select.sql`](../07_ookla_speedtest_select.sql) (moved back to `sql/` after the re-test)
 
 **Reported by:** Michael Hay
 
@@ -10,7 +10,7 @@
 
 ## Summary
 
-Both `CREATE LIGHTNING FILESTORE TABLE` statements in `07_ookla_speedtest_create.sql` fail with a 500 error — `ookla_speedtest_fixed` and `ookla_speedtest_mobile` alike. This fails at table-registration time, before any query is even possible, which puts Ookla in the same broad category as PUDL (`ISSUE-03-pudl.md`) rather than Foursquare/Overture/GBIF (which all register successfully and fail later, at query or cache time). Reproduced against the exact `PATH` values as written in the script:
+Both `CREATE LIGHTNING FILESTORE TABLE` statements in `07_ookla_speedtest_create.sql` fail with a 500 error — `ookla_speedtest_fixed` and `ookla_speedtest_mobile` alike. This fails at table-registration time, before any query is even possible, which puts Ookla in the same broad category as the earlier PUDL registration failure ([`03_pudl_create.sql`](../03_pudl_create.sql) now succeeds; see the status line at the top of this file) rather than the earlier GBIF failure (which registered and failed later, at query time). Foursquare, Overture, and GBIF were re-tested successfully on 2026-10-31. GBIF's verified script registers one snapshot file ([`08_gbif_create.sql`](../08_gbif_create.sql)). Reproduced against the exact `PATH` values as written in the script:
 
 ```
 PATH "s3a://ookla-open-data/parquet/performance/type=fixed/year=2026/quarter=2/2026-04-01_performance_fixed_tiles.parquet"
@@ -21,7 +21,7 @@ PATH "s3a://ookla-open-data/parquet/performance/type=mobile/year=2026/quarter=2/
 
 ## What this is NOT
 
-- **Not the dotted-bucket-name problem PUDL hit.** Ookla's bucket, `ookla-open-data`, contains no dots — this rules out the specific, confirmed root cause behind `ISSUE-03-pudl.md`'s failure. Whatever's wrong here is a different mechanism, even though the symptom (fails at `CREATE` time) looks superficially similar.
+- **Not a dotted bucket name.** Ookla's bucket, `ookla-open-data`, contains no dots. The earlier PUDL writeup treated a dotted bucket as its cause; that registration succeeded on 2026-10-31 ([`03_pudl_create.sql`](../03_pudl_create.sql)). Ookla still fails at `CREATE` time by a different mechanism.
 - **Not (as far as confirmed) a missing-data or access-permission problem.** Ookla's data is published as a standard public, anonymous-access S3 bucket via the AWS Open Data Registry, the same pattern NOAA (confirmed working) and AWS Public Blockchain Data (confirmed working) both use successfully. Direct `aws s3 ls`/`aws s3 cp` access to this bucket has not been independently re-verified as part of this investigation, but nothing about the bucket's public-access configuration is known to differ from the working sources.
 - **Not confirmed to be a single-file `PATH` problem.** Unlike Foursquare/Overture/GBIF, Ookla's `PATH` already points at a single Parquet file, not a directory prefix — so this can't be explained by the same "multi-file directory PATH" pattern flagged as an open hypothesis for those three sources.
 
@@ -51,7 +51,7 @@ Skip this source. The other sources in this catalog already demonstrate the onbo
 
 ## References
 
-- Scripts: [`07_ookla_speedtest_create.sql`](07_ookla_speedtest_create.sql), [`07_ookla_speedtest_select.sql`](07_ookla_speedtest_select.sql)
-- [`ISSUE-03-pudl.md`](ISSUE-03-pudl.md) — also fails at `CREATE` time, but with a specific, confirmed cause (dotted bucket name) that doesn't apply here
-- [`ISSUE-04-foursquare.md`](ISSUE-04-foursquare.md), [`ISSUE-05-overture.md`](ISSUE-05-overture.md), [`ISSUE-08-gbif.md`](ISSUE-08-gbif.md) — all register successfully and fail later, unlike this source
+- Scripts: [`07_ookla_speedtest_create.sql`](../07_ookla_speedtest_create.sql), [`07_ookla_speedtest_select.sql`](../07_ookla_speedtest_select.sql)
+- [`03_pudl_create.sql`](../03_pudl_create.sql) — previously also failed at `CREATE` time. Re-tested 2026-10-31: registration and queries succeed. Ookla's bucket name has no dots.
+- [`ISSUE-04-foursquare.md`](ISSUE-04-foursquare.md), [`04_foursquare_places_create.sql`](../04_foursquare_places_create.sql), [`05_overture_maps_create.sql`](../05_overture_maps_create.sql), [`ISSUE-08-gbif.md`](ISSUE-08-gbif.md), [`08_gbif_create.sql`](../08_gbif_create.sql) — Foursquare, Overture, and GBIF succeeded on 2026-10-31. GBIF's example queries ran against one file of snapshot 2026-10-01.
 - `../../parquet-csv-data-sources.md` — source catalog entry updated to reflect this status
