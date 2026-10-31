@@ -76,3 +76,10 @@ go-ahead before creating anything.
 See [shared troubleshooting](client-setup.md#10-troubleshooting). It covers
 JDBC setup, REST authentication and organisation IDs, and missing Lightning
 databases.
+
+## 10. Option: Zetaris tools instead of the terminal (MCP)
+
+Instead of letting Cursor's terminal run the repository scripts, you can give
+its agent Zetaris tools through [`scripts/zetaris_mcp.py`](../../scripts/HOWTO.md#give-a-coding-agent-zetaris-tools-mcp).
+It uses the same `.env.local`, its query tool is read-only, and each call has a
+time limit, so the agent's data work stays in Zetaris without shell access.
