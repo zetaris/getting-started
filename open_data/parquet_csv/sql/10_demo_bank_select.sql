@@ -1,0 +1,587 @@
+-- =============================================================================
+-- 10 Demo Bank - SELECT
+-- =============================================================================
+-- Run after 10_demo_bank_create.sql. Queries are commented out so a bulk run of
+-- this file fires no reads: uncomment and run them one at a time.
+-- Snapshot data: the "live" queries (Q10, Q20, F10) and 30-day windows depend on
+-- current_date() and return fewer rows as the data ages.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Verification
+-- -----------------------------------------------------------------------------
+-- Both databases should be listed (file sources show here, not under SHOW DATASOURCES)
+-- SHOW LIGHTNING DATABASES;
+
+-- Row counts per table
+-- SELECT 'SF_BANK.branches' AS source_table, count(*) AS row_count FROM SF_BANK.branches  -- expect 10
+-- UNION ALL SELECT 'SF_BANK.products' AS source_table, count(*) AS row_count FROM SF_BANK.products  -- expect 6
+-- UNION ALL SELECT 'SF_BANK.customers' AS source_table, count(*) AS row_count FROM SF_BANK.customers  -- expect 500
+-- UNION ALL SELECT 'SF_BANK.accounts' AS source_table, count(*) AS row_count FROM SF_BANK.accounts  -- expect 800
+-- UNION ALL SELECT 'SF_BANK.transactions' AS source_table, count(*) AS row_count FROM SF_BANK.transactions  -- expect 20025
+-- UNION ALL SELECT 'DBX_RISK.merchants' AS source_table, count(*) AS row_count FROM DBX_RISK.merchants  -- expect 25
+-- UNION ALL SELECT 'DBX_RISK.cards' AS source_table, count(*) AS row_count FROM DBX_RISK.cards  -- expect 650
+-- UNION ALL SELECT 'DBX_RISK.loans' AS source_table, count(*) AS row_count FROM DBX_RISK.loans  -- expect 250
+-- UNION ALL SELECT 'DBX_RISK.card_transactions' AS source_table, count(*) AS row_count FROM DBX_RISK.card_transactions  -- expect 15025
+-- UNION ALL SELECT 'DBX_RISK.fraud_alerts' AS source_table, count(*) AS row_count FROM DBX_RISK.fraud_alerts  -- expect 688
+-- UNION ALL SELECT 'DBX_RISK.credit_scores' AS source_table, count(*) AS row_count FROM DBX_RISK.credit_scores;  -- expect 3000
+
+-- Sample rows
+-- SELECT * FROM SF_BANK.customers LIMIT 10;
+-- SELECT * FROM DBX_RISK.card_transactions LIMIT 10;
+
+-- Cross-source join: every DBX_RISK card should match an SF_BANK account (expect 0)
+-- SELECT count(*) AS orphan_cards FROM DBX_RISK.cards c LEFT JOIN SF_BANK.accounts a ON a.account_id = c.account_id WHERE a.account_id IS NULL;
+
+-- -----------------------------------------------------------------------------
+-- Analytical examples - single-source (one database)
+-- -----------------------------------------------------------------------------
+
+-- Q1. Deposit book by product and region
+-- SELECT
+--     b.region,
+--     p.product_category,
+--     p.product_name,
+--     count(*)                         AS accounts,
+--     sum(a.current_balance)           AS total_balance,
+--     round(avg(a.current_balance), 2) AS avg_balance
+-- FROM SF_BANK.accounts a
+-- JOIN SF_BANK.products p ON p.product_code = a.product_code
+-- JOIN SF_BANK.branches b ON b.branch_id    = a.branch_id
+-- WHERE a.status <> 'CLOSED'
+-- GROUP BY b.region, p.product_category, p.product_name
+-- ORDER BY total_balance DESC;
+
+-- Q2. Daily volume, last 30 days, with 7-day moving average
+-- SELECT
+--     txn_day,
+--     txn_count,
+--     total_amount,
+--     round(avg(txn_count) OVER (ORDER BY txn_day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW), 1) AS txn_count_7d_avg
+-- FROM (
+--     SELECT to_date(txn_ts) AS txn_day, count(*) AS txn_count, sum(amount) AS total_amount
+--     FROM SF_BANK.transactions
+--     WHERE txn_ts >= current_timestamp() - INTERVAL 30 DAYS
+--       AND status <> 'REVERSED'
+--     GROUP BY to_date(txn_ts)
+-- ) d
+-- ORDER BY txn_day;
+
+-- Q3. Top 10 customers by net inflow, last 30 days
+-- SELECT
+--     c.customer_id,
+--     concat(c.first_name, ' ', c.last_name) AS customer_name,
+--     c.segment,
+--     sum(CASE WHEN t.direction = 'CREDIT' THEN t.amount ELSE 0 END)        AS inflow,
+--     sum(CASE WHEN t.direction = 'DEBIT'  THEN t.amount ELSE 0 END)        AS outflow,
+--     sum(CASE WHEN t.direction = 'CREDIT' THEN t.amount ELSE -t.amount END) AS net_inflow
+-- FROM SF_BANK.transactions t
+-- JOIN SF_BANK.accounts  a ON a.account_id  = t.account_id
+-- JOIN SF_BANK.customers c ON c.customer_id = a.customer_id
+-- WHERE t.txn_ts >= current_timestamp() - INTERVAL 30 DAYS
+--   AND t.status <> 'REVERSED'
+-- GROUP BY c.customer_id, c.first_name, c.last_name, c.segment
+-- ORDER BY net_inflow DESC
+-- LIMIT 10;
+
+-- Q4. Overdrawn active accounts
+-- SELECT
+--     a.account_id,
+--     concat(c.first_name, ' ', c.last_name) AS customer_name,
+--     c.phone,
+--     p.product_name,
+--     a.current_balance,
+--     a.last_activity_ts
+-- FROM SF_BANK.accounts  a
+-- JOIN SF_BANK.customers c ON c.customer_id  = a.customer_id
+-- JOIN SF_BANK.products  p ON p.product_code = a.product_code
+-- WHERE a.status = 'ACTIVE'
+--   AND a.current_balance < 0
+-- ORDER BY a.current_balance;
+
+-- Q5. Dormancy risk: active accounts idle for 30+ days
+-- SELECT
+--     a.account_id,
+--     a.customer_id,
+--     p.product_name,
+--     a.current_balance,
+--     a.last_activity_ts,
+--     datediff(current_date(), to_date(a.last_activity_ts)) AS days_inactive
+-- FROM SF_BANK.accounts a
+-- JOIN SF_BANK.products p ON p.product_code = a.product_code
+-- WHERE a.status = 'ACTIVE'
+--   AND (a.last_activity_ts IS NULL OR a.last_activity_ts < current_timestamp() - INTERVAL 30 DAYS)
+-- ORDER BY a.current_balance DESC;
+
+-- Q6. Channel use by age band
+-- SELECT
+--     age_band,
+--     count(*)                                                                  AS txns,
+--     round(100.0 * sum(CASE WHEN channel = 'MOBILE' THEN 1 ELSE 0 END) / count(*), 1) AS pct_mobile,
+--     round(100.0 * sum(CASE WHEN channel = 'ONLINE' THEN 1 ELSE 0 END) / count(*), 1) AS pct_online,
+--     round(100.0 * sum(CASE WHEN channel = 'BRANCH' THEN 1 ELSE 0 END) / count(*), 1) AS pct_branch
+-- FROM (
+--     SELECT t.channel,
+--            CASE WHEN months_between(current_date(), c.date_of_birth) < 360 THEN '1) under 30'
+--                 WHEN months_between(current_date(), c.date_of_birth) < 540 THEN '2) 30-44'
+--                 WHEN months_between(current_date(), c.date_of_birth) < 720 THEN '3) 45-59'
+--                 ELSE '4) 60+' END AS age_band
+--     FROM SF_BANK.transactions t
+--     JOIN SF_BANK.accounts  a ON a.account_id  = t.account_id
+--     JOIN SF_BANK.customers c ON c.customer_id = a.customer_id
+--     WHERE t.channel IN ('MOBILE', 'ONLINE', 'BRANCH')
+-- ) x
+-- GROUP BY age_band
+-- ORDER BY age_band;
+
+-- Q7. Account statement with running balance (one account)
+-- SELECT
+--     t.txn_ts,
+--     t.txn_type,
+--     t.description,
+--     CASE WHEN t.direction = 'CREDIT' THEN t.amount ELSE -t.amount END AS signed_amount,
+--     a.opening_balance + sum(CASE WHEN t.status = 'REVERSED'   THEN 0
+--                                  WHEN t.direction = 'CREDIT' THEN t.amount
+--                                  ELSE -t.amount END)
+--         OVER (ORDER BY t.txn_ts, t.txn_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_balance,
+--     t.status
+-- FROM SF_BANK.transactions t
+-- JOIN SF_BANK.accounts a ON a.account_id = t.account_id
+-- WHERE t.account_id = 'ACC0000001'
+-- ORDER BY t.txn_ts;
+
+-- Q8. Fee income vs interest paid by branch
+-- SELECT
+--     b.branch_name,
+--     b.region,
+--     sum(CASE WHEN t.txn_type = 'FEE'      THEN t.amount ELSE 0 END) AS fee_income,
+--     sum(CASE WHEN t.txn_type = 'INTEREST' THEN t.amount ELSE 0 END) AS interest_paid,
+--     sum(CASE WHEN t.txn_type = 'FEE'      THEN t.amount ELSE 0 END)
+--       - sum(CASE WHEN t.txn_type = 'INTEREST' THEN t.amount ELSE 0 END) AS net
+-- FROM SF_BANK.transactions t
+-- JOIN SF_BANK.accounts a ON a.account_id = t.account_id
+-- JOIN SF_BANK.branches b ON b.branch_id  = a.branch_id
+-- WHERE t.status = 'POSTED'
+-- GROUP BY b.branch_name, b.region
+-- ORDER BY net DESC;
+
+-- Q9. Top 3 relationships per branch
+-- SELECT *
+-- FROM (
+--     SELECT
+--         b.branch_name,
+--         c.customer_id,
+--         concat(c.first_name, ' ', c.last_name) AS customer_name,
+--         c.segment,
+--         sum(a.current_balance) AS total_balance,
+--         rank() OVER (PARTITION BY b.branch_name ORDER BY sum(a.current_balance) DESC) AS rank_in_branch
+--     FROM SF_BANK.customers c
+--     JOIN SF_BANK.accounts  a ON a.customer_id = c.customer_id
+--     JOIN SF_BANK.branches  b ON b.branch_id   = c.home_branch_id
+--     WHERE a.status <> 'CLOSED'
+--     GROUP BY b.branch_name, c.customer_id, c.first_name, c.last_name, c.segment
+-- ) r
+-- WHERE rank_in_branch <= 3
+-- ORDER BY branch_name, rank_in_branch;
+
+-- Q10. Live: pending activity in the last 24 hours, by hour
+-- SELECT
+--     date_trunc('HOUR', txn_ts) AS hour,
+--     txn_type,
+--     count(*)                   AS pending_txns,
+--     sum(amount)                AS pending_amount
+-- FROM SF_BANK.transactions
+-- WHERE status = 'PENDING'
+--   AND txn_ts >= current_timestamp() - INTERVAL 24 HOURS
+-- GROUP BY date_trunc('HOUR', txn_ts), txn_type
+-- ORDER BY hour DESC, txn_type;
+
+-- Q11. Fraud funnel by day (last 30 days)
+-- SELECT
+--     to_date(t.auth_ts)                                         AS auth_day,
+--     count(*)                                                   AS authorisations,
+--     sum(CASE WHEN t.is_flagged THEN 1 ELSE 0 END)              AS flagged,
+--     count(a.alert_id)                                          AS alerts,
+--     sum(CASE WHEN a.alert_status = 'CONFIRMED_FRAUD' THEN 1 ELSE 0 END) AS confirmed_fraud,
+--     sum(CASE WHEN a.alert_status = 'OPEN' THEN 1 ELSE 0 END)   AS still_open
+-- FROM DBX_RISK.card_transactions t
+-- LEFT JOIN DBX_RISK.fraud_alerts a ON a.auth_id = t.auth_id
+-- GROUP BY to_date(t.auth_ts)
+-- ORDER BY auth_day;
+
+-- Q12. Fraud rate by merchant risk tier and entry mode
+-- SELECT
+--     m.risk_tier,
+--     t.entry_mode,
+--     count(*)                                                       AS authorisations,
+--     sum(CASE WHEN t.is_flagged THEN 1 ELSE 0 END)                  AS flagged,
+--     round(100.0 * sum(CASE WHEN t.is_flagged THEN 1 ELSE 0 END) / count(*), 2) AS flag_rate_pct,
+--     round(avg(t.fraud_score), 3)                                   AS avg_fraud_score
+-- FROM DBX_RISK.card_transactions t
+-- JOIN DBX_RISK.merchants m ON m.merchant_id = t.merchant_id
+-- GROUP BY m.risk_tier, t.entry_mode
+-- ORDER BY flag_rate_pct DESC;
+
+-- Q13. Riskiest merchants: confirmed fraud amount and precision
+-- SELECT
+--     m.merchant_name,
+--     m.category,
+--     m.country,
+--     m.risk_tier,
+--     count(a.alert_id)                                                         AS alerts,
+--     sum(CASE WHEN a.alert_status = 'CONFIRMED_FRAUD' THEN 1 ELSE 0 END)       AS confirmed,
+--     round(100.0 * sum(CASE WHEN a.alert_status = 'CONFIRMED_FRAUD' THEN 1 ELSE 0 END)
+--           / nullif(sum(CASE WHEN a.alert_status <> 'OPEN' THEN 1 ELSE 0 END), 0), 1) AS alert_precision_pct,
+--     sum(CASE WHEN a.alert_status = 'CONFIRMED_FRAUD' THEN t.amount ELSE 0 END) AS confirmed_fraud_amount
+-- FROM DBX_RISK.fraud_alerts a
+-- JOIN DBX_RISK.card_transactions t ON t.auth_id     = a.auth_id
+-- JOIN DBX_RISK.merchants         m ON m.merchant_id = t.merchant_id
+-- GROUP BY m.merchant_name, m.category, m.country, m.risk_tier
+-- ORDER BY confirmed_fraud_amount DESC
+-- LIMIT 10;
+
+-- Q14. Card velocity: busiest cards in a single day
+-- SELECT card_id, auth_day, auths, total_amount, distinct_merchants
+-- FROM (
+--     SELECT
+--         card_id,
+--         to_date(auth_ts)             AS auth_day,
+--         count(*)                     AS auths,
+--         sum(amount)                  AS total_amount,
+--         count(DISTINCT merchant_id)  AS distinct_merchants,
+--         row_number() OVER (ORDER BY count(*) DESC, sum(amount) DESC) AS rn
+--     FROM DBX_RISK.card_transactions
+--     GROUP BY card_id, to_date(auth_ts)
+-- ) v
+-- WHERE rn <= 15
+-- ORDER BY auths DESC, total_amount DESC;
+
+-- Q15. Open alert queue with age (SLA view)
+-- SELECT
+--     a.alert_id,
+--     a.severity,
+--     a.rule_triggered,
+--     a.alert_ts,
+--     round((unix_timestamp(current_timestamp()) - unix_timestamp(a.alert_ts)) / 3600, 1) AS age_hours,
+--     t.amount,
+--     m.merchant_name,
+--     a.customer_id
+-- FROM DBX_RISK.fraud_alerts a
+-- JOIN DBX_RISK.card_transactions t ON t.auth_id     = a.auth_id
+-- JOIN DBX_RISK.merchants         m ON m.merchant_id = t.merchant_id
+-- WHERE a.alert_status = 'OPEN'
+-- ORDER BY CASE a.severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END, a.alert_ts;
+
+-- Q16. Loan portfolio summary
+-- SELECT
+--     loan_type,
+--     count(*)                                                        AS loans,
+--     sum(principal)                                                  AS originated,
+--     sum(outstanding_balance)                                        AS outstanding,
+--     round(avg(interest_rate), 2)                                    AS avg_rate,
+--     round(100.0 * sum(CASE WHEN days_past_due >= 30 THEN outstanding_balance ELSE 0 END)
+--           / nullif(sum(outstanding_balance), 0), 2)                 AS pct_balance_30plus_dpd
+-- FROM DBX_RISK.loans
+-- GROUP BY loan_type
+-- ORDER BY outstanding DESC;
+
+-- Q17. Credit-band migration matrix (6 months ago -> now)
+-- SELECT
+--     old.risk_band AS band_6m_ago,
+--     sum(CASE WHEN cur.risk_band = 'PRIME_PLUS' THEN 1 ELSE 0 END) AS now_prime_plus,
+--     sum(CASE WHEN cur.risk_band = 'PRIME'      THEN 1 ELSE 0 END) AS now_prime,
+--     sum(CASE WHEN cur.risk_band = 'NEAR_PRIME' THEN 1 ELSE 0 END) AS now_near_prime,
+--     sum(CASE WHEN cur.risk_band = 'SUBPRIME'   THEN 1 ELSE 0 END) AS now_subprime
+-- FROM DBX_RISK.credit_scores old
+-- JOIN DBX_RISK.credit_scores cur ON cur.customer_id = old.customer_id
+-- WHERE old.score_month = (SELECT min(score_month) FROM DBX_RISK.credit_scores)
+--   AND cur.score_month = (SELECT max(score_month) FROM DBX_RISK.credit_scores)
+-- GROUP BY old.risk_band
+-- ORDER BY CASE old.risk_band WHEN 'PRIME_PLUS' THEN 1 WHEN 'PRIME' THEN 2
+--                             WHEN 'NEAR_PRIME' THEN 3 ELSE 4 END;
+
+-- Q18. Biggest credit-score drops (early warning)
+-- SELECT
+--     cur.customer_id,
+--     old.credit_score                     AS score_6m_ago,
+--     cur.credit_score                     AS score_now,
+--     cur.credit_score - old.credit_score  AS change,
+--     cur.risk_band
+-- FROM DBX_RISK.credit_scores old
+-- JOIN DBX_RISK.credit_scores cur ON cur.customer_id = old.customer_id
+-- WHERE old.score_month = (SELECT min(score_month) FROM DBX_RISK.credit_scores)
+--   AND cur.score_month = (SELECT max(score_month) FROM DBX_RISK.credit_scores)
+--   AND cur.credit_score - old.credit_score <= -30
+-- ORDER BY change
+-- LIMIT 20;
+
+-- Q19. Declines by reason and card type
+-- SELECT
+--     c.card_type,
+--     t.decline_reason,
+--     count(*)       AS declines,
+--     sum(t.amount)  AS declined_amount
+-- FROM DBX_RISK.card_transactions t
+-- JOIN DBX_RISK.cards c ON c.card_id = t.card_id
+-- WHERE t.auth_status = 'DECLINED'
+-- GROUP BY c.card_type, t.decline_reason
+-- ORDER BY declines DESC;
+
+-- Q20. Live: authorisations in the last 15 minutes
+-- SELECT
+--     t.auth_ts,
+--     t.card_id,
+--     m.merchant_name,
+--     m.category,
+--     t.amount,
+--     t.entry_mode,
+--     t.auth_status,
+--     t.fraud_score
+-- FROM DBX_RISK.card_transactions t
+-- JOIN DBX_RISK.merchants m ON m.merchant_id = t.merchant_id
+-- WHERE t.auth_ts >= current_timestamp() - INTERVAL 15 MINUTES
+-- ORDER BY t.auth_ts DESC;
+
+
+-- -----------------------------------------------------------------------------
+-- Analytical examples - federated (joins SF_BANK and DBX_RISK)
+-- -----------------------------------------------------------------------------
+
+-- F1. Customer 360
+-- SELECT
+--     c.customer_id,
+--     concat(c.first_name, ' ', c.last_name)  AS customer_name,
+--     c.segment,
+--     c.state,
+--     acct.num_accounts,
+--     acct.total_deposits,
+--     crd.active_cards,
+--     crd.credit_limit_total,
+--     ln.num_loans,
+--     ln.total_loan_balance,
+--     ln.max_days_past_due,
+--     cs.credit_score,
+--     cs.risk_band
+-- FROM SF_BANK.customers c
+-- LEFT JOIN (SELECT customer_id, count(*) AS num_accounts, sum(current_balance) AS total_deposits
+--            FROM SF_BANK.accounts WHERE status <> 'CLOSED'
+--            GROUP BY customer_id) acct            ON acct.customer_id = c.customer_id
+-- LEFT JOIN (SELECT customer_id, count(*) AS active_cards, sum(credit_limit) AS credit_limit_total
+--            FROM DBX_RISK.cards WHERE status = 'ACTIVE'
+--            GROUP BY customer_id) crd             ON crd.customer_id  = c.customer_id
+-- LEFT JOIN (SELECT customer_id, count(*) AS num_loans, sum(outstanding_balance) AS total_loan_balance,
+--                   max(days_past_due) AS max_days_past_due
+--            FROM DBX_RISK.loans
+--            GROUP BY customer_id) ln              ON ln.customer_id   = c.customer_id
+-- LEFT JOIN (SELECT customer_id, credit_score, risk_band
+--            FROM DBX_RISK.credit_scores
+--            WHERE score_month = (SELECT max(score_month) FROM DBX_RISK.credit_scores)) cs
+--                                                  ON cs.customer_id   = c.customer_id
+-- ORDER BY acct.total_deposits DESC
+-- LIMIT 25;
+
+-- F2. Fraud triage queue with contact details and balance
+-- SELECT
+--     a.alert_id,
+--     a.alert_ts,
+--     a.severity,
+--     a.rule_triggered,
+--     t.amount                                AS auth_amount,
+--     m.merchant_name,
+--     m.country                               AS merchant_country,
+--     c.customer_id,
+--     concat(c.first_name, ' ', c.last_name)  AS customer_name,
+--     c.phone,
+--     c.email,
+--     c.segment,
+--     acc.current_balance                     AS checking_balance,
+--     round(100 * t.amount / nullif(acc.current_balance, 0), 1) AS pct_of_balance
+-- FROM DBX_RISK.fraud_alerts       a
+-- JOIN DBX_RISK.card_transactions  t   ON t.auth_id      = a.auth_id
+-- JOIN DBX_RISK.merchants          m   ON m.merchant_id  = t.merchant_id
+-- JOIN DBX_RISK.cards              cd  ON cd.card_id     = a.card_id
+-- JOIN SF_BANK.customers           c   ON c.customer_id  = a.customer_id
+-- JOIN SF_BANK.accounts            acc ON acc.account_id = cd.account_id
+-- WHERE a.alert_status = 'OPEN'
+-- ORDER BY CASE a.severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END, a.alert_ts DESC;
+
+-- F3. Spend by merchant category and risk tier
+-- SELECT
+--     m.category,
+--     m.risk_tier,
+--     count(*)                 AS purchases,
+--     count(DISTINCT t.account_id) AS accounts,
+--     sum(t.amount)            AS total_spend,
+--     round(avg(t.amount), 2)  AS avg_ticket
+-- FROM SF_BANK.transactions t
+-- JOIN DBX_RISK.merchants  m ON m.merchant_id = t.merchant_id
+-- WHERE t.txn_type = 'CARD_PURCHASE'
+--   AND t.status  <> 'REVERSED'
+-- GROUP BY m.category, m.risk_tier
+-- ORDER BY total_spend DESC;
+
+-- F4. Collections prioritisation
+-- SELECT
+--     l.loan_id,
+--     l.loan_type,
+--     l.days_past_due,
+--     l.outstanding_balance,
+--     concat(c.first_name, ' ', c.last_name)  AS customer_name,
+--     c.phone,
+--     b.branch_name,
+--     acc.current_balance                     AS repayment_account_balance,
+--     coalesce(inc.salary_deposits_30d, 0)    AS salary_deposits_30d,
+--     CASE WHEN acc.current_balance > 0 AND coalesce(inc.salary_deposits_30d, 0) > 0
+--          THEN 'CAN_PAY - call first'
+--          ELSE 'HARDSHIP - offer plan' END   AS collections_action
+-- FROM DBX_RISK.loans     l
+-- JOIN SF_BANK.accounts   acc ON acc.account_id = l.repayment_account_id
+-- JOIN SF_BANK.customers  c   ON c.customer_id  = l.customer_id
+-- JOIN SF_BANK.branches   b   ON b.branch_id    = c.home_branch_id
+-- LEFT JOIN (SELECT a.customer_id, sum(t.amount) AS salary_deposits_30d
+--            FROM SF_BANK.transactions t
+--            JOIN SF_BANK.accounts     a ON a.account_id = t.account_id
+--            WHERE t.txn_type = 'DIRECT_DEPOSIT'
+--              AND t.txn_ts  >= current_timestamp() - INTERVAL 30 DAYS
+--            GROUP BY a.customer_id) inc      ON inc.customer_id = l.customer_id
+-- WHERE l.status IN ('DELINQUENT', 'DEFAULT')
+-- ORDER BY l.days_past_due DESC, l.outstanding_balance DESC;
+
+-- F5. Credit-card cross-sell list
+-- SELECT
+--     c.customer_id,
+--     concat(c.first_name, ' ', c.last_name)  AS customer_name,
+--     c.segment,
+--     c.email,
+--     dep.total_deposits,
+--     cs.credit_score,
+--     cs.risk_band,
+--     CASE WHEN cs.credit_score >= 780 THEN 10000
+--          WHEN cs.credit_score >= 740 THEN 7500
+--          ELSE 5000 END                      AS suggested_credit_limit
+-- FROM SF_BANK.customers c
+-- JOIN (SELECT customer_id, sum(current_balance) AS total_deposits
+--       FROM SF_BANK.accounts WHERE status = 'ACTIVE'
+--       GROUP BY customer_id) dep             ON dep.customer_id = c.customer_id
+-- JOIN DBX_RISK.credit_scores cs              ON cs.customer_id  = c.customer_id
+--                                            AND cs.score_month  = (SELECT max(score_month) FROM DBX_RISK.credit_scores)
+-- LEFT JOIN (SELECT DISTINCT customer_id FROM DBX_RISK.cards WHERE card_type = 'CREDIT') cc
+--                                             ON cc.customer_id  = c.customer_id
+-- LEFT JOIN (SELECT DISTINCT customer_id FROM DBX_RISK.loans WHERE days_past_due > 0) dl
+--                                             ON dl.customer_id  = c.customer_id
+-- WHERE cs.risk_band IN ('PRIME_PLUS', 'PRIME')
+--   AND dep.total_deposits >= 10000
+--   AND c.kyc_status = 'VERIFIED'
+--   AND cc.customer_id IS NULL
+--   AND dl.customer_id IS NULL
+-- ORDER BY cs.credit_score DESC, dep.total_deposits DESC
+-- LIMIT 50;
+
+-- F6. Branch risk scorecard
+-- SELECT
+--     b.region,
+--     b.branch_name,
+--     count(DISTINCT c.customer_id)                                             AS customers,
+--     round(avg(cs.credit_score), 0)                                            AS avg_credit_score,
+--     count(DISTINCT CASE WHEN cs.risk_band = 'SUBPRIME' THEN c.customer_id END) AS subprime_customers,
+--     count(DISTINCT fa.alert_id)                                               AS fraud_alerts,
+--     count(DISTINCT CASE WHEN fa.alert_status = 'CONFIRMED_FRAUD' THEN fa.alert_id END) AS confirmed_frauds
+-- FROM SF_BANK.branches   b
+-- JOIN SF_BANK.customers  c  ON c.home_branch_id = b.branch_id
+-- LEFT JOIN DBX_RISK.credit_scores cs
+--        ON cs.customer_id = c.customer_id
+--       AND cs.score_month = (SELECT max(score_month) FROM DBX_RISK.credit_scores)
+-- LEFT JOIN DBX_RISK.fraud_alerts fa ON fa.customer_id = c.customer_id
+-- GROUP BY b.region, b.branch_name
+-- ORDER BY confirmed_frauds DESC, fraud_alerts DESC;
+
+-- F7. AML / KYC watch list
+-- SELECT
+--     c.customer_id,
+--     concat(c.first_name, ' ', c.last_name)  AS customer_name,
+--     c.kyc_status,
+--     c.risk_rating,
+--     m.merchant_name,
+--     m.category,
+--     m.country,
+--     count(*)                                AS txns,
+--     sum(t.amount)                           AS amount,
+--     max(t.txn_ts)                           AS last_seen
+-- FROM SF_BANK.transactions t
+-- JOIN SF_BANK.accounts     a ON a.account_id  = t.account_id
+-- JOIN SF_BANK.customers    c ON c.customer_id = a.customer_id
+-- JOIN DBX_RISK.merchants   m ON m.merchant_id = t.merchant_id
+-- WHERE m.risk_tier = 'HIGH'
+--   AND (c.kyc_status <> 'VERIFIED' OR c.risk_rating IN ('MEDIUM', 'HIGH'))
+-- GROUP BY c.customer_id, c.first_name, c.last_name, c.kyc_status, c.risk_rating,
+--          m.merchant_name, m.category, m.country
+-- ORDER BY amount DESC;
+
+-- F8. Early-warning credit risk
+-- SELECT
+--     c.customer_id,
+--     concat(c.first_name, ' ', c.last_name)  AS customer_name,
+--     sc.score_6m_ago,
+--     sc.score_now,
+--     sc.score_now - sc.score_6m_ago          AS score_change,
+--     dep.total_deposits,
+--     coalesce(ln.total_loan_balance, 0)      AS total_loan_balance,
+--     coalesce(ln.max_days_past_due, 0)       AS max_days_past_due
+-- FROM (SELECT customer_id,
+--              max(CASE WHEN score_month = (SELECT min(score_month) FROM DBX_RISK.credit_scores) THEN credit_score END) AS score_6m_ago,
+--              max(CASE WHEN score_month = (SELECT max(score_month) FROM DBX_RISK.credit_scores) THEN credit_score END) AS score_now
+--       FROM DBX_RISK.credit_scores
+--       GROUP BY customer_id) sc
+-- JOIN SF_BANK.customers c   ON c.customer_id = sc.customer_id
+-- JOIN (SELECT customer_id, sum(current_balance) AS total_deposits
+--       FROM SF_BANK.accounts WHERE status <> 'CLOSED'
+--       GROUP BY customer_id) dep ON dep.customer_id = sc.customer_id
+-- LEFT JOIN (SELECT customer_id, sum(outstanding_balance) AS total_loan_balance,
+--                   max(days_past_due) AS max_days_past_due
+--            FROM DBX_RISK.loans GROUP BY customer_id) ln ON ln.customer_id = sc.customer_id
+-- WHERE sc.score_now - sc.score_6m_ago <= -30
+--   AND dep.total_deposits < 15000
+-- ORDER BY score_change, dep.total_deposits;
+
+-- F9. Balance sheet by segment
+-- SELECT
+--     c.segment,
+--     count(DISTINCT c.customer_id)                AS customers,
+--     sum(coalesce(dep.total_deposits, 0))         AS deposits,
+--     sum(coalesce(ln.total_loan_balance, 0))      AS loans_outstanding,
+--     sum(coalesce(cc.credit_limit_total, 0))      AS card_credit_limits,
+--     round(100 * sum(coalesce(ln.total_loan_balance, 0))
+--           / nullif(sum(coalesce(dep.total_deposits, 0)), 0), 1) AS loan_to_deposit_pct
+-- FROM SF_BANK.customers c
+-- LEFT JOIN (SELECT customer_id, sum(current_balance) AS total_deposits
+--            FROM SF_BANK.accounts WHERE status <> 'CLOSED'
+--            GROUP BY customer_id) dep ON dep.customer_id = c.customer_id
+-- LEFT JOIN (SELECT customer_id, sum(outstanding_balance) AS total_loan_balance
+--            FROM DBX_RISK.loans GROUP BY customer_id) ln ON ln.customer_id = c.customer_id
+-- LEFT JOIN (SELECT customer_id, sum(credit_limit) AS credit_limit_total
+--            FROM DBX_RISK.cards WHERE card_type = 'CREDIT' AND status = 'ACTIVE'
+--            GROUP BY customer_id) cc ON cc.customer_id = c.customer_id
+-- GROUP BY c.segment
+-- ORDER BY deposits DESC;
+
+-- F10. Live: the last 60 minutes across both platforms
+-- SELECT 'SNOWFLAKE_LEDGER'  AS source_system,
+--        t.txn_id            AS event_id,
+--        t.txn_ts            AS event_ts,
+--        t.amount,
+--        m.merchant_name,
+--        t.status            AS event_status
+-- FROM SF_BANK.transactions t
+-- LEFT JOIN DBX_RISK.merchants m ON m.merchant_id = t.merchant_id
+-- WHERE t.txn_ts >= current_timestamp() - INTERVAL 60 MINUTES
+-- UNION ALL
+-- SELECT 'DATABRICKS_AUTHS',
+--        ct.auth_id,
+--        ct.auth_ts,
+--        ct.amount,
+--        m.merchant_name,
+--        ct.auth_status
+-- FROM DBX_RISK.card_transactions ct
+-- JOIN DBX_RISK.merchants m ON m.merchant_id = ct.merchant_id
+-- WHERE ct.auth_ts >= current_timestamp() - INTERVAL 60 MINUTES
+-- ORDER BY event_ts DESC;
