@@ -209,17 +209,28 @@ clients start it as a local process.
 - `list_databases`, `list_tables` and `describe_table` show what Zetaris holds.
 - `run_query` runs one read-only statement (`SELECT`, `WITH`, `SHOW`,
   `DESCRIBE`, `EXPLAIN`) and returns up to `ZETARIS_MAX_ROWS` rows (default 200)
-  with the SQL and time taken.
+  with the SQL and time taken. It refuses more than one statement per call,
+  and refuses any statement that contains `INSERT`, `DROP`, `CREATE`, `CACHE`
+  or another write command outside quotes, so `WITH ... INSERT INTO ...` is
+  refused too.
 - `register_source` accepts only `CREATE LIGHTNING ...` and `CACHE TABLE`.
   The client asks before each call unless you allow the tool, which keeps the
   "go-ahead before creating anything" rule in [`AGENTS.md`](../AGENTS.md).
+
+These checks stop an agent's mistakes, but they are not access control. What
+a call can change depends on the Zetaris user in `.env.local`, so give an agent
+that only reads a read-only user, as in
+[Least privilege for agents and applications](../docs/guides/permissions.md#8-least-privilege-for-agents-and-applications).
 
 Each call stops after `ZETARIS_TIMEOUT` seconds (default 50) and tells the agent
 to make the query lighter. A query that ran past the limit may still be running
 in Zetaris; with `ZETARIS_SPARK_UI` set (for example `http://127.0.0.1:4040`),
 the server reads Spark's status and refuses new queries until it has finished,
 so retries don't pile up on a shared instance. `ZETARIS_MCP_LOG` names a file
-that gets one JSON line per call.
+that gets one JSON line per call, including its SQL. For `register_source`,
+every quoted value is written as `'***'`, so API keys and passwords in
+`OPTIONS` or in a URL are not saved. `run_query` SQL is saved as sent, so keep
+the file private and out of the repository (`tmp/` is gitignored).
 
 For Cursor, add this to `.cursor/mcp.json` and turn the server on in
 **Settings → MCP**:

@@ -8,7 +8,8 @@ only. Reads the same settings as the other scripts here (ZETARIS_BASE_URL,
 ZETARIS_ORG_ID, and ZETARIS_API_KEY or ZETARIS_USERNAME + ZETARIS_PASSWORD,
 optional ZETARIS_ENGINE_ID) from the environment or the repository's
 .env.local, loaded by zetaris_sql.load_env(). Set ZETARIS_MCP_LOG to a file
-path to keep a JSON line per tool call.
+path to keep a JSON line per tool call (quoted values in register_source SQL
+are written as '***').
 
 Start it from the repository root as an MCP server, for example in Cursor's
 .cursor/mcp.json: {"mcpServers": {"zetaris": {"command": "python3",
@@ -37,11 +38,54 @@ import uuid
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-SERVER_INFO = {"name": "zetaris", "version": "0.2.1"}
+SERVER_INFO = {"name": "zetaris", "version": "0.2.2"}
 
-READ_ONLY = re.compile(r"^\s*(SELECT|WITH|SHOW|DESCRIBE|DESC|EXPLAIN)\b", re.I)
-REGISTER = re.compile(r"^\s*(CREATE\s+LIGHTNING|CACHE\s+TABLE)\b", re.I)
-NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
+READ_ONLY = re.compile(r"^\(*\s*(SELECT|WITH|SHOW|DESCRIBE|DESC|EXPLAIN|VALUES)\b", re.I)
+REGISTER = re.compile(r"^(CREATE\s+LIGHTNING|CACHE\s+TABLE)\b", re.I)
+# Commands that change data or settings. run_query refuses them anywhere
+# outside quotes, so a statement that starts with WITH cannot end in INSERT INTO.
+WRITE_WORDS = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|MERGE|UPSERT|DROP|CREATE|ALTER|TRUNCATE|RENAME|CACHE|UNCACHE|"
+    r"REFRESH|LOAD|GRANT|REVOKE|MSCK|REPAIR|OPTIMIZE|VACUUM|RESTORE|COPY|CALL|SET|RESET|USE|ADD)\b", re.I)
+DB_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# DATABASE.table, or a three-part name such as lightning.metastore.usl_demo
+TABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){1,2}$")
+_SQL_TOKENS = re.compile(
+    r"--[^\n]*"                    # line comment
+    r"|/\*.*?(\*/|\Z)"             # block comment
+    r"|'(?:[^'\\]|\\.|'')*'?"       # 'string'
+    r'|"(?:[^"\\]|\\.|"")*"?'       # "string"
+    r"|`(?:[^`]|``)*`?",            # `identifier`
+    re.S)
+
+
+def _skeleton(sql: str) -> str:
+    """SQL with comments removed and every quoted string or `identifier`
+    emptied, so checks only see the statement's own words."""
+    def sub(m: re.Match) -> str:
+        t = m.group(0)
+        return " " if t[0] in "-/" else t[0] * 2
+    return _SQL_TOKENS.sub(sub, sql).strip()
+
+
+def _one_statement(sql: str) -> str:
+    """The skeleton of a single statement; a trailing ';' is allowed."""
+    sk = _skeleton(sql)
+    body = sk[:-1].rstrip() if sk.endswith(";") else sk
+    if not body:
+        raise ValueError("Send one SQL statement.")
+    if ";" in body:
+        raise ValueError("Send one SQL statement per call; this one has more than one.")
+    return body
+
+
+def redact(sql: str) -> str:
+    """Hide every quoted value, so keys in OPTIONS or in URLs (?api_key=...)
+    never reach the log. Names, option keys and the statement shape stay."""
+    def sub(m: re.Match) -> str:
+        t = m.group(0)
+        return t if t[0] in "-/`" else t[0] + "***" + t[0]
+    return _SQL_TOKENS.sub(sub, sql)
 
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -66,8 +110,14 @@ def _load_catalog() -> dict:
     path = os.environ.get("ZETARIS_CATALOG")
     if not path or not os.path.exists(path):
         return {}
-    with open(path, encoding="utf-8") as f:
-        return {k.upper(): v for k, v in json.load(f).items()}
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("the top level must be an object of DATABASE: [views]")
+        return {str(k).upper(): v for k, v in data.items()}
+    except (OSError, ValueError) as e:
+        raise RuntimeError(f"ZETARIS_CATALOG file {path} could not be read: {e}") from e
 
 
 COOLDOWN = int(os.environ.get("ZETARIS_COOLDOWN", "180"))
@@ -143,6 +193,20 @@ def run_sql(sql: str) -> dict:
         raise RuntimeError(f"Cannot reach Zetaris at {BASE_URL}: {e}") from e
 
 
+def _log_sql(tool: str, sql: str) -> str:
+    """register_source statements often carry keys, so their quoted values are
+    hidden in the log. Read-only queries are logged as sent."""
+    return redact(sql) if tool == "register_source" else sql
+
+
+def _scrub(text: str, sql: str) -> str:
+    """Replace each quoted value of sql that appears in text with ***."""
+    values = {m.group(0)[1:-1] for m in _SQL_TOKENS.finditer(sql) if m.group(0)[0] in "'\""}
+    for v in sorted((v for v in values if len(v) >= 4), key=len, reverse=True):
+        text = text.replace(v, "***")
+    return text
+
+
 def _log(entry: dict) -> None:
     path = os.environ.get("ZETARIS_MCP_LOG")
     if path:
@@ -162,8 +226,9 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"table": {"type": "string"}}, "required": ["table"]}},
     {"name": "run_query",
      "description": "Run a read-only SQL query in Zetaris (SELECT, WITH, SHOW, DESCRIBE, EXPLAIN). "
-                    "Zetaris SQL is Spark SQL; tables are DATABASE.table and one query can join tables "
-                    "from different sources. Returns up to %d rows, the time taken and the exact SQL run." % MAX_ROWS,
+                    "Zetaris runs Lightning SQL (Spark SQL plus Lightning commands); tables are "
+                    "DATABASE.table and one query can join tables from different sources. "
+                    "Returns up to %d rows, the time taken and the exact SQL run." % MAX_ROWS,
      "inputSchema": {"type": "object", "properties": {"sql": {"type": "string"}}, "required": ["sql"]}},
     {"name": "register_source",
      "description": "Register a new data source in Zetaris with a CREATE LIGHTNING ... statement "
@@ -177,8 +242,8 @@ def call_tool(name: str, args: dict) -> str:
         sql = "SHOW LIGHTNING DATABASES"
     elif name == "list_tables":
         db = str(args.get("database", ""))
-        if not NAME.match(db):
-            raise ValueError("database must be a plain name")
+        if not DB_NAME.match(db):
+            raise ValueError("database must be a plain name, such as MONTGOMERY (no dots)")
         sql = f"SHOW LIGHTNING TABLES {db}"
         views = _load_catalog().get(db.upper())
         if views:
@@ -189,17 +254,20 @@ def call_tool(name: str, args: dict) -> str:
             return json.dumps(out, ensure_ascii=False)
     elif name == "describe_table":
         t = str(args.get("table", ""))
-        if not NAME.match(t):
-            raise ValueError("table must be DATABASE.table")
+        if not TABLE_NAME.match(t):
+            raise ValueError("table must be DATABASE.table (letters, digits and _ only)")
         sql = f"DESCRIBE {t}"
     elif name == "run_query":
         sql = str(args.get("sql", ""))
-        if not READ_ONLY.match(sql):
-            raise ValueError("run_query only runs SELECT, WITH, SHOW, DESCRIBE or EXPLAIN. "
-                             "Use register_source for CREATE LIGHTNING or CACHE TABLE.")
+        body = _one_statement(sql)
+        bad = WRITE_WORDS.search(body)
+        if not READ_ONLY.match(body) or bad:
+            why = f" It contains {bad.group(1).upper()}." if bad else ""
+            raise ValueError("run_query only runs read-only SELECT, WITH, SHOW, DESCRIBE or EXPLAIN."
+                             + why + " Use register_source for CREATE LIGHTNING or CACHE TABLE.")
     elif name == "register_source":
         sql = str(args.get("sql", ""))
-        if not REGISTER.match(sql):
+        if not REGISTER.match(_one_statement(sql)):
             raise ValueError("register_source only runs CREATE LIGHTNING ... or CACHE TABLE statements.")
     else:
         raise ValueError(f"unknown tool {name}")
@@ -213,15 +281,19 @@ def _run_logged(name: str, sql: str) -> str:
         msg = ("Zetaris is still running your earlier query, which went past the %d s limit: %s ... "
                "Wait for it to finish, then send a narrower query (filter, aggregate, or use a ready-made "
                "view). Do not resend the same query." % (TIMEOUT, busy[0][0][:160]))
-        _log({"ts": round(time.time(), 3), "tool": name, "sql": sql, "ok": False, "refused": "busy"})
+        _log({"ts": round(time.time(), 3), "tool": name, "sql": _log_sql(name, sql), "ok": False,
+              "refused": "busy"})
         raise RuntimeError(msg)
     t0 = time.time()
-    entry = {"ts": round(t0, 3), "tool": name, "sql": sql}
+    entry = {"ts": round(t0, 3), "tool": name, "sql": _log_sql(name, sql)}
     try:
         res = run_sql(sql)
     except Exception as e:
         secs = round(time.time() - t0, 2)
-        entry.update(ok=False, error=str(e)[:300], secs=secs)
+        err = str(e)
+        if name == "register_source":  # Zetaris errors repeat the statement, values included
+            err = _scrub(err, sql)
+        entry.update(ok=False, error=err[:300], secs=secs)
         _log(entry)
         if secs >= TIMEOUT - 1:
             _slow.append((sql, t0))
@@ -267,9 +339,19 @@ def main() -> None:
         if not line:
             continue
         try:
-            reply = handle(json.loads(line))
-        except Exception as e:
-            reply = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": str(e)}}
+            msg = json.loads(line)
+        except ValueError as e:
+            reply = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": f"Parse error: {e}"}}
+        else:
+            if not isinstance(msg, dict):
+                reply = {"jsonrpc": "2.0", "id": None,
+                         "error": {"code": -32600, "message": "Invalid request: expected a JSON object"}}
+            else:
+                try:
+                    reply = handle(msg)
+                except Exception as e:
+                    reply = {"jsonrpc": "2.0", "id": msg.get("id"),
+                             "error": {"code": -32603, "message": f"Internal error: {e}"}}
         if reply is not None:
             sys.stdout.write(json.dumps(reply) + "\n")
             sys.stdout.flush()

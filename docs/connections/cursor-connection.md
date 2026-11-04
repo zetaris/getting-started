@@ -80,6 +80,8 @@ databases.
 ## 10. Option: Zetaris tools instead of the terminal (MCP)
 
 Instead of letting Cursor's terminal run the repository scripts, you can give
-its agent Zetaris tools through [`scripts/zetaris_mcp.py`](../../scripts/HOWTO.md#give-a-coding-agent-zetaris-tools-mcp).
-It uses the same `.env.local`, its query tool is read-only, and each call has a
-time limit, so the agent's data work stays in Zetaris without shell access.
+its agent Zetaris tools through `scripts/zetaris_mcp.py` (setup in
+[Give a coding agent Zetaris tools](../../scripts/HOWTO.md#give-a-coding-agent-zetaris-tools-mcp)).
+It uses the same `.env.local`, its query tool refuses statements that write, and
+each call has a time limit, so the agent's data work stays in Zetaris without
+shell access.
