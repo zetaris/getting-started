@@ -7,11 +7,18 @@
 --           https://source.coop/fused/fsq-os-places
 -- Before running: list what's actually in the current release folder --
 --   aws s3 ls --endpoint-url https://data.source.coop --no-sign-request s3://fused/fsq-os-places/
+--   or, without the AWS CLI:
+--   curl -s "https://data.source.coop/fused?list-type=2&prefix=fsq-os-places/&delimiter=/"
 --
--- KNOWN TO FAIL -- kept here as-is, not in the main sql/ sequence. The
--- CREATE LIGHTNING FILESTORE TABLE statement below succeeds, but CACHE
--- TABLE and every SELECT against the resulting table fail with a 500
--- error. See sql/known_to_fail/ISSUE.md for the full writeup.
+-- Confirmed live 2026-10-31. The bucket listing that day had release
+-- folders 2024-11-19, 2024-12-03, 2025-01-10, and 2025-02-06. This script
+-- pins 2024-11-19, which is still present: 81 Parquet files, 11159985690
+-- bytes (10.394 GiB). Source Cooperative's README describes the dataset as
+-- more than 100 million places, so sql/04_foursquare_places_select.sql
+-- bounds every aggregation to a Manhattan lat/lon window. The files are
+-- not split by city; a predicate still reads the prefix (about 63-75
+-- seconds on 2026-10-31). An earlier query-time HTTP 500 is recorded in
+-- sql/known_to_fail/ISSUE-04-foursquare.md and did not reproduce.
 -- =============================================================================
 --
 -- CAVEAT 1: this dataset is NOT on AWS's own S3 endpoint -- Source Cooperative
@@ -34,7 +41,6 @@ CREATE LIGHTNING DATABASE FSQ_SOURCE_COOP DESCRIBE BY "Foursquare Open Source Pl
 
 CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT PARQUET OPTIONS (
   PATH "s3a://fused/fsq-os-places/2024-11-19/places/",
-  useS3PathStyleAccess "true",
   inferSchema "true",
   isS3BucketPublic "true",
   useS3PathStyleAccess "true",
@@ -44,8 +50,8 @@ CREATE LIGHTNING FILESTORE TABLE foursquare_places FROM FSQ_SOURCE_COOP FORMAT P
 -- Note: the places/ prefix above is sharded into many Parquet files
 -- (e.g. .../places/79.parquet, .../places/80.parquet, ...) -- pointing PATH
 -- at the directory (as above) rather than a single shard lets Zetaris pick
--- up the whole dataset. If your Zetaris version requires a single-file PATH
--- instead of a directory prefix, use one shard directly, e.g.:
---   PATH "s3a://fused/fsq-os-places/2024-11-19/places/79.parquet"
+-- up the whole release. A directory PATH queried successfully on
+-- 2026-10-31 (DESCRIBE, SELECT * LIMIT 10, and the bounded analytical
+-- queries).
 
 -- Next: verify with sql/04_foursquare_places_select.sql

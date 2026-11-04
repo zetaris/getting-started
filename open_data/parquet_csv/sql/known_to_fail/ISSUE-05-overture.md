@@ -1,8 +1,8 @@
 # Failure case: Overture Maps Places theme — table creates and plain SELECT works, but `CACHE TABLE` and every real query fail with a 500 error
 
-**Status:** Known to fail — kept out of `sql/`'s main sequence. Not required for this package's goals (the other sources already cover the Parquet/CSV onboarding pattern needed); kept here as a flagged item for engineering to debug rather than dropped silently.
+**Status:** Superseded on 2026-10-31. Re-tested on a self-hosted Zetaris 2.4.3.1 instance (the hackathon Docker images, Path A of the installation guide). The earlier failure was recorded on a different environment, and why it no longer reproduces is not established. The script had pinned `release/2026-08-19.0`, which is no longer listed in the bucket (current releases: `2026-09-23.0`, `2026-09-23.1`, `2026-10-21.0`). The Places schema no longer has `categories`; category is `basic_category` and `taxonomy.primary`. On release `2026-10-21.0`, with a Manhattan bbox, `DESCRIBE`, `SELECT * LIMIT 10`, and every analytical query in the updated select script succeeded (overview: 259,457 places, 1645 primary categories, 267 basic categories, about 84–95 seconds each because the 16-file, 11.08 GiB prefix is not split by geography). `SELECT categories.primary ... LIMIT 1` against that table returned HTTP 400 `UNRESOLVED_COLUMN.WITH_SUGGESTION` for `categories.primary`. A listing of `release/2026-08-19.0/` returned `KeyCount` 0. The scripts moved to [`../05_overture_maps_create.sql`](../05_overture_maps_create.sql) and [`../05_overture_maps_select.sql`](../05_overture_maps_select.sql). The writeup below is the earlier failure record.
 
-**Source script:** [`05_overture_maps_create.sql`](05_overture_maps_create.sql) / [`05_overture_maps_select.sql`](05_overture_maps_select.sql) (unchanged from their last working state, moved here as-is)
+**Source script:** [`../05_overture_maps_create.sql`](../05_overture_maps_create.sql) / [`../05_overture_maps_select.sql`](../05_overture_maps_select.sql) (moved back to `sql/` after the re-test)
 
 **Reported by:** Michael Hay
 
@@ -66,7 +66,7 @@ Skip `CACHE TABLE` and analytical queries for this source; the plain, bounded `S
 
 ## References
 
-- Scripts: [`05_overture_maps_create.sql`](05_overture_maps_create.sql), [`05_overture_maps_select.sql`](05_overture_maps_select.sql)
-- [`ISSUE-03-pudl.md`](ISSUE-03-pudl.md) — fails at `CREATE` time (dotted bucket name), a different failure shape
+- Scripts: [`05_overture_maps_create.sql`](../05_overture_maps_create.sql), [`05_overture_maps_select.sql`](../05_overture_maps_select.sql)
+- [`ISSUE-03-pudl.md`](ISSUE-03-pudl.md) — earlier `CREATE`-time failure on a dotted bucket name, superseded on 2026-10-31; a different failure shape from the record below
 - [`ISSUE-04-foursquare.md`](ISSUE-04-foursquare.md) — fails at every query including the plain verification SELECT, unlike this source
 - `../../parquet-csv-data-sources.md` — source catalog entry updated to reflect this status

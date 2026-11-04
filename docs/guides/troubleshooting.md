@@ -20,7 +20,6 @@ Find your error below. For SQL limitations, see the [SQL companion](zetaris-ligh
 | Table created but no rows returned | Check the source path, response, schema and Zetaris access. Start with a small `SELECT`. |
 | HTTP 429 | Wait as the source instructs. For `company_dns`, first check you sent a User-Agent of the form `app_name user@domain.tld`: without it the limit is very strict. Cache the raw table, wait 60 seconds and retry that one statement; without an identifying User-Agent also space endpoint calls by at least 15 seconds. Avoid retry loops; one statement can trigger several requests. |
 | HTTP 502 | Check the source error and retry once if appropriate. `company_dns` has moved hosts and no longer uses the removed warm-up helper. On rate-limited sources, wait before another attempt. Report repeated failures. |
-| PUDL registration fails | PUDL has a [known issue](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md). Use the PokéAPI starter. |
 | A downloaded file won't query | Put it in storage Zetaris can reach. A file on your laptop may be out of reach. |
 | Uploaded PDF shows bytes or only part of its text | Follow [Upload a PDF and read its text](upload-pdf.md) for File Store registration, `preview_len` and `pdfToText(bincontent)`. |
 | Chart won't read the result | Check the query response shape and look for an error before comparing it with the example. |

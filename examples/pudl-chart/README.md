@@ -1,6 +1,6 @@
 # A query-to-chart example
 
-**Current prerequisite warning:** PUDL registration is now [known to fail](../../open_data/parquet_csv/sql/known_to_fail/ISSUE-03-pudl.md). The earlier successful run is retained as historical evidence and has not been reconciled with the current failure. Do not use this example as default onboarding; first obtain a working registration verified on your target instance.
+**Prerequisite:** PUDL registration was re-tested on 2026-10-31 and succeeded. See [`03_pudl_create.sql`](../../open_data/parquet_csv/sql/03_pudl_create.sql). Point the copied query at the database you actually registered.
 
 
 Use this after [the first-dataset guide](../../docs/guides/first-dataset.md) returns real rows. It uses the existing query helper, then renders its saved JSON as a local HTML chart. No new runtime dependencies or hosting account are required.

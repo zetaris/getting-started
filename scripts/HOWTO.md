@@ -214,7 +214,8 @@ python3 scripts/fetch_openfoodfacts.py --sample-rows 5000
 
 ## Render a saved result
 
-The PUDL chart example is conditional on an already verified PUDL table.
-PUDL registration is currently known to fail; start with another source. See
+The PUDL chart example needs the verified PUDL table from
+[`03_pudl_create.sql`](../open_data/parquet_csv/sql/03_pudl_create.sql),
+re-tested 2026-10-31. See
 [troubleshooting](../docs/guides/troubleshooting.md) for connection and
 partial-setup recovery.

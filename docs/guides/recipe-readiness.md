@@ -27,7 +27,6 @@ Using scripts? See [client scripts](../../scripts/HOWTO.md) for recipe IDs, depe
 
 | Recipe | Current limit |
 |---|---|
-| PUDL, Foursquare, Overture, Ookla and GBIF | Known registration or query failures. See the file catalog's issue links. |
 | NASA DONKI | Connector and response format still need checking |
 | Singapore housing and Open Food Facts bulk downloads | Fetchers only. Put the files where Zetaris can reach them; bulk delimiter support still needs checking. |
 | Large tables and full-dataset scans | Check size and permissions first |

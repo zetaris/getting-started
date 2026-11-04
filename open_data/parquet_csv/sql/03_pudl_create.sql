@@ -15,6 +15,12 @@
 -- The paths below use the `stable` alias. Use the listing commands above to
 -- inspect the current data files, or pin a release version for reproducibility.
 --
+-- Confirmed live 2026-10-31 with path-style access on the dotted bucket.
+-- stable/core_eia__codes_energy_sources.parquet was 12326 bytes (42 rows)
+-- and stable/out_eia__yearly_generators.parquet was 10643130 bytes
+-- (666788 rows); both were last modified 2026-10-14. COUNT(*) matched
+-- those Parquet footers.
+--
 -- PREREQUISITE: PUDL_S3 must be registered as a logical database before the
 -- table below can reference it in FROM -- see HOWTO.md sec 1.
 CREATE LIGHTNING DATABASE PUDL_S3 DESCRIBE BY "Catalyst Cooperative PUDL S3 filestore source";

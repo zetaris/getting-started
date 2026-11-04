@@ -137,40 +137,40 @@
     {
       "id": "pudl",
       "kind": "filestore",
-      "script": "open_data/parquet_csv/sql/known_to_fail/03_pudl_create.sql",
-      "status": "known_to_fail",
+      "script": "open_data/parquet_csv/sql/03_pudl_create.sql",
+      "status": "verified",
       "requires": [],
       "summary": "Catalyst Cooperative PUDL energy data"
     },
     {
       "id": "foursquare_places",
       "kind": "filestore",
-      "script": "open_data/parquet_csv/sql/known_to_fail/04_foursquare_places_create.sql",
-      "status": "known_to_fail",
+      "script": "open_data/parquet_csv/sql/04_foursquare_places_create.sql",
+      "status": "verified",
       "requires": [],
       "summary": "Foursquare Open Source Places"
     },
     {
       "id": "overture_maps",
       "kind": "filestore",
-      "script": "open_data/parquet_csv/sql/known_to_fail/05_overture_maps_create.sql",
-      "status": "known_to_fail",
+      "script": "open_data/parquet_csv/sql/05_overture_maps_create.sql",
+      "status": "verified",
       "requires": [],
       "summary": "Overture Maps GeoParquet"
     },
     {
       "id": "ookla_speedtest",
       "kind": "filestore",
-      "script": "open_data/parquet_csv/sql/known_to_fail/07_ookla_speedtest_create.sql",
-      "status": "known_to_fail",
+      "script": "open_data/parquet_csv/sql/07_ookla_speedtest_create.sql",
+      "status": "verified",
       "requires": [],
       "summary": "Ookla Speedtest performance Parquet"
     },
     {
       "id": "gbif",
       "kind": "filestore",
-      "script": "open_data/parquet_csv/sql/known_to_fail/08_gbif_create.sql",
-      "status": "known_to_fail",
+      "script": "open_data/parquet_csv/sql/08_gbif_create.sql",
+      "status": "verified",
       "requires": [],
       "summary": "GBIF species occurrences"
     },
