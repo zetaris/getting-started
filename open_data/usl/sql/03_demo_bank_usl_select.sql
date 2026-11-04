@@ -1,0 +1,69 @@
+-- =============================================================================
+-- 03 Demo Bank USL - SELECT
+-- =============================================================================
+-- Run after 03_demo_bank_usl_create.sql. Commented out so a bulk run fires no
+-- reads: uncomment and run one at a time. RUN DQ: expect valid_records = total_records.
+-- =============================================================================
+
+-- B5. Data quality: run the FK-generated rules. These are cross-platform
+--     referential-integrity checks (e.g. every DBX_RISK card points at a
+--     real SF_BANK account). Expect valid_records = total_records.
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.customer;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.account;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.bank_transaction;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.card;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.card_auth;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.fraud_alert;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.loan;
+-- RUN DQ TABLE lightning.metastore.bank_demo.demo_bank_usl.credit_score;
+
+-- Demo tip: to show DQ catching a cross-system break, insert an orphan card in
+-- Databricks, re-run RUN DQ on card, and show valid_records drop by one:
+--   INSERT INTO demo_bank_risk.cards VALUES ('CRD9999999','CUST999999','ACC9999999',
+--       'DEBIT','VISA','0000',current_date(),add_months(current_date(),48),'ACTIVE',NULL,true);
+
+-- B6. Query the semantic layer - business names, no platform details
+-- Row counts
+-- SELECT 'customer' AS usl_table, count(*) AS row_count FROM lightning.metastore.bank_demo.demo_bank_usl.customer
+-- UNION ALL SELECT 'account',          count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.account
+-- UNION ALL SELECT 'bank_transaction', count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.bank_transaction
+-- UNION ALL SELECT 'card',             count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.card
+-- UNION ALL SELECT 'card_auth',        count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.card_auth
+-- UNION ALL SELECT 'fraud_alert',      count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.fraud_alert
+-- UNION ALL SELECT 'loan',             count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.loan
+-- UNION ALL SELECT 'credit_score',     count(*) FROM lightning.metastore.bank_demo.demo_bank_usl.credit_score;
+
+-- Confirmed fraud exposure by customer segment and product
+-- SELECT cu.segment, p.product_name,
+--        count(DISTINCT fa.alert_id) AS confirmed_frauds,
+--        sum(ca.amount)              AS fraud_amount
+-- FROM lightning.metastore.bank_demo.demo_bank_usl.fraud_alert fa
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.card_auth   ca ON ca.auth_id      = fa.auth_id
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.card        cd ON cd.card_id      = ca.card_id
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.account     ac ON ac.account_id   = cd.account_id
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.product     p  ON p.product_code  = ac.product_code
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.customer    cu ON cu.customer_id  = fa.customer_id
+-- WHERE fa.alert_status = 'CONFIRMED_FRAUD'
+-- GROUP BY cu.segment, p.product_name
+-- ORDER BY fraud_amount DESC;
+
+-- Ledger spend (Snowflake) by merchant risk tier (Databricks) via the USL
+-- SELECT m.risk_tier, m.category, sum(t.amount) AS spend
+-- FROM lightning.metastore.bank_demo.demo_bank_usl.bank_transaction t
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.merchant         m ON m.merchant_id = t.merchant_id
+-- WHERE t.txn_type = 'CARD_PURCHASE'
+-- GROUP BY m.risk_tier, m.category
+-- ORDER BY spend DESC;
+
+-- Customers with a falling credit score AND a delinquent loan
+-- SELECT cu.customer_id, concat(cu.first_name, ' ', cu.last_name) AS customer_name,
+--        l.loan_type, l.days_past_due,
+--        max(CASE WHEN cs.score_month = add_months(trunc(current_date(), 'MM'), -5) THEN cs.credit_score END) AS score_6m_ago,
+--        max(CASE WHEN cs.score_month = trunc(current_date(), 'MM')                 THEN cs.credit_score END) AS score_now
+-- FROM lightning.metastore.bank_demo.demo_bank_usl.customer     cu
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.loan         l  ON l.customer_id  = cu.customer_id
+-- JOIN lightning.metastore.bank_demo.demo_bank_usl.credit_score cs ON cs.customer_id = cu.customer_id
+-- WHERE l.days_past_due >= 30
+-- GROUP BY cu.customer_id, cu.first_name, cu.last_name, l.loan_type, l.days_past_due
+-- HAVING score_now < score_6m_ago
+-- ORDER BY l.days_past_due DESC;
