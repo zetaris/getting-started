@@ -146,9 +146,9 @@ Live-check scope on 12 October 2026, Zetaris 2.4.3.1: 96 of 144 SQL command entr
 - **JSON request bodies:** Repo scripts use an empty body with `http_encoding "URLENCODED"`. StatCan's JSON endpoint returned 415 with that form. A working JSON-body form has not been confirmed.
 - **Row counts:** Earlier repo runs recorded grid/footer count differences. Compare query results with the source before assuming Zetaris lost rows. Joins can also exclude records: the SIC/EDGAR inner join omitted IBM because its SIC code `3570` was missing from the reference. This is separate from the UI-count observation; see the [USL model checks](../../open_data/usl/usl-sources.md).
 - **Writing through a JDBC datasource (pilot pattern, not run here):** in the pilot (2026-11-05, Zetaris 2.4.3.1, local Docker), `INSERT INTO <datasource>.<table> SELECT ...` through Zetaris SQL appended to a registered Postgres datasource. Base64-decode text values (`decode(unbase64('...'),'UTF-8')`) so quotes and newlines cannot break the statement. [C]
-- **Omitted columns and `GENERATED` columns (pilot):** columns left out of such an `INSERT` arrive as NULL, not the database default, so write timestamps explicitly. A Postgres `GENERATED` column breaks the insert because Spark writes every column. [C]
-- **Postgres arrays (pilot, not re-checked):** Zetaris read a Postgres `float8[]` column as a string like `{0.1,0.2}`. The check used a Postgres host that was unreachable when this draft was written. [S, D]
-- **Pipeline JDBC sink (pilot, not re-checked):** the sink takes `url`, `driver`, `username`, `password`, `dbtable` and `overwrite`, and appends. It ran at about 4 rows a second for embedded chunks, on hosts unreachable when this draft was written. [S, D]
+- **Omitted columns and `GENERATED` columns (pilot):** columns left out of such an `INSERT` arrive as NULL, not the database default, so write timestamps explicitly. A Postgres `GENERATED` column breaks the insert because Spark writes every column. [C] **Re-run 2026-11-09 (local Postgres):** a base64-decoded value containing quotes, a semicolon and a newline read back identical; a column-list `INSERT` worked; an omitted column with a default arrived as NULL; and an insert into a table with a `GENERATED` column failed both without the column (arity mismatch) and with a value for it (Postgres rejected the batch).
+- **Postgres arrays (pilot, not re-checked):** Zetaris read a Postgres `float8[]` column as a string like `{0.1,0.2}`. **Re-run 2026-11-09** on the real vector table (27,514 rows): the `float8[]` column came back with Zetaris type `string`. [S]
+- **Pipeline JDBC sink (pilot, not re-checked):** the sink takes `url`, `driver`, `username`, `password`, `dbtable` and `overwrite`, and appends. It ran at about 4 rows a second for embedded chunks, not re-run. [S, D]
 
 ---
 
@@ -178,7 +178,7 @@ SELECT * FROM companies_mart.all_companies_profile_table;   -- correct
 -- NOT companies_mart.edgar.all_companies_profile_table
 ```
 
-A table can also be added to a mart from a saved pipeline relation or from a USL table. In the RAG pilot (2026-11-05, Zetaris 2.4.3.1), `ADD DATAMART TABLE ... FROM <container>.<relation>` and `... FROM <usl table>` both worked, and the mart description accepted only letters, digits, `_`, `.`, `-` and `,`. See [section 9.9](#99-rag-in-the-semantic-layer-usl-and-vdm). [C]
+A table can also be added to a mart from a saved pipeline relation or from a USL table. In the RAG pilot (2026-11-05, Zetaris 2.4.3.1), `ADD DATAMART TABLE ... FROM <container>.<relation>` and `... FROM <usl table>` both worked (re-run 2026-11-09, with a `VSCHEMA` clause listing every column), and the mart description accepted only letters, digits, `_`, `.`, `-` and `,`. See [section 9.9](#99-rag-in-the-semantic-layer-usl-and-vdm). [C]
 
 The [USL](#8-the-unified-semantic-layer-usl-a-scriptable-alternativesuccessor-to-vdm) also defines tables and relationships in SQL. The supplied guide describes additional schema, data-quality and materialization features; see sections 8.3–8.6 for what this repo did and did not confirm.
 
@@ -254,7 +254,7 @@ Some items below come from the supplied guide; others were checked live on 12 Oc
 
 - **Model replacement clears activation.** `UPDATE USL ... AS <JSON>` accepted a model containing `activateQuery`, but its next `SELECT` failed with `table(...) is not activated`. Running `ACTIVATE USL TABLE` restored access. The update result alone does not confirm the table remains queryable. See [UPDATE USL](zetaris-lightning-sql-commands.md).
 - **Namespace and compile:** `lightning.metastore` must exist before `CREATE NAMESPACE IF NOT EXISTS lightning.metastore.<name>`. The `open_data/usl` create scripts create the parent first (`CREATE NAMESPACE IF NOT EXISTS lightning.metastore;`), then the package namespace. A multi-table `COMPILE USL` worked when sent as one statement over JDBC. These checks were confirmed on 1 October 2026; the SQL Workspace editor and a semicolon-splitting runner did not handle that multi-table form.
-- **`IF NOT EXISTS` idempotency:** the supplied guide shows this option for `CREATE NAMESPACE` and `COMPILE USL`. The 2.4.3.1 check did not confirm repeat-run behaviour.
+- **`IF NOT EXISTS` idempotency:** the supplied guide shows this option for `CREATE NAMESPACE` and `COMPILE USL`. On 2026-11-09 (Zetaris 2.4.3.1), running `COMPILE USL IF NOT EXISTS <name> DEPLOY` again on an existing USL with different DDL did not skip: it replaced the model (only the new table remained) and activating the earlier table then failed with "Catn't find tables for files". One run; do not use it to add a table. [S]
 - **Canvas edits:** the supplied guide says card positions and FK edits made on the ERD canvas are session-only; define persistent relationships in DDL.
 - **Valid-record materialization:** the guide says `Valid Records Only` requires a DQ rule. The repo has not confirmed that option live.
 - **USL removal:** `REMOVE USL` removed the deployed test model on 2.4.3.1; `DROP NAMESPACE` then removed its empty namespace. Non-empty namespace removal and `DROP NAMESPACE ... CASCADE` were not tested.
@@ -262,15 +262,15 @@ Some items below come from the supplied guide; others were checked live on 12 Oc
 - **Reserved word `source`:** a column named `source` broke the USL DDL ("Invalid DDL statement"); use another name such as `origin`. [C]
 - **Nullability on activation:** a nullable source column under a `NOT NULL` USL column failed with "Schema mismatch ... nullable -> NOT NULL". Wrapping the column in `coalesce` fixed it. [C]
 - **USL tables are read-only:** `INSERT` ("does not support append in batch mode"), `UPDATE` and `DELETE` all failed. Change the source table instead. [C]
-- **No add-table command:** to add a table, `REMOVE USL` and compile again with every table, then re-activate each. [C]
+- **No add-table command:** to add a table, `REMOVE USL` and compile again with every table, then re-activate each. [C] **Re-run 2026-11-09:** the scalar types, the reserved word, the nullability error (with `coalesce` activating cleanly), read-only behaviour and the add-table limit were all re-run in this repo.
 
 ### 8.5 Known open items in this repo's USL package specifically
 
 The [archived USL build record](../plans/archive/usl-build-plan.md) tracks the full checklist. Remaining limits include:
 
 - Cross-USL foreign keys have not been tested.
-- **Foreign keys inside one USL work and generate a Foreign Key data-quality rule (RAG pilot, 2026-11-09, Zetaris 2.4.3.1).** Declare them as `col type FOREIGN KEY REFERENCES t(col)`, with the referenced table first in the DDL. On real data the generated rule reported 8 of 8 valid. With one orphan row inserted, it reported 9 records, 8 valid, 1 invalid. [C] The exact `RUN DQ` statement used was not recorded, so no command is given here as tested; see the [SQL command reference](zetaris-lightning-sql-commands.md) for the form and test it before relying on it. [U]
-- One attempt of `SHOW DQ INVALID RECORD` with a USL table name failed to resolve in the pilot; the working syntax was not found. [U]
+- **Foreign keys inside one USL work and generate a Foreign Key data-quality rule (RAG pilot, 2026-11-09, Zetaris 2.4.3.1).** Declare them as `col type FOREIGN KEY REFERENCES t(col)`, with the referenced table first in the DDL. On real data the generated rule reported 8 of 8 valid. With one orphan row inserted, it reported 9 records, 8 valid, 1 invalid. [C] **Re-run 2026-11-09:** on a two-table USL (`search.file` referencing `files.file`, with one source file deliberately left out of `files`), `RUN DQ file TABLE <namespace>.<usl>.search` returned `file, search, Foreign Key Constraint, 100, 77, 23` (total, valid, invalid). `LIST DQ USL <namespace>.<usl>` named the rules after their columns, `SHOW DQ ALL INVALID TABLE` returned the 23 invalid rows, and `SHOW DQ INVALID RECORD file TABLE …` and `SHOW DQ VALID RECORD file TABLE …` returned 23 and 77 rows. The form is `RUN DQ <rule> TABLE <namespace>.<usl>.<table>` as in the [command reference](zetaris-lightning-sql-commands.md#146-run-dq).
+- The pilot's one failed attempt at `SHOW DQ INVALID RECORD` used a table name without a rule name; with the rule name it worked (above).
 - The SQL form of `MATERIALIZE USL TABLE` has not been confirmed to support `Records: Valid Records Only`.
 - The current USL model avoids the numeric-versus-string `cik` join rather than resolving it.
 - Whether materialization changes cache behaviour and whether preview counts share the SQL Workspace row-display issue remain open.
@@ -292,11 +292,11 @@ These findings come from the live-tested [`open_data/usl/`](../../open_data/usl/
 
 > **Draft: written from a pilot on Zetaris Lightning 2.4.3.1; items not marked confirmed have not been re-run in this repository.**
 
-**Scope.** Every finding in this section comes from a single-machine local Docker deployment of Zetaris Lightning 2.4.3.1 (Spark 3.5.3), measured on 2026-11-04 to 2026-11-09, mostly one run each. Other builds, topologies (AWS, clusters) and other Milvus or Ollama versions may differ; none was tested. Answer-model quality and timings came from hosts that were unreachable when this draft was written, so no timing for them is given.
+**Scope.** Findings come from a single-machine local Docker deployment of Zetaris Lightning 2.4.3.1 (Spark 3.5.3), first measured in a pilot on 2026-11-04 to 2026-11-09, mostly one run each. Items marked **Re-run 2026-11-09** were run again in this repo against the same kind of deployment (Milvus v3.0.5, Ollama running locally, this repo's own `docs/` as the corpus), one run each. Other builds, topologies (AWS, clusters) and other Milvus or Ollama versions may differ; none was tested. Answer-model quality and timings came from hosts that were unreachable when this draft was written, so no timing for them is given.
 
-**Evidence tags.** None of these has been re-run in this repo. **[C]** repeated in the pilot. **[S]** one run or a small sample. **[M]** mixed, or did not reproduce. **[U]** untested. **[D]** not re-checked: it needed hosts that were unreachable when this draft was written.
+**Evidence tags.** Without a "Re-run" note, an item has not been re-run in this repo. **[C]** repeated in the pilot. **[S]** one run or a small sample. **[M]** mixed, or did not reproduce. **[U]** untested. **[D]** not re-checked: it needed hosts that were unreachable when this draft was written.
 
-**SQL in this section is "pilot pattern, not run here".** It was adapted from the pilot's scripts with placeholders and has not been executed as written in this repo.
+**SQL in this section** is "pilot pattern" unless stated: it was adapted from the pilot's scripts with placeholders. Statements that a "Re-run" note covers were run in this repo in the form shown, apart from placeholders.
 
 ### 9.1 The chain and what you need first
 
@@ -305,8 +305,9 @@ For an end-to-end example, see `examples/help-app` (planned, not yet in this rep
 - The RAG pipeline is two chains. Ingest is `SQLTable → Chunking → Embedding → VectorStoreSink`. Answering is `VectorStoreSearch → LLM`. [C]
 - Build and run them as `SPEC` JSON, with `RUN PIPELINE ON '<node>' LIMIT n SPEC {…}` for one-off runs and `REGISTER PIPELINE RELATION CONTAINER <c> SPEC {…}` to save. Syntax is in [section 16 of the command reference](zetaris-lightning-sql-commands.md#16-data-pipelines); that section has no node reference. [C]
 - Create the Milvus collection first; the sink does not create it (see 9.5). Embeddings come from an in-engine `Local` model or an Ollama server. Answers need an Ollama server reachable from the driver and API containers, using `host.docker.internal` for the local machine, not `localhost`. [C]
-- Node settings use the nested form: `strategy` or `provider` plus a `config` object. Flat fields are dropped when the spec is stored. [C]
-- One run of 5 repositories (2,221 chunks, MiniLM, machine not specified) took about 78 s, with the Zetaris driver at 2.2 GiB and Milvus at 320 MiB afterwards. Treat it as indicative only. [S]
+- Node settings use the nested form: `strategy` or `provider` plus a `config` object. Flat fields are not stored. **Re-run 2026-11-09:** registering a Chunking node with `maxSegmentSizeInChars` at the node level and no `config` object failed with "No usable value for config". [C]
+- **Re-run 2026-11-09:** `VERIFY PIPELINE SPEC` accepted the ingest spec, and the Milvus sink reached Milvus at `http://host.docker.internal:19530` from the Zetaris containers.
+- One run of 5 repositories (2,221 chunks, MiniLM, machine not specified) took about 78 s, with the Zetaris driver at 2.2 GiB and Milvus at 320 MiB afterwards. Treat it as indicative only. [S] **Re-run 2026-11-09:** this repo's 49 Markdown files (about 556,000 characters, 641 parts) ingested with MiniLM in about 29 s of wall time on a local Docker setup, one run.
 
 ```sql
 -- Pilot pattern, not run here. Check a spec, then run the chain up to the sink.
@@ -322,16 +323,16 @@ RUN PIPELINE ON 'sink' LIMIT 100000 SPEC {…}   -- see 9.5 for why the LIMIT ma
 - `recursiveFileLookup "true"` makes a directory path recursive; a plain directory path reads the top level only. Set `preview_len` large, or the text is cut. [C]
 - Hidden files and folders starting with `.` or `_` are not read. In one run, 538 files were copied and 510 distinct files were in the source. [C]
 - A SQLTable node accepts `explode()` in its select list but not `LATERAL VIEW` over a subquery. A SQLTable or Aggregation node placed after Embedding failed to resolve. [S]
-- A file path is the path as the Zetaris containers see it (a mounted folder), not the host path. [C]
+- A file path is the path as the Zetaris containers see it (a mounted folder), not the host path. [C] **Re-run 2026-11-09:** a `FORMAT MARKDOWN` table with `recursiveFileLookup "true"` and `preview_len "100000"` over a read-only mounted copy of `docs/` returned 49 files. Hidden-file handling was not re-run.
 
 *Worked example: `core/corpus` in `examples/help-app` (planned).*
 
 ### 9.3 Chunking
 
 - The designer offers GenericText, MarkdownText, HtmlText, TokenBasedChunking, SemanticChunking and AgentChunking. The character strategies take `maxSegmentSizeInChars` and `maxOverlapSizeInChars`. [C]
-- **The Chunking node adds its `REPO/FILE/…` header only to a document's first chunk.** In one run, 264 of 2,861 chunks (9%) carried it, so about 91% lost provenance. [C]
-- **The Milvus sink uses the chunk text as its primary key**, so a batch containing identical chunks fails ("duplicate primary keys"). Repeated boilerplate gave 49 duplicates with GenericText and 43 with MarkdownText; TokenBased gave none. [C]
-- Pattern used in the pilot: cut the text in SQL into 1,000-character parts every 900 characters, carry `REPO`, `FILE` and `PART` as columns, and set the Chunking node to a 1,500-character guard so nothing is re-split. It gave the same 2,221 chunks as the unguarded run. [C]
+- **The Chunking node adds its `REPO/FILE/…` header only to a document's first chunk.** In one run, 264 of 2,861 chunks (9%) carried it, so about 91% lost provenance. [C] **Re-run 2026-11-09:** on this repo's `docs/` (49 files, GenericText 1,000/100) the node alone produced 819 chunks and exactly 49 carried the header, one per file.
+- **The Milvus sink uses the chunk text as its primary key**, so a batch containing identical chunks fails ("duplicate primary keys"). Repeated boilerplate gave 49 duplicates with GenericText and 43 with MarkdownText; TokenBased gave none. [C] **Re-run 2026-11-09:** the same GenericText run into the sink failed with "duplicate primary keys are not allowed in the same batch" after 722 rows were already written, so a failed batch leaves a partial index. The 819 chunks held one extra exact duplicate.
+- Pattern used in the pilot: cut the text in SQL into 1,000-character parts every 900 characters, carry `REPO`, `FILE` and `PART` as columns, and set the Chunking node to a 1,500-character guard so nothing is re-split. It gave the same 2,221 chunks as the unguarded run. [C] **Re-run 2026-11-09:** the pre-split gave 641 parts, the guarded chain wrote 641 rows to Milvus, and no duplicate failure occurred.
 - Dedupe in SQL if a batch is rejected for duplicates (the pilot's header made each part unique). [S]
 - On one document, a heading-aware SQL split gave no retrieval gain and 24% more chunks. SemanticChunking produced chunks up to 15,406 characters, too long for MiniLM's reading window of roughly 1,000 characters (a model property, not measured here). AgentChunking called `http://localhost:11434` from inside the container and failed. [S]
 - Chunk hygiene on 20,782 parts: 1.7% were under 100 characters and 3.8% were mostly symbols. Whether dropping them helps retrieval was not tested. [U]
@@ -354,8 +355,8 @@ select repo, file, cast(i as string) as part, substring(text, i*900+1, 1000) as 
 
 ### 9.4 Embedding
 
-- Local models `all-minilm-l6-v2`, `bge-small-en-v1.5` and `e5-small-v2` are all 384 dimensions. `nomic-embed-text` through the Ollama provider is 768 dimensions and needs a 768-dimension collection. [C]
-- The node outputs `llm_chunk` and `llm_embedding` (a string of floats, not an array). It needs the Chunking node in front, because it reads `llm_chunk`. [C]
+- Local models `all-minilm-l6-v2`, `bge-small-en-v1.5` and `e5-small-v2` are all 384 dimensions. `nomic-embed-text` through the Ollama provider is 768 dimensions and needs a 768-dimension collection. [C] **Re-run 2026-11-09:** a one-off Embedding node returned 384 values for each local model and 768 for `nomic-embed-text` through a local Ollama server.
+- The node outputs `llm_chunk` and `llm_embedding` (a string of floats, not an array). It needs the Chunking node in front, because it reads `llm_chunk`. [C] **Re-run 2026-11-09:** an Embedding node fed directly from a SQLTable failed with an unresolved-column error.
 - The node adds no `query:`/`passage:` (E5) or `search_*` (nomic) prefixes. Whether they help or hurt is open. [C]
 - On one set of 14 questions with 5 repositories indexed, repository hit@5 was 12/14 for MiniLM, 13/14 for BGE and 14/14 for E5. At 30 repositories MiniLM and E5 tied at 9/14, and E5's ingest took about 4.5 times as long. With n = 14, one question is 7 points. This is not a basis for recommending a model. [S]
 
@@ -363,10 +364,11 @@ select repo, file, cast(i as string) as part, substring(text, i*900+1, 1000) as 
 
 - Create the Milvus collection beforehand through the Milvus REST API: a `VarChar` primary key `id` (max length 65,535, it receives the chunk text) and a `FloatVector` `vector` whose dimension matches the model, with COSINE. [C]
 - The sink needs `uri`, `token`, `collectionName`, and `milvusBatchSize` (100) for the designer's validation to pass. The token is stored encrypted and read back as ciphertext. Use the local default token only in examples; never commit a real one. [C]
-- **`RUN PIPELINE ON 'sink'` needs a large `LIMIT` (100000).** `LIMIT 1` silently wrote 4,792 of 20,782 rows. [C]
-- **VectorStoreSearch returns at most 100 rows**, whatever the `LIMIT`; the `LIMIT` is the hit count (3, 20 and 100 returned 3, 20 and 100; 500 and 3,000 returned 100). Search took about 0.1 to 0.6 s. [C]
-- The question is the node's own `prompt`, embedded with the node's model, which must match the ingest model. A table in `sources` is accepted but ignored, an empty `prompt` fails ("text cannot be null or blank"), and `${…}`, `{{…}}` and `@…` placeholders are embedded literally. A different question therefore needs a new `SPEC` per call. [C]
-- `minScore` must match the model's similarity scale. With MiniLM, 0.6 and 0.9 returned zero contexts. [C]
+- **`RUN PIPELINE ON 'sink'` needs a large `LIMIT` (100000).** `LIMIT 1` silently wrote 4,792 of 20,782 rows. [C] **Re-run 2026-11-09:** `LIMIT 1` wrote 100 of 641 rows (one batch of 100) and `LIMIT 100000` wrote all 641.
+- **VectorStoreSearch returns at most 100 rows**, whatever the `LIMIT`; the `LIMIT` is the hit count (3, 20 and 100 returned 3, 20 and 100; 500 and 3,000 returned 100). Search took about 0.1 to 0.6 s. [C] **Re-run 2026-11-09:** `LIMIT` 3, 20, 100, 500 and 3,000 returned 3, 20, 100, 100 and 100 rows.
+- The question is the node's own `prompt`, embedded with the node's model, which must match the ingest model. A table in `sources` is accepted but ignored, an empty `prompt` fails ("text cannot be null or blank"), and `${…}`, `{{…}}` and `@…` placeholders are embedded literally. A different question therefore needs a new `SPEC` per call. [C] **Re-run 2026-11-09:** with a source row of "billing invoice payment" and the node's own prompt "weather api terms", the scores matched the prompt-only search exactly, and an empty prompt failed with "text cannot be null or blank". A `${prompt}` placeholder was accepted without error; whether it was embedded literally was not checked.
+- **A question containing a USL or DQ command phrase fails to parse.** **Re-run 2026-11-09:** `RUN PIPELINE` failed with "no viable alternative at input 'RUN PIPELINE'" when the spec text contained `compile usl`, `activate usl`, `run dq`, `show dq` or `register dq` (any case, any spacing, and also in the `description` field), but not `compile the usl`, `registerdq`, `register pipeline` or `create pipeline relation`. Rewording avoids it. Writing one letter as a JSON escape (`\u0063ompile usl`) passed parsing in one test; the engine's scoring of that decoded question was not compared. This matters for questions about this guide's own commands. [S]
+- `minScore` must match the model's similarity scale. With MiniLM, 0.6 and 0.9 returned zero contexts. [C] **Re-run 2026-11-09:** `minScore` 0.9 returned an empty `contexts` and the model replied that it needed the contexts.
 
 ```sh
 # Pilot pattern, not run here. Local default token only.
@@ -383,9 +385,9 @@ curl -s -X POST "$MILVUS/v2/vectordb/collections/create" \
 
 ### 9.6 The LLM node
 
-- The node outputs `prompt`, `answer` and `contexts`. `contexts` is not always valid JSON (unescaped quotes), so read the `REPO:` headers with a regular expression instead of a JSON parser. [C]
+- The node outputs three columns, `prompt`, `answer` and `contexts` (**re-run 2026-11-09** against a local Ollama model). `contexts` is not always valid JSON (unescaped quotes), so read the `REPO:` headers with a regular expression instead of a JSON parser. [C]
 - Check `contexts` before trusting an answer. With no contexts the model still replied fluently, asking for the contexts. [C]
-- The node accepts **any** table with columns `prompt`, `content` and `similarity` as its source, so you can re-rank passages yourself and pass the best N. Pass text base64-decoded in SQL so quotes cannot break the statement. [C]
+- The node accepts **any** table with columns `prompt`, `content` and `similarity` as its source, so you can re-rank passages yourself and pass the best N. Pass text base64-decoded in SQL so quotes cannot break the statement. [C] **Re-run 2026-11-09:** a one-row SQLTable source with quotes and apostrophes in `content` fed the LLM node and the local model's answer named the right file.
 - Ollama models load cold, and the pilot retried and pre-warmed them. Answer-model timings and the models used were on hosts that were unreachable when this draft was written. [D]
 - In the pilot's tests, wrong answers came from retrieval, not from the answer model. One question each, so this is an indication only. [S]
 
@@ -402,7 +404,7 @@ curl -s -X POST "$MILVUS/v2/vectordb/collections/create" \
 - A relation registered with SQL alone has no layout or connections, and the designer drew no links. Post the layout and connections separately (`targetType` 0, except 1 for JDBC and file sinks). [C]
 - In this build's designer, stored RAG node settings opened blank and Save failed with a mapping error, because the designer reads flat fields while the server stores the nested form. The pilot saw it in two browsers. Treat it as a probable defect to report upstream. Without a fix, do not press Save on a loaded relation; recreate it from SQL. [C]
 - **`SELECT * FROM <container>.<relation>` runs the pipeline again.** A search-only relation took about 2 s and returned 100 rows. A relation with an LLM node took 23 to 45 s and gave a different answer each time. Never `SELECT` from an ingest relation: it runs the ingest. [C]
-- `DROP PIPELINE RELATION` runs immediately with no confirmation. [C]
+- `DROP PIPELINE RELATION` runs immediately with no confirmation. [C] **Re-run 2026-11-09** for both this and the `SELECT` behaviour above: a `SELECT` on a search-only relation took about 2.5 s and returned 100 rows.
 - A Chunking guard of 2,000 characters on 1,000-character parts did nothing; set the guard above the part size plus its header (1,500 here). [C]
 
 ```sql
@@ -415,15 +417,24 @@ REGISTER PIPELINE RELATION CONTAINER help_app SPEC {…}
 
 ### 9.9 RAG in the semantic layer (USL and VDM)
 
-- A saved search relation backed a USL table (`ACTIVATE USL TABLE … AS SELECT … FROM <container>.<relation>`). So did a relation with an LLM node, but each query took 25 to 45 s and returned a new answer, and joining a search-only table to an LLM table re-ran the LLM. [C]
+- A saved search relation backed a USL table (`ACTIVATE USL TABLE … AS SELECT … FROM <container>.<relation>`). So did a relation with an LLM node, but each query took 25 to 45 s and returned a new answer, and joining a search-only table to an LLM table re-ran the LLM. [C] **Re-run 2026-11-09** for the search-only case: a USL table activated over a saved search relation returned the same ranked hits as the relation.
 - Parse the `REPO/FILE/PART/TEXT` header with `regexp_extract`. In Zetaris SQL strings write `[0-9]`, not `\d`. [C]
-- `ADD DATAMART TABLE … FROM <container>.<relation>` worked, and so did adding a USL table. See [section 7](#7-virtual-data-marts-vdm--the-sql-free-consumption-layer-and-where-usl-changes-this). [C]
+- `ADD DATAMART TABLE … FROM <container>.<relation>` worked, and so did adding a USL table. See [section 7](#7-virtual-data-marts-vdm--the-sql-free-consumption-layer-and-where-usl-changes-this). [C] **Re-run 2026-11-09:** both worked only with a `VSCHEMA (...)` clause listing every source column. Omitting it was a parse error for the relation, and a partial list for the USL table gave "Data mart table schemas do not match source table's". The mart then returned 100 and 48 rows as `<mart>.<table>`.
 - **Milvus is not a data source** in this build; it appears only as a pipeline sink and a search node (PineCone is the other option in the designer, not tested here). [C]
 - Rows can be read through a `CREATE LIGHTNING REST TABLE` on `/v2/vectordb/entities/query`, but every `BODY` value is sent as a JSON string, so `limit` and `outputFields` fail. You get Milvus's default 100 rows and a fixed filter, and vector search through a REST table is not possible. [C]
 - A vector cannot live in a USL table, because USL columns must be scalar; see [section 8.4](#84-usl-quirks-worth-flagging-per-the-guide-not-yet-live-tested). [C]
 - Label each passage with its source corpus so results stay attributable; the pilot attributed reference docs, project documents and code separately. Indexing the Zetaris Kbase alongside repo docs was not tested. [U]
 
 *Worked example: `build_usl`, `help_usl` and `help_mart` in `examples/help-app` (planned).*
+
+### 9.10 Experimental: vector search as Spark SQL
+
+*Experimental; one setup, one question, re-check before relying on it.* In the pilot, the vectors of an index were copied into a Postgres on another machine on the LAN and searched with plain Spark SQL, as a way past the 100-row cap.
+
+- Spark 3.5.3 has no vector index, but a dot product over normalized vectors runs in plain SQL (`aggregate(zip_with(…))`). E5 vectors have norm 1, so the dot product is the cosine. The query vector comes from a one-off Embedding pipeline (Chunking, then Embedding). [S]
+- Zetaris read a Postgres `float8[]` column as a string like `{0.1,0.2}`, so the SQL parses it with `transform(split(regexp_replace(llm_embedding,'[{}]',''),','), x -> cast(x as double))`. **Re-run 2026-11-09.** [S]
+- **Re-run 2026-11-09 over 27,514 rows (E5, 384 dimensions) on that remote Postgres:** the top score was 0.875914 against 0.875904 from Milvus for the same question (the query vector was rounded to six places). The Spark statement took 9.5 to 10.4 s over three runs, against about 0.5 s for the Milvus search. The pilot measured 5.5 to 6.0 s on its own setup, so treat the timing as setup-specific. [S]
+- Not tested: concurrent queries, larger tables, Zetaris driver memory at scale, or pushing similarity down to Postgres (pgvector was not installed). Loading vectors through the pipeline JDBC sink ran at about 4 rows a second in the pilot and was not re-run. [S, D]
 
 ---
 
@@ -434,12 +445,14 @@ Use the [archived USL build record](../plans/archive/usl-build-plan.md) for the 
 RAG items from the pilot (section 9) still open:
 
 - Do the Join node and the SimpleDQ node return rows in any spec form, or is that a defect in this build? The Join node passed `VERIFY PIPELINE`, but both nodes returned no rows.
+- Why do `compile usl`, `activate usl`, `run dq`, `show dq` and `register dq` inside a `RUN PIPELINE` spec break parsing, and is there a supported way to quote them? (Section 9.5.)
 - Is there an AgentChunking URL setting? The node called `localhost:11434` from inside the container and failed.
 - Do E5 `query:`/`passage:` prefixes or nomic `search_*` prefixes change retrieval? The node adds none.
 - Is there a size cap for SemanticChunking? The pilot saw chunks up to 15,406 characters.
 - `MATERIALIZE USL TABLE` with real storage configured (it returned an error row with none).
 - Can Zetaris push a vector operator down to pgvector, and can a REST table page past 100 Milvus rows?
-- Spark SQL vector search over a Postgres copy of the vectors was tried on hosts that were unreachable when this draft was written. It is left out of this version until it can be re-run.
+- Spark SQL vector search (section 9.10) was re-run once on a Postgres on another LAN machine; concurrency and larger tables are open.
+- Stale catalog entries: after dropping a Postgres table, `SHOW TABLES IN <datasource>` still listed it, and no SQL form to unregister it was found (`DROP DATASOURCE TABLE` did not parse).
 - Concurrent users, other Zetaris builds, other Milvus or Ollama versions, and non-local topologies were not tested.
 
 ---
