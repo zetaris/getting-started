@@ -38,6 +38,7 @@ Run `python3 scripts/preflight.py` (add `--jdbc --jar <path>` for JDBC). It is r
 - Zetaris Lightning SQL only. Not Spark SQL or Hive SQL, and never start a local Spark session.
 - One statement per call, no trailing semicolon, qualified names (`<source>.<table>`). A `_create.sql` script holds many statements; `scripts/run_sql.py` splits and sends them for you.
 - **USL:** `lightning.metastore` must exist before `CREATE NAMESPACE IF NOT EXISTS lightning.metastore.<name>` works; check with `SHOW NAMESPACES OR TABLES IN lightning.metastore` (on an uninitialized instance the statement fails with "parent namespace : metastore is not existing"). A multi-table `COMPILE USL` must be sent as one whole statement, so do not split it on `;`. It works over JDBC and REST that way. Use `SHOW DQ ALL INVALID TABLE <namespace.usl.table>` (the `TABLE` clause is required).
+- **RAG pipelines** (pilot findings, not re-run here; see section 9 of the companion): `RUN PIPELINE ON '<sink>'` needs `LIMIT 100000`, because a small limit silently writes a fragment. A search node returns at most 100 passages, so do not promise more.
 - Read `docs/guides/zetaris-lightning-sql-commands.md` for syntax and `docs/guides/zetaris-lightning-sql-companion.md` for confirmed gotchas and platform limitations before writing new SQL.
 
 ## Running scripts
@@ -56,6 +57,8 @@ Use `scripts/onboard.py` to onboard sources and USL models with their dependenci
 
 - Start read-only (`SHOW`, `DESCRIBE`, `SELECT`). Ask before anything that creates, drops, grants or writes.
 - Keep passwords and keys out of prompts, logs, source files and commits.
+- Never `SELECT` from a pipeline relation without knowing what it does: `SELECT` runs the whole pipeline, so an ingest relation re-ingests and an LLM relation calls the model each time.
+- Keep tokens and the hostnames of your own Ollama, Milvus or Postgres servers out of examples and committed files; use placeholders.
 - Do not call port 8889 on a local instance.
 - Least privilege: an agent that only reads should run as a non-administrator user, with creating, updating and deleting left to administrators. If a statement is refused for lack of privilege, report it and ask for the right access; do not switch to an administrator login unless the user tells you to. See `docs/guides/permissions.md`.
 - Sources under `known_to_fail/` are documented failures, and `rate_limited/` sources should be run deliberately, not repeatedly.
