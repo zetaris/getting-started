@@ -38,7 +38,7 @@ Run `python3 scripts/preflight.py` (add `--jdbc --jar <path>` for JDBC). It is r
 - Zetaris Lightning SQL only. Not Spark SQL or Hive SQL, and never start a local Spark session.
 - One statement per call, no trailing semicolon, qualified names (`<source>.<table>`). A `_create.sql` script holds many statements; `scripts/run_sql.py` splits and sends them for you.
 - **USL:** `lightning.metastore` must exist before `CREATE NAMESPACE IF NOT EXISTS lightning.metastore.<name>` works; check with `SHOW NAMESPACES OR TABLES IN lightning.metastore` (on an uninitialized instance the statement fails with "parent namespace : metastore is not existing"). A multi-table `COMPILE USL` must be sent as one whole statement, so do not split it on `;`. It works over JDBC and REST that way. Use `SHOW DQ ALL INVALID TABLE <namespace.usl.table>` (the `TABLE` clause is required).
-- **RAG pipelines** (pilot findings, not re-run here; see section 9 of the companion): `RUN PIPELINE ON '<sink>'` needs `LIMIT 100000`, because a small limit silently writes a fragment. A search node returns at most 100 passages, so do not promise more.
+- **RAG pipelines** (pilot findings, not re-run here; see section 9 of the companion): `RUN PIPELINE ON '<sink>'` needs `LIMIT 100000`, because a small limit silently writes a fragment. A search node returns at most 100 passages, so do not promise more. A question that contains `compile usl`, `activate usl`, `run dq`, `show dq` or `register dq` makes `RUN PIPELINE` fail to parse; reword it (seen 2026-11-09, one deployment).
 - Read `docs/guides/zetaris-lightning-sql-commands.md` for syntax and `docs/guides/zetaris-lightning-sql-companion.md` for confirmed gotchas and platform limitations before writing new SQL.
 
 ## Running scripts
