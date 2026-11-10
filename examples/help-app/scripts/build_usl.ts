@@ -1,7 +1,10 @@
 // Phase 4: register the Postgres datasource, fill the doc and chunk catalogs, then build
 // help_usl, run its data quality rules and create help_mart.
-// Usage: deno task help:usl [--dry-run] [--rebuild]
+// Usage: deno task help:usl [--dry-run] [--rebuild] [--refresh]
 //   --dry-run  print the steps and row counts; send nothing, print no credentials
+//   --refresh  TRUNCATE the docs and chunks tables in the help Postgres (docker exec into
+//              HELP_PG_CONTAINER, default help-app-postgres-postgres-1) and refill them from the
+//              corpus, so the Docs list and the pin-staleness check match the current files
 //   --rebuild  REMOVE USL help_usl first (a USL cannot be changed in place)
 // The static SQL is in sql/ and is run by the repo's scripts/run_sql.py, which keeps a multi-table
 // COMPILE USL whole.
@@ -20,6 +23,7 @@ import { ROOT, SKIP } from "./verify.ts";
 
 const dry = Deno.args.includes("--dry-run");
 const rebuild = Deno.args.includes("--rebuild");
+const refresh = Deno.args.includes("--refresh");
 const cfg = loadConfig();
 const z = zetarisClient(cfg, 600_000);
 const NS = "lightning.metastore.help_app_usl";
@@ -37,7 +41,9 @@ const BATCH = 100;
 console.log(`catalog: ${docs.length} docs, ${segments.length} chunks`);
 const steps = [
   `register Postgres datasource ${DS} (if missing) and its tables`,
-  `fill ${DS}.docs and ${DS}.chunks (only if empty), ${BATCH} rows per INSERT`,
+  refresh
+    ? `TRUNCATE docs, chunks in Postgres, then refill ${DS}.docs and ${DS}.chunks, ${BATCH} rows per INSERT`
+    : `fill ${DS}.docs and ${DS}.chunks (only if empty), ${BATCH} rows per INSERT`,
   rebuild ? `REMOVE USL help_usl NAMESPACE ${NS}` : null,
   "sql/01_help_usl_create.sql (compile and activate help_usl)",
   "sql/02_help_dq.sql (RUN DQ)",
@@ -67,6 +73,31 @@ if (!sources.includes(DS)) {
 } else console.log(`${DS} already registered`);
 
 // 2. fill
+if (refresh) {
+  const c = Deno.env.get("HELP_PG_CONTAINER") ?? "help-app-postgres-postgres-1";
+  const r = await new Deno.Command("docker", {
+    args: [
+      "exec",
+      c,
+      "psql",
+      "-U",
+      cfg.pgUser,
+      "-d",
+      cfg.pgDb,
+      "-c",
+      "TRUNCATE docs, chunks",
+    ],
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  if (!r.success) {
+    console.error(
+      `FAIL: TRUNCATE in ${c}: ${new TextDecoder().decode(r.stderr)}`,
+    );
+    Deno.exit(1);
+  }
+  console.log(`truncated docs, chunks in ${c}`);
+}
 const have = await count(`${DS}.docs`);
 if (have === 0) {
   for (const b of batches(docs, BATCH)) await q(docsInsert(b));

@@ -64,6 +64,16 @@ Deno.test("links: repo paths and Kbase URLs map to in-app routes", () => {
     docHref("https://kbase.zetaris.com/knowledge/how-to"),
     "/docs/kbase/how-to",
   );
+  // A URL with a slash or %2F in it links by its snapshot file slug, which is a valid slug.
+  for (
+    const u of [
+      "https://kbase.zetaris.com/knowledge/processes-for-automation-table-view-schema-creation-/-deletion",
+      "https://kbase.zetaris.com/knowledge/product-version-2.3.0-2023%2F06%2F13",
+    ]
+  ) {
+    const slug = decodeURIComponent(docHref(u).slice("/docs/kbase/".length));
+    assert(validSlug(slug), slug);
+  }
 });
 
 Deno.test("the catalog is listed once and cached", async () => {

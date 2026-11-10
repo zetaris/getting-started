@@ -1,6 +1,7 @@
 // The Docs browser's data: the catalog comes from help_usl.docs through Zetaris, and a file can be
 // opened only if it is in that catalog, so a request path is never used to reach the disk directly.
 import { toBase64 } from "./corpus.ts";
+import { slugOf } from "./slug.ts";
 import type { Zetaris } from "./zetaris.ts";
 
 export const USL = "lightning.metastore.help_app_usl.help_usl";
@@ -36,7 +37,9 @@ export const validSlug = (s: string) =>
   /^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$/.test(s);
 
 export const kbaseUrl = (slug: string) => `${KBASE_BASE}${slug}`;
-export const kbaseSlug = (url: string) => url.slice(KBASE_BASE.length);
+/** The file slug of a Kbase URL: the snapshot file name, safe in a path. The URL itself may hold
+ * `/` or `%2F` (for example "creation-/-deletion"), which a route segment cannot carry. */
+export const kbaseSlug = (url: string) => slugOf(url);
 
 /** The in-app link for a catalog path or Kbase URL. */
 export function docHref(path: string): string {
@@ -150,8 +153,11 @@ export async function openDoc(
   key: string,
 ): Promise<DocFile | null> {
   if (kind === "repo" ? !validRepoPath(key) : !validSlug(key)) return null;
-  const catalogPath = kind === "repo" ? key : kbaseUrl(key);
-  const row = (await listDocs(z)).find((d) => d.path === catalogPath);
+  const row = (await listDocs(z)).find((d) =>
+    kind === "repo"
+      ? d.path === key
+      : d.path.startsWith(KBASE_BASE) && kbaseSlug(d.path) === key
+  );
   if (!row) return null;
   const raw = kind === "repo"
     ? await io.readRepo(key)

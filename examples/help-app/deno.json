@@ -9,7 +9,7 @@
     "help:smoke": "deno run --allow-read --allow-write=.cache --allow-net --allow-env scripts/smoke.ts",
     "help:answer": "deno run --allow-read --allow-net --allow-env scripts/answer_smoke.ts",
     "help:bakeoff": "deno run --allow-read --allow-net --allow-env scripts/example_bakeoff.ts",
-    "help:usl": "deno run --allow-read --allow-net --allow-env --allow-run=python3 scripts/build_usl.ts",
+    "help:usl": "deno run --allow-read --allow-net --allow-env --allow-run=python3,docker scripts/build_usl.ts",
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "start": "deno run --allow-read --allow-env --allow-net scripts/start.ts"

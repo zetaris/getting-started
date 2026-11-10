@@ -20,13 +20,7 @@ export function parseSitemap(xml: string): SitemapEntry[] {
   return out;
 }
 
-export function slugOf(url: string): string {
-  return new URL(url).pathname.replace(/^\/knowledge\//, "").replace(
-    /[^a-zA-Z0-9._-]+/g,
-    "-",
-  )
-    .replace(/^-+|-+$/g, "") || "index";
-}
+export { slugOf } from "./slug.ts";
 
 export function kindOfPage(slug: string, title: string): string {
   const s = `${slug} ${title}`.toLowerCase();
