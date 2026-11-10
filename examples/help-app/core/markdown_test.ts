@@ -67,3 +67,12 @@ Deno.test("safeUrl and escapeHtml", () => {
     "&lt;a href=&quot;x&quot;&gt;&#39;&amp;",
   );
 });
+
+Deno.test("a bare <br> inside a table cell becomes a line break; other tags stay escaped", () => {
+  const html = renderMarkdown(
+    "| a | b |\n|---|---|\n| x<br>y<br/>z | <br onclick=alert(1)> |",
+  );
+  assert(html.includes("x<br>y<br>z"), html);
+  assert(!/<br [^>]*onclick/i.test(html), html);
+  assert(html.includes("&lt;br onclick"), html);
+});

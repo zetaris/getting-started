@@ -324,9 +324,16 @@ pre {
 .searchbox .btn {
   height: 36px;
 }
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
 .modes {
   display: inline-flex;
-  margin: 10px 0 0;
+  flex: none;
+  margin: 0;
   padding: 2px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -365,18 +372,16 @@ pre {
   font-size: 13px;
 }
 .status {
-  margin: 14px 0 0;
-  min-height: 1.4em;
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  line-height: 32px;
   color: var(--muted);
   font-size: 13px;
 }
 .status.busy {
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--link);
-  border-radius: 8px;
-  background: var(--panel);
   color: var(--text);
+  line-height: 1.4;
 }
 
 /* ---------- result lists ---------- */
@@ -570,6 +575,9 @@ pre {
 .md table {
   display: block;
   overflow-x: auto;
+}
+.md th {
+  white-space: nowrap; /* a narrow header like "Step" must not wrap letter by letter */
 }
 .answer-md {
   padding: 4px 0;
@@ -846,6 +854,7 @@ th {
   gap: 8px;
 }
 .step {
+  min-height: 32px;
   display: grid;
   grid-template-columns: 18px 1fr auto auto;
   gap: 10px;
@@ -988,4 +997,14 @@ th {
 .excerpt h4 {
   font-size: 14px;
   margin: 10px 0 4px;
+}
+
+@media (max-width: 640px) {
+  .controls {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .status {
+    flex-basis: 100%;
+  }
 }

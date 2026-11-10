@@ -27,6 +27,9 @@ const md = new Marked({ gfm: true, breaks: false });
 md.use({
   renderer: {
     html({ text }) {
+      // Models put <br> inside table cells (Markdown has no other line break there). That one
+      // tag, bare, is safe to keep; every other piece of raw HTML is still shown as text.
+      if (/^<br\s*\/?>$/i.test(text.trim())) return "<br>";
       return escapeHtml(text);
     },
     link({ href, title, tokens }) {

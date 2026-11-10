@@ -282,48 +282,127 @@ export default function AskBox({ llmConfigured, model }: Props) {
             {busy ? "Working…" : "Search"}
           </button>
         </div>
-        <fieldset class="modes" aria-label="Mode">
-          <label title="Ranked passages from the docs. No LLM needed.">
-            <input
-              type="radio"
-              name="mode"
-              value="search"
-              checked={mode.value === "search"}
-              onChange={() => pick("search")}
-            />
-            Search only
-          </label>
-          <label
-            title={llmConfigured
-              ? "A written answer from the top passages"
-              : "Needs OLLAMA_URL and OLLAMA_MODEL in .env.local"}
+        <div class="controls">
+          <fieldset class="modes" aria-label="Mode">
+            <label title="Ranked passages from the docs. No LLM needed.">
+              <input
+                type="radio"
+                name="mode"
+                value="search"
+                checked={mode.value === "search"}
+                onChange={() => pick("search")}
+              />
+              Search only
+            </label>
+            <label
+              title={llmConfigured
+                ? "A written answer from the top passages"
+                : "Needs OLLAMA_URL and OLLAMA_MODEL in .env.local"}
+            >
+              <input
+                type="radio"
+                name="mode"
+                value="answer"
+                disabled={!llmConfigured}
+                checked={mode.value === "answer"}
+                onChange={() => pick("answer")}
+              />
+              Answer
+            </label>
+            <label
+              title={llmConfigured
+                ? "A new SQL example, checked against Zetaris"
+                : "Needs OLLAMA_URL and OLLAMA_MODEL in .env.local"}
+            >
+              <input
+                type="radio"
+                name="mode"
+                value="example"
+                disabled={!llmConfigured}
+                checked={mode.value === "example"}
+                onChange={() => pick("example")}
+              />
+              Example
+            </label>
+          </fieldset>
+          <div
+            class={`status${busy ? " busy" : ""}`}
+            role="status"
+            aria-live="polite"
+            data-testid="status"
           >
-            <input
-              type="radio"
-              name="mode"
-              value="answer"
-              disabled={!llmConfigured}
-              checked={mode.value === "answer"}
-              onChange={() => pick("answer")}
-            />
-            Answer
-          </label>
-          <label
-            title={llmConfigured
-              ? "A new SQL example, checked against Zetaris"
-              : "Needs OLLAMA_URL and OLLAMA_MODEL in .env.local"}
-          >
-            <input
-              type="radio"
-              name="mode"
-              value="example"
-              disabled={!llmConfigured}
-              checked={mode.value === "example"}
-              onChange={() => pick("example")}
-            />
-            Example
-          </label>
-        </fieldset>
+            {s.kind === "loading" && (
+              <div class="steps" data-testid="steps">
+                {(() => {
+                  const cur = s.steps[s.steps.length - 1];
+                  const before = s.steps.slice(0, -1);
+                  const secs = (t0: number, t1: number) => {
+                    const v = Math.max(0, (t1 - t0) / 1000);
+                    return `${v.toFixed(v < 10 ? 1 : 0)} s`;
+                  };
+                  return (
+                    <>
+                      <div class="step active">
+                        <span class="spinner" aria-hidden="true" />
+                        <span class="step-label">{cur.label}</span>
+                        <span class="step-time">
+                          {secs(s.steps[0].at, now.value)}
+                        </span>
+                        {before.length > 0 && (
+                          <button
+                            type="button"
+                            class="chev"
+                            aria-expanded={showSteps.value}
+                            aria-controls="step-log"
+                            onClick={() => showSteps.value = !showSteps.value}
+                            data-testid="steps-toggle"
+                          >
+                            <span aria-hidden="true">
+                              {showSteps.value ? "▾" : "▸"}
+                            </span>{" "}
+                            {before.length} done
+                          </button>
+                        )}
+                      </div>
+                      <ol
+                        class="step-log"
+                        id="step-log"
+                        hidden={!showSteps.value}
+                      >
+                        {before.map((st, i) => (
+                          <li
+                            key={i}
+                            class={/rejected|did not/i.test(st.label)
+                              ? "failed"
+                              : ""}
+                          >
+                            <span class="tick" aria-hidden="true">
+                              {/rejected|did not/i.test(st.label) ? "✗" : "✓"}
+                            </span>
+                            <span class="step-label">{st.label}</span>
+                            <span class="step-time">
+                              {secs(st.at, s.steps[i + 1].at)}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+            {s.kind === "example" &&
+              `Done in ${s.seconds.toFixed(0)} s. ${s.result.attempts.length} ${
+                s.result.attempts.length === 1 ? "attempt" : "attempts"
+              }.`}
+            {s.kind === "done" &&
+              `Done in ${
+                s.seconds.toFixed(1)
+              } s. ${s.result.sources.length} sources${
+                s.result.answer !== null ? " and an answer" : ""
+              }.`}
+          </div>
+        </div>
         {!llmConfigured && (
           <p class="hint">
             Answer and Example modes are off: no LLM is configured.
@@ -336,80 +415,6 @@ export default function AskBox({ llmConfigured, model }: Props) {
           </p>
         )}
       </form>
-
-      <div
-        class={`status${busy ? " busy" : ""}`}
-        role="status"
-        aria-live="polite"
-        data-testid="status"
-      >
-        {s.kind === "loading" && (
-          <div class="steps" data-testid="steps">
-            {(() => {
-              const cur = s.steps[s.steps.length - 1];
-              const before = s.steps.slice(0, -1);
-              const secs = (t0: number, t1: number) => {
-                const v = Math.max(0, (t1 - t0) / 1000);
-                return `${v.toFixed(v < 10 ? 1 : 0)} s`;
-              };
-              return (
-                <>
-                  <div class="step active">
-                    <span class="spinner" aria-hidden="true" />
-                    <span class="step-label">{cur.label}</span>
-                    <span class="step-time">
-                      {secs(s.steps[0].at, now.value)}
-                    </span>
-                    {before.length > 0 && (
-                      <button
-                        type="button"
-                        class="chev"
-                        aria-expanded={showSteps.value}
-                        aria-controls="step-log"
-                        onClick={() => showSteps.value = !showSteps.value}
-                        data-testid="steps-toggle"
-                      >
-                        <span aria-hidden="true">
-                          {showSteps.value ? "▾" : "▸"}
-                        </span>{" "}
-                        {before.length} done
-                      </button>
-                    )}
-                  </div>
-                  <ol class="step-log" id="step-log" hidden={!showSteps.value}>
-                    {before.map((st, i) => (
-                      <li
-                        key={i}
-                        class={/rejected|did not/i.test(st.label)
-                          ? "failed"
-                          : ""}
-                      >
-                        <span class="tick" aria-hidden="true">
-                          {/rejected|did not/i.test(st.label) ? "✗" : "✓"}
-                        </span>
-                        <span class="step-label">{st.label}</span>
-                        <span class="step-time">
-                          {secs(st.at, s.steps[i + 1].at)}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              );
-            })()}
-          </div>
-        )}
-        {s.kind === "example" &&
-          `Done in ${s.seconds.toFixed(0)} s. ${s.result.attempts.length} ${
-            s.result.attempts.length === 1 ? "attempt" : "attempts"
-          }.`}
-        {s.kind === "done" &&
-          `Done in ${
-            s.seconds.toFixed(1)
-          } s. ${s.result.sources.length} sources${
-            s.result.answer !== null ? " and an answer" : ""
-          }.`}
-      </div>
 
       {s.kind === "error" && (
         <div class="alert" role="alert" data-testid="error" data-code={s.code}>
