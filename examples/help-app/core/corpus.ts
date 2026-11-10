@@ -35,9 +35,9 @@ export interface WalkOptions {
   skipPrefixes?: string[];
 }
 
-/** Every `*.md` under `root`, as repo-relative paths, sorted. Skips node_modules, dot
+/** Every `*.md` and `*.sql` under `root`, as repo-relative paths, sorted. Skips node_modules, dot
  * directories, and the top-level dist, site, tmp and reports folders. */
-export async function walkMarkdown(
+export async function walkCorpus(
   root: string,
   opts: WalkOptions = {},
 ): Promise<string[]> {
@@ -52,7 +52,7 @@ export async function walkMarkdown(
         if (!rel && TOP_LEVEL_SKIP.has(entry.name)) continue;
         if (skip.some((p) => `${path}/`.startsWith(p))) continue;
         await visit(path);
-      } else if (entry.isFile && entry.name.endsWith(".md")) {
+      } else if (entry.isFile && /\.(md|sql)$/.test(entry.name)) {
         if (skip.some((p) => path.startsWith(p))) continue;
         out.push(path);
       }
@@ -69,6 +69,7 @@ export function titleOf(path: string, text: string): string {
 
 export function kindOf(path: string): string {
   const name = path.split("/").pop()!;
+  if (name.endsWith(".sql")) return "sql";
   if (/^(AGENTS|CLAUDE|CONTRIBUTING)\.md$/.test(name)) return "agent-rules";
   if (name === "HOWTO.md") return "howto";
   if (/(^|[-_])(data-)?sources?\.md$|catalog/i.test(name)) return "catalog";
@@ -224,6 +225,7 @@ export function splitDocument(
   file: string,
   text: string,
 ): Segment[] {
+  if (file.endsWith(".sql")) return splitSql(corpus, file, text);
   const sections = toSections(text);
   const out: Segment[] = [];
   let carry: Unit[] = [];
@@ -257,6 +259,21 @@ export function splitDocument(
   return out;
 }
 
+/** SQL scripts have no headings: cut at blank lines like prose, then name each segment's section
+ * after the first `--` comment in it, or the previous segment's name. */
+function splitSql(corpus: Corpus, file: string, text: string): Segment[] {
+  const units: Unit[] = text.split(/\n\s*\n/).map((t) => t.trim()).filter(
+    Boolean,
+  )
+    .map((t) => ({ text: t, fence: true }));
+  let section = "";
+  return pack(units).map((t, part) => {
+    const c = t.match(/^--\s*(?!-*\s*$)(.+)$/m);
+    if (c) section = c[1].trim().slice(0, 120);
+    return { corpus, file, part, section, text: t.trim() };
+  }).filter((s) => s.text);
+}
+
 export interface Corpusload {
   docs: DocInfo[];
   segments: Segment[];
@@ -266,7 +283,7 @@ export async function loadRepoCorpus(
   root: string,
   opts: WalkOptions = {},
 ): Promise<Corpusload> {
-  const files = await walkMarkdown(root, opts);
+  const files = await walkCorpus(root, opts);
   const docs: DocInfo[] = [];
   const segments: Segment[] = [];
   for (const path of files) {

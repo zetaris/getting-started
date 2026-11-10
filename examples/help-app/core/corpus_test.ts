@@ -73,3 +73,15 @@ Deno.test("title and kind", () => {
   assertEquals(kindOf("docs/guides/first-dataset.md"), "guide");
   assertEquals(kindOf("docs/plans/archive/x.md"), "plan");
 });
+
+Deno.test("SQL scripts are cut at blank lines, take a section from comments, and stay under the guard", () => {
+  const sql = "-- Create the table\nCREATE TABLE a (x INT)\n\n" +
+    Array.from({ length: 80 }, (_, i) => `SELECT ${i} FROM a`).join("\n") +
+    "\n\n-- Second\nSELECT 2";
+  const segs = splitDocument("repo", "open_data/x/01_create.sql", sql);
+  assert(segs.length >= 2);
+  assert(segs.every((s) => s.text.length <= MAX_TEXT));
+  assertEquals(segs[0].section, "Create the table");
+  assertEquals(segs[segs.length - 1].section, "Second");
+  assertEquals(kindOf("open_data/x/01_create.sql"), "sql");
+});

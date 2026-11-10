@@ -48,3 +48,39 @@ so the equivalent used here is **10 of 12 in-scope questions** (the same 80%).
   `core/prompt.ts`) has unit tests for the pieces that do not need a model.
 - Whole-file context for code questions is written (`wholeFileContext`) but not
   exercised against a live LLM.
+
+## Re-run after indexing the SQL scripts (2026-11-10)
+
+Changes: the 55 `*.sql` scripts are now indexed (cut at blank lines, section
+taken from the nearest `--` comment), the example's own `docs/` folder is
+excluded (it quotes the smoke questions, so it ranked first for one of them: the
+test was circular), and code questions give the model the two best SQL scripts
+plus the two best other files whole. Index: 2,767 segments (repo 1,674 + Kbase
+1,093), count verified. The remote LLM is now reached as `doppio-1.lan`.
+
+**Search [S]:** 10 of 12 at weights 0 to 0.10, 9 of 12 from 0.15 up. The misses
+are the same two: `usl-compile` (the guide with the right statements is not in
+the top 3 files) and `kb-release` (the release-note page ranks 8th to 15th,
+behind other release notes). `pudl-query` now hits
+(`examples/pudl-chart/query.sql` is 2nd). Out-of-scope tops 0.776, 0.806, 0.799
+against a lowest in-scope top of 0.854; the margin is unchanged. Weight 0.05
+stays the default; again 12 questions cannot separate the weights.
+
+**Answers [LLM], one run each, `gpt-oss:20b`, graded by reading and by `grep`
+against the scripts:**
+
+| Question      | Result                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pudl-query    | **Now correct.** Returns the query in `examples/pudl-chart/query.sql`, cited. Before: "not covered".                                                                                                                                                                                                                                                                                                            |
+| rest-view     | **Much better, still a template.** Every keyword used (`CREATE LIGHTNING REST TABLE ... FROM`, `REQUEST(endpoint ... method ... response_type ... http_encoding)`, `HEADER`, `BODY`, `CACHE TABLE`, `CREATE SCHEMASTORE VIEW ... WITH CONTAINER`) occurs in the repo's scripts. URL and column names are placeholders. A source column cites a known_to_fail script as example syntax. Before: invented syntax. |
+| usl-compile   | **Still wrong in one respect.** The compile form is right. It gives `ACTIVATE USL TABLE <model_name>` and says activation "loads data"; the commands guide (13.4) has `ACTIVATE USL TABLE <namespace.usl.table> AS <SELECT ...>`, and loading is `MATERIALIZE USL TABLE`. The guide's chunk was not among the context.                                                                                          |
+| kb-release    | "not covered" (retrieval miss, as above).                                                                                                                                                                                                                                                                                                                                                                       |
+| jdbc-settings | Unchanged: generic list, no actual URL or driver class.                                                                                                                                                                                                                                                                                                                                                         |
+
+The other 10 answers were not re-run after the index change; their earlier
+grades stand only for the earlier index.
+
+**Takeaway:** indexing the scripts fixes the cases where the example is in a
+script. It does not stop the model from mixing a statement's syntax with what it
+does. Show generated SQL as unverified, and prefer linking the source script.
+[S]

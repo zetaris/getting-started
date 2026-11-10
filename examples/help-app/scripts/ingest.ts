@@ -127,7 +127,13 @@ for (const [i, batch] of batches.entries()) {
   );
 }
 
-const count = await countRows(cfg);
+// The row count can lag the last writes by a few seconds (seen once: 2,786 read, 2,788 present
+// moments later), so poll for up to 60 s before calling it a failure.
+let count = await countRows(cfg);
+for (let i = 0; i < 12 && count < segments.length; i++) {
+  await new Promise((r) => setTimeout(r, 5000));
+  count = await countRows(cfg);
+}
 console.log(`milvus rows: ${count}, segments: ${segments.length}`);
 let ok = count === segments.length;
 if (!ok) console.error(`FAIL: ${segments.length - count} segments missing.`);

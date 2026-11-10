@@ -51,8 +51,9 @@ only part of the data.
 
 ## How it works (so far)
 
-1. **Walk.** Every `*.md` in the repo, skipping dot directories, `node_modules`,
-   and the top-level `dist`, `site`, `tmp` and `reports` folders.
+1. **Walk.** Every `*.md` and `*.sql` in the repo, skipping dot directories,
+   `node_modules`, and the top-level `dist`, `site`, `tmp` and `reports`
+   folders, plus this example's own `corpus/` and `docs/`.
 2. **Segment in the app, not the pipeline.** Each file is cut at headings into
    segments of about 1,000 characters (code blocks kept whole where they fit).
    The Chunking node only acts as a guard (1,500 characters), because it writes

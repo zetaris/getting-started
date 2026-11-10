@@ -1,6 +1,11 @@
 import { assertEquals } from "@std/assert";
 import { cleanQuestion, MAX_QUESTION, parsePassage } from "./query.ts";
-import { isCodeQuestion, stripSqlHeader, wholeFileContext } from "./prompt.ts";
+import {
+  isCodeQuestion,
+  pickCodeFiles,
+  stripSqlHeader,
+  wholeFileContext,
+} from "./prompt.ts";
 
 Deno.test("question is trimmed, control characters removed and length capped", () => {
   assertEquals(cleanQuestion("  a\u0000b \n c  "), "a b c");
@@ -47,4 +52,11 @@ Deno.test("whole-file context caps size and skips unreadable files", async () =>
   assertEquals(out.length, 2);
   assertEquals(out[0].text, "SELECT 1");
   assertEquals(out[1].text.length, 7000);
+});
+
+Deno.test("code questions get two SQL scripts and two other files", () => {
+  assertEquals(
+    pickCodeFiles(["a.md", "b.md", "c.sql", "d.md", "e.sql", "f.sql"]),
+    ["c.sql", "e.sql", "a.md", "b.md"],
+  );
 });

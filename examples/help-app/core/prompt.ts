@@ -48,3 +48,11 @@ export async function wholeFileContext(
   }
   return out;
 }
+
+/** For code questions: the two best SQL scripts and the two best other files, so the model sees
+ * real statements as well as the prose around them. Input is ordered best first. */
+export function pickCodeFiles(files: string[]): string[] {
+  const sql = files.filter((f) => f.endsWith(".sql")).slice(0, 2);
+  const other = files.filter((f) => !f.endsWith(".sql")).slice(0, 2);
+  return [...sql, ...other];
+}

@@ -6,7 +6,11 @@ export const ROOT = new URL("../../..", import.meta.url).pathname.replace(
   /\/$/,
   "",
 );
-export const SKIP = ["examples/help-app/corpus/", "examples/help-app/.cache/"];
+export const SKIP = [
+  "examples/help-app/corpus/",
+  "examples/help-app/.cache/",
+  "examples/help-app/docs/", // quotes the smoke questions, so indexing it would make the test circular
+];
 
 async function findCount(): Promise<number> {
   const out = await new Deno.Command("find", {
@@ -33,13 +37,21 @@ async function findCount(): Promise<number> {
       "-o",
       "-path",
       `${ROOT}/examples/help-app/corpus`,
+      "-o",
+      "-path",
+      `${ROOT}/examples/help-app/docs`,
       ")",
       "-prune",
       "-o",
       "-type",
       "f",
+      "(",
       "-name",
       "*.md",
+      "-o",
+      "-name",
+      "*.sql",
+      ")",
       "-print",
     ],
   }).output();

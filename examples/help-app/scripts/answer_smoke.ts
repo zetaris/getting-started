@@ -3,7 +3,11 @@
 // Usage: deno task help:answer [id ...]
 import { loadConfig } from "../core/config.ts";
 import { answer, search } from "../core/query.ts";
-import { isCodeQuestion, wholeFileContext } from "../core/prompt.ts";
+import {
+  isCodeQuestion,
+  pickCodeFiles,
+  wholeFileContext,
+} from "../core/prompt.ts";
 import { rerank, topFiles } from "../core/rank.ts";
 import { SMOKE } from "../core/smoke_set.ts";
 import { zetarisClient } from "../core/zetaris.ts";
@@ -14,13 +18,15 @@ const z = zetarisClient(cfg, 900_000);
 const ids = Deno.args;
 for (const s of SMOKE.filter((x) => ids.length === 0 || ids.includes(x.id))) {
   const ranked = rerank(s.q, await search(cfg, z, s.q, 100));
-  const files = topFiles(ranked, 4);
+  const files = topFiles(ranked, 12);
   let ctx: { header: string; text: string; similarity: number }[];
   if (isCodeQuestion(s.q)) {
     const whole = await wholeFileContext(
-      files.filter((f) => f.corpus === "repo").map((f) => f.file),
+      pickCodeFiles(
+        files.filter((f) => f.corpus === "repo").map((f) => f.file),
+      ),
       (f) => Deno.readTextFile(`${ROOT}/${f}`).catch(() => null),
-      3,
+      4,
     );
     ctx = whole.map((w) => ({ ...w, similarity: files[0].score }));
   } else {
