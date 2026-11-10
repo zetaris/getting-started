@@ -140,7 +140,7 @@ a {
 
 /* ---------- common ---------- */
 main {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 28px 20px 72px;
 }
@@ -917,6 +917,10 @@ th {
 }
 
 .flipcard {
+  display: flex;
+  flex-direction: column;
+  /* Fit the rest of the window; the body scrolls, the tabs stay put. */
+  max-height: max(380px, calc(100dvh - 250px));
   margin-top: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -948,18 +952,27 @@ th {
   background: var(--selected);
   color: var(--on-selected);
 }
+.flipbar {
+  flex: none;
+}
 .flipbody {
-  padding: 4px 20px 16px;
-  transform-origin: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 24px 18px;
+}
+.answer-md {
+  max-width: 110ch;
 }
 .flipbody[hidden],
 .flipcard [hidden] {
   display: none;
 }
-.flipbody.out {
+.flipcard.out {
   animation: flip-out 0.16s ease-in forwards;
 }
-.flipbody.in {
+.flipcard.in {
   animation: flip-in 0.18s ease-out forwards;
 }
 @keyframes flip-out {

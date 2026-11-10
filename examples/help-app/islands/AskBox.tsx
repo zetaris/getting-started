@@ -557,7 +557,8 @@ export default function AskBox({ llmConfigured, model }: Props) {
             if (!hasAnswer) return sourcesFace;
             return (
               <div
-                class="flipcard"
+                class={`flipcard ${turn.value}`}
+                onAnimationEnd={turned}
                 data-testid="flipcard"
                 data-side={side.value}
               >
@@ -583,7 +584,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
                     </button>
                   ))}
                 </div>
-                <div class={`flipbody ${turn.value}`} onAnimationEnd={turned}>
+                <div class="flipbody">
                   <div
                     id="face-answer"
                     role="tabpanel"
