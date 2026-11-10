@@ -5,7 +5,8 @@
 import { createServer } from "node:http";
 
 const KEY = "e2e-key";
-const state = { answerDelayMs: 0, fail: 0, xss: 0, bumpSha: 0, answerRuns: 0 };
+const state = { answerDelayMs: 0, fail: 0, xss: 0, bumpSha: 0, answerRuns: 0, exampleMode: "pass", explainRuns: 0, llmPrompts: [] };
+const candidates = new Map();
 const pins = new Map(); // pin_id -> row
 const events = [];
 const b64s = (sql) => [...sql.matchAll(/unbase64\('([A-Za-z0-9+/=]*)'\)/g)].map((m) => Buffer.from(m[1], "base64").toString("utf8"));
@@ -15,6 +16,7 @@ const DOCS = [
   ["AGENTS.md", "repo", "Agent instructions", "agent-rules", "16"],
   ["open_data/rest_apis/HOWTO.md", "repo", "REST APIs HOWTO", "howto", "20"],
   ["scripts/HOWTO.md", "repo", "Scripts HOWTO", "howto", "5"],
+  ["open_data/usl/sql/02_sic_edgar_usl_select.sql", "repo", "SIC EDGAR USL select", "sql-example", "1"],
   ["https://kbase.zetaris.com/knowledge/how-to-clone-pipeline", "kbase", "How to clone Pipeline", "how-to", "3"],
 ];
 const sha = (path) => `sha-${path}${state.bumpSha ? "-v2" : ""}`;
@@ -33,7 +35,15 @@ const SEARCH_ROWS = [
   passage("repo", "AGENTS.md", 4, "Running scripts", "Dry-run first and show the user the statement list.", 0.8),
   passage("repo", "docs/guides/permissions.md", 1, "Least privilege", "An agent that only reads should run as a non-administrator.", 0.78),
   passage("repo", "scripts/HOWTO.md", 3, "Options", "Use --dry-run before any create script.", 0.77),
+  passage("repo", "open_data/usl/sql/02_sic_edgar_usl_select.sql", 0, "Checks", "SELECT COUNT(*) FROM company", 0.7),
 ];
+const EXAMPLES = {
+  pass: "Counts the docs.\n```sql\nSELECT count(*) FROM lightning.metastore.help_app_usl.help_usl.docs\n```\nDrew from: open_data/usl/sql/02_sic_edgar_usl_select.sql",
+  bad: "Counts.\n```sql\nSELECT BADCOL FROM lightning.metastore.help_app_usl.help_usl.docs\n```",
+  ddl: "Makes a namespace.\n```sql\nCREATE NAMESPACE IF NOT EXISTS lightning.metastore.zz\n```",
+  xss: "Shows text.\n```sql\nSELECT '<script>window.__pwned=1</script>' AS x\n```",
+  never: "I cannot write that.",
+};
 
 function send(res, status, body) {
   res.writeHead(status, { "content-type": "application/json" });
@@ -45,16 +55,20 @@ createServer((req, res) => {
   req.on("data", (c) => (raw += c));
   req.on("end", async () => {
     const url = new URL(req.url, "http://x");
-    if (url.pathname === "/__state") return send(res, 200, { ...state, pins: pins.size, events: events.length });
+    if (url.pathname === "/__state") return send(res, 200, { ...state, pins: pins.size, events: events.length, candidates: candidates.size });
     if (url.pathname === "/__control") {
       state.answerDelayMs = Number(url.searchParams.get("answerDelayMs") ?? 0);
       state.fail = Number(url.searchParams.get("fail") ?? 0);
       state.xss = Number(url.searchParams.get("xss") ?? 0);
       state.bumpSha = Number(url.searchParams.get("bumpSha") ?? 0);
+      state.exampleMode = url.searchParams.get("exampleMode") ?? "pass";
       if (url.searchParams.get("reset") === "1") {
         pins.clear();
         events.length = 0;
         state.answerRuns = 0;
+        state.explainRuns = 0;
+        state.llmPrompts.length = 0;
+        candidates.clear();
       }
       return send(res, 200, { ...state, pins: pins.size, events: events.length });
     }
@@ -107,7 +121,40 @@ createServer((req, res) => {
         }).sort((x, y) => Number(y[9]) - Number(x[9]));
         return send(res, 200, { data: rows });
       }
+      if (sql.startsWith("EXPLAIN ")) {
+        state.explainRuns++;
+        if (sql.includes("BADCOL")) {
+          return send(res, 200, { data: [["== Physical Plan ==\norg.apache.spark.sql.AnalysisException: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column with name `BADCOL` cannot be resolved."]] });
+        }
+        return send(res, 200, { data: [["== Physical Plan ==\nScan"]] });
+      }
+      if (sql.startsWith("SELECT candidate_id FROM help_pg.candidates")) {
+        const id = sql.match(/'([0-9a-f]{64})'/)[1];
+        return send(res, 200, { data: candidates.has(id) ? [[id]] : [] });
+      }
+      if (sql.startsWith("INSERT INTO help_pg.candidates")) {
+        const id = sql.match(/SELECT '([0-9a-f]{64})'/)[1];
+        const [request, sqlText, model, sources, notes, who] = b64s(sql);
+        const status = sql.match(/, '(dry-run passed|unverified)', (\d+)/);
+        candidates.set(id, { id, request, sqlText, model, sources, notes, who, status: status[1], attempts: status[2] });
+        return send(res, 200, { data: [] });
+      }
+      if (sql.startsWith("SELECT candidate_id, request")) {
+        const rows = [...candidates.values()].reverse().map((c) => [c.id, c.request, c.sqlText, c.status, c.attempts, c.model, c.sources, c.notes, "2026-01-02 10:00:00", c.who]);
+        return send(res, 200, { data: rows });
+      }
       if (sql.startsWith("SELECT count(*)")) return send(res, 200, { data: [["7"]] });
+      if (sql.includes("RUN PIPELINE ON 'llm_answer'") && sql.includes("Write ONE new example")) {
+        state.llmPrompts.push("generate");
+        const m = state.exampleMode;
+        const text = m === "repair" ? EXAMPLES.bad : (EXAMPLES[m] ?? EXAMPLES.pass);
+        return send(res, 200, { data: [["q", text, "ctx"]] });
+      }
+      if (sql.includes("RUN PIPELINE ON 'llm_answer'") && sql.includes("rejected by the SQL checker")) {
+        state.llmPrompts.push(sql.includes("BADCOL") ? "repair-with-error" : "repair");
+        const text = state.exampleMode === "repair" ? EXAMPLES.pass : EXAMPLES.bad;
+        return send(res, 200, { data: [["q", text, "ctx"]] });
+      }
       if (sql.includes("RUN PIPELINE ON 'llm_answer'")) {
         state.answerRuns++;
         if (state.answerDelayMs) await new Promise((r) => setTimeout(r, state.answerDelayMs));

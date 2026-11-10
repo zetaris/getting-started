@@ -165,6 +165,7 @@ export function answerFromTableSpec(
   cfg: Config,
   question: string,
   passages: { header: string; text: string; similarity: number }[],
+  promptText?: string,
 ) {
   const b64 = (t: string) => `decode(unbase64('${toBase64(t)}'),'UTF-8')`;
   const sql = passages.map((p) =>
@@ -190,7 +191,7 @@ export function answerFromTableSpec(
         name: "llm_answer",
         provider: "Ollama",
         config: { ollamaUrl: cfg.ollamaUrl, ollamaModelName: cfg.ollamaModel },
-        prompt: answerPrompt(question),
+        prompt: promptText ?? answerPrompt(question),
         topN: passages.length,
         minScore: 0.0,
         sources: ["src"],

@@ -42,3 +42,17 @@ CREATE TABLE IF NOT EXISTS pin_events (
   at timestamp,
   who text
 );
+
+-- Generated examples saved for human review (Phase 6b). Nothing here is published anywhere.
+CREATE TABLE IF NOT EXISTS candidates (
+  candidate_id text PRIMARY KEY,
+  request text,
+  sql_text text,
+  status text,
+  attempts integer,
+  model text,
+  sources text,
+  notes text,
+  created_at timestamp,
+  created_by text
+);

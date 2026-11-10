@@ -22,6 +22,14 @@ export function DocView({ doc, chunks }: { doc: DocFile; chunks: ChunkRow[] }) {
           </a>
         )}
       </div>
+      <p style="margin:-6px 0 14px">
+        <a
+          href={`/candidates?file=${encodeURIComponent(row.path)}`}
+          data-testid="candidates-link"
+        >
+          Examples generated from this file
+        </a>
+      </p>
       <details data-testid="chunks" style="margin-bottom:20px">
         <summary>
           {chunks.length} chunks in the index ({row.chunkCount} in the catalog)

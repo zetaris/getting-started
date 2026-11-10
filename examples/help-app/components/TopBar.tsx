@@ -20,6 +20,7 @@ export function TopBar({ path }: { path: string }) {
         {item("/", "Ask")}
         {item("/docs", "Docs")}
         {item("/pins", "Pinned")}
+        {item("/candidates", "Candidates")}
         {item("/admin", "Status")}
       </nav>
       <ThemeToggle />

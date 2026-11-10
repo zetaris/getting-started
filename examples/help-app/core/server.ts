@@ -1,6 +1,7 @@
 // Server-side wiring: config, the Zetaris client and the real AskDeps. Created lazily so the app
 // starts (and the status page explains) even when ZETARIS_API_KEY is not set.
 import { type AskDeps } from "./ask.ts";
+import type { ExampleDeps } from "./example.ts";
 import { createCollection, hasCollection } from "./milvus.ts";
 import { findPast, type PinStore } from "./pins.ts";
 import { type Config, loadConfig } from "./config.ts";
@@ -14,6 +15,7 @@ import { type Zetaris, zetarisClient, ZetarisError } from "./zetaris.ts";
 const appDir = () => Deno.cwd();
 const repoRoot = () => `${Deno.cwd()}/../..`;
 const ASK_TIMEOUT_MS = 120_000;
+const EXAMPLE_TIMEOUT_MS = 300_000; // one model call, possibly a large model
 
 let cfg: Config | null = null;
 export function getConfig(): Config {
@@ -82,6 +84,27 @@ export function askDeps(): AskDeps {
     answer: async (q, contexts) =>
       (await answer(c, need(), q, contexts)).answer,
     readFile: (f) => Deno.readTextFile(`${repoRoot()}/${f}`).catch(() => null),
+  };
+}
+
+/** Dependencies for Example mode. `model` overrides the configured one (the bake-off script uses it;
+ * the HTTP route never passes a client-supplied value). */
+export function exampleDeps(model?: string): ExampleDeps {
+  const base = getConfig();
+  const c = { ...base, ollamaModel: model || base.exampleModel };
+  const z = getZetaris(EXAMPLE_TIMEOUT_MS);
+  const need = (): Zetaris => {
+    if (!z) throw new ZetarisError("no key", "config");
+    return z;
+  };
+  return {
+    model: c.ollamaModel,
+    search: (q, limit) => search(c, need(), q, limit),
+    readFile: (f) => Deno.readTextFile(`${repoRoot()}/${f}`).catch(() => null),
+    llm: async (prompt, contexts) =>
+      (await answer(c, need(), "example request", contexts, prompt)).answer,
+    explain: async (sql) =>
+      (await need().run(`EXPLAIN ${sql}`, 5)).rows.map((r) => r[0]).join("\n"),
   };
 }
 

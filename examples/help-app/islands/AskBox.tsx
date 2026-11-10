@@ -6,10 +6,15 @@ import { StaleBadge } from "../components/StaleBadge.tsx";
 import { Html } from "../components/Html.tsx";
 import LikeButton from "./LikeButton.tsx";
 import NameField from "./NameField.tsx";
+import { ExampleView } from "../components/ExampleView.tsx";
+import type { ExampleResult } from "../core/example.ts";
 import { getName, postEvent } from "./prefs.ts";
 
 const MODE_KEY = "help_mode";
 const CLIENT_TIMEOUT_MS = 130_000;
+const EXAMPLE_TIMEOUT_MS = 960_000; // up to three model calls, each possibly a large model
+
+type UiMode = Mode | "example";
 
 interface Props {
   llmConfigured: boolean;
@@ -19,7 +24,8 @@ interface Props {
 
 type State =
   | { kind: "idle" }
-  | { kind: "loading"; mode: Mode }
+  | { kind: "loading"; mode: UiMode }
+  | { kind: "example"; result: ExampleResult; request: string; seconds: number }
   | { kind: "done"; result: AskResult; question: string; seconds: number }
   | { kind: "error"; code: string; message: string };
 
@@ -31,7 +37,7 @@ type PinState =
 
 export default function AskBox({ llmConfigured, model, examples }: Props) {
   const question = useSignal("");
-  const mode = useSignal<Mode>("search");
+  const mode = useSignal<UiMode>("search");
   const state = useSignal<State>({ kind: "idle" });
   const copied = useSignal(false);
   const pin = useSignal<PinState>({ kind: "none" });
@@ -40,13 +46,14 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
 
   useEffect(() => {
     try {
-      if (llmConfigured && localStorage.getItem(MODE_KEY) === "answer") {
-        mode.value = "answer";
+      const saved = localStorage.getItem(MODE_KEY);
+      if (llmConfigured && (saved === "answer" || saved === "example")) {
+        mode.value = saved;
       }
     } catch { /* storage blocked */ }
   }, []);
 
-  function pick(m: Mode) {
+  function pick(m: UiMode) {
     mode.value = m;
     try {
       localStorage.setItem(MODE_KEY, m);
@@ -66,17 +73,23 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
     abort.current?.abort();
     const ctl = new AbortController();
     abort.current = ctl;
-    const timer = setTimeout(() => ctl.abort(), CLIENT_TIMEOUT_MS);
+    const isExample = mode.value === "example";
+    const timer = setTimeout(
+      () => ctl.abort(),
+      isExample ? EXAMPLE_TIMEOUT_MS : CLIENT_TIMEOUT_MS,
+    );
     const started = performance.now();
     copied.value = false;
     pin.value = { kind: "none" };
     used.value = null;
     state.value = { kind: "loading", mode: mode.value };
     try {
-      const res = await fetch("/api/ask", {
+      const res = await fetch(isExample ? "/api/example" : "/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: text, mode: mode.value }),
+        body: JSON.stringify(
+          isExample ? { request: text } : { question: text, mode: mode.value },
+        ),
         signal: ctl.signal,
       });
       const body = await res.json().catch(() => null);
@@ -86,6 +99,15 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
           code: body?.error?.code ?? "http",
           message: body?.error?.message ??
             `The server answered with an error (HTTP ${res.status}).`,
+        };
+        return;
+      }
+      if (isExample) {
+        state.value = {
+          kind: "example",
+          result: body as ExampleResult,
+          request: text,
+          seconds: (performance.now() - started) / 1000,
         };
         return;
       }
@@ -163,7 +185,9 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
           data-testid="question"
           maxLength={500}
           rows={3}
-          placeholder="For example: How do I onboard a REST API source?"
+          placeholder={mode.value === "example"
+            ? "Describe what you want, e.g. same as the SIC and EDGAR check, but for companies whose sic is 7372"
+            : "For example: How do I onboard a REST API source?"}
           value={question.value}
           onInput={(
             e,
@@ -202,6 +226,21 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
               />
               Answer
             </label>
+            <label
+              title={llmConfigured
+                ? ""
+                : "Needs OLLAMA_URL and OLLAMA_MODEL in .env.local"}
+            >
+              <input
+                type="radio"
+                name="mode"
+                value="example"
+                disabled={!llmConfigured}
+                checked={mode.value === "example"}
+                onChange={() => pick("example")}
+              />
+              Example
+            </label>
           </fieldset>
           <button
             type="submit"
@@ -214,8 +253,8 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
         </div>
         {!llmConfigured && (
           <div class="lead" style="margin:0;font-size:0.9rem">
-            Answer mode is off: no LLM is configured. Search only works without
-            one.
+            Answer and Example modes are off: no LLM is configured. Search only
+            works without one.
           </div>
         )}
         <div class="chips" aria-label="Example questions">
@@ -238,9 +277,15 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
 
       <div class="status" role="status" aria-live="polite" data-testid="status">
         {s.kind === "loading" &&
-          (s.mode === "answer"
+          (s.mode === "example"
+            ? "Finding examples, generating, checking against Zetaris and repairing if needed (up to 3 attempts). This can take several minutes."
+            : s.mode === "answer"
             ? "Searching, then writing an answer. This can take up to a minute."
             : "Searching…")}
+        {s.kind === "example" &&
+          `Done in ${s.seconds.toFixed(0)} s. ${s.result.attempts.length} ${
+            s.result.attempts.length === 1 ? "attempt" : "attempts"
+          }.`}
         {s.kind === "done" &&
           `Done in ${
             s.seconds.toFixed(1)
@@ -253,6 +298,19 @@ export default function AskBox({ llmConfigured, model, examples }: Props) {
         <div class="alert" role="alert" data-testid="error" data-code={s.code}>
           {s.message}
         </div>
+      )}
+
+      {s.kind === "example" && (
+        <section aria-label="Generated example">
+          <ExampleView
+            result={s.result}
+            request={s.request}
+            onRegenerate={() => {
+              pick("example");
+              submit(s.request);
+            }}
+          />
+        </section>
       )}
 
       {s.kind === "done" && (

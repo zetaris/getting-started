@@ -64,6 +64,7 @@ export async function answer(
   z: Zetaris,
   question: string,
   passages: { header: string; text: string; similarity: number }[],
+  promptText?: string,
 ): Promise<{ answer: string; contexts: string }> {
   if (!cfg.ollamaUrl || !cfg.ollamaModel) {
     throw new Error("Set OLLAMA_URL and OLLAMA_MODEL to use Answer mode.");
@@ -73,7 +74,7 @@ export async function answer(
     runPipeline(
       "llm_answer",
       passages.length,
-      answerFromTableSpec(cfg, q, passages),
+      answerFromTableSpec(cfg, q, passages, promptText),
     ),
     1,
   );

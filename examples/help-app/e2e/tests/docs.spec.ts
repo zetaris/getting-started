@@ -3,11 +3,11 @@ import { APPS } from "../support/env.ts";
 
 test("the Docs index lists the catalog by corpus and kind, and filters", async ({ page }) => {
   await page.goto(`${APPS.full.url}/docs`);
-  await expect(page.getByTestId("doc-count")).toHaveText("4 files");
+  await expect(page.getByTestId("doc-count")).toHaveText("5 files");
   await expect(page.getByRole("heading", { name: "Knowledge base" })).toBeVisible();
   await page.getByLabel("Filter by title or path").fill("scripts");
   await page.getByRole("button", { name: "Filter" }).click();
-  await expect(page.getByTestId("doc-count")).toHaveText("1 of 4 files");
+  await expect(page.getByTestId("doc-count")).toHaveText("1 of 5 files");
   await expect(page.getByTestId("doc-item")).toHaveCount(1);
   await page.goto(`${APPS.full.url}/docs?corpus=kbase`);
   await expect(page.getByTestId("doc-item")).toHaveCount(1);

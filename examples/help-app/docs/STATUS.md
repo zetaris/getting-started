@@ -25,16 +25,17 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 
 ## Phases
 
-| Phase                 | State                                                                                                                                                                                                                                                                                                                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 Orientation         | Done (above).                                                                                                                                                                                                                                                                                                                                                                                     |
-| 1 Corpus and chunking | Done. `deno task help:verify --corpus`: 78 files (equals `find`), 1,237 segments, 798,526 bytes, longest segment 1,299 characters. 9 unit tests pass.                                                                                                                                                                                                                                             |
-| 1b Kbase corpus       | Done (see Phase 1b below).                                                                                                                                                                                                                                                                                                                                                                        |
-| 2 Store and ingest    | Done. Re-run 2026-11-10 over both corpora: 2,347 segments (repo 1,254 + kbase 1,093) in 24 batches, about 5 minutes, Milvus count 2,347. Both known-question checks pass; `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. The earlier repo-only run (1,237 segments, about 196 s) was replaced. |
-| 3 Query core          | Done. Search 10/12; Answer run on all 15 with `gpt-oss:20b`. SQL scripts now indexed (2,767 segments); the REST answer is now a faithful template, the USL activate answer is still wrong. Details in evidence.md. See Phase 3 below and [evidence.md](evidence.md).                                                                                                                              |
-| 4 USL and VDM         | Done. See Phase 4 below.                                                                                                                                                                                                                                                                                                                                                                          |
-| 5 App shell and Ask   | Done. See Phase 5 below.                                                                                                                                                                                                                                                                                                                                                                          |
-| 6 Docs and feedback   | Done. See Phase 6 below.                                                                                                                                                                                                                                                                                                                                                                          |
+| Phase                  | State                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 Orientation          | Done (above).                                                                                                                                                                                                                                                                                                                                                                                     |
+| 1 Corpus and chunking  | Done. `deno task help:verify --corpus`: 78 files (equals `find`), 1,237 segments, 798,526 bytes, longest segment 1,299 characters. 9 unit tests pass.                                                                                                                                                                                                                                             |
+| 1b Kbase corpus        | Done (see Phase 1b below).                                                                                                                                                                                                                                                                                                                                                                        |
+| 2 Store and ingest     | Done. Re-run 2026-11-10 over both corpora: 2,347 segments (repo 1,254 + kbase 1,093) in 24 batches, about 5 minutes, Milvus count 2,347. Both known-question checks pass; `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. The earlier repo-only run (1,237 segments, about 196 s) was replaced. |
+| 3 Query core           | Done. Search 10/12; Answer run on all 15 with `gpt-oss:20b`. SQL scripts now indexed (2,767 segments); the REST answer is now a faithful template, the USL activate answer is still wrong. Details in evidence.md. See Phase 3 below and [evidence.md](evidence.md).                                                                                                                              |
+| 4 USL and VDM          | Done. See Phase 4 below.                                                                                                                                                                                                                                                                                                                                                                          |
+| 5 App shell and Ask    | Done. See Phase 5 below.                                                                                                                                                                                                                                                                                                                                                                          |
+| 6 Docs and feedback    | Done. See Phase 6 below.                                                                                                                                                                                                                                                                                                                                                                          |
+| 6b Example, Candidates | Done. See Phase 6b below.                                                                                                                                                                                                                                                                                                                                                                         |
 
 ## Open items from Phase 2
 
@@ -178,7 +179,7 @@ Differences from the plan, on purpose:
 - System fonts instead of Plus Jakarta Sans, so the app makes no requests to a
   font CDN. Colours are atlas's tokens.
 - Answer text was plain text in Phase 5; Phase 6 renders it as safe Markdown.
-- No Docs, Pinned or Candidates pages yet (Phases 6 and 6b).
+- No Docs, Pinned or Candidates pages in Phase 5 (added in Phases 6 and 6b).
 
 Found:
 
@@ -236,9 +237,66 @@ Found:
 
 Differences from the plan: "Use this answer" still lets Answer mode run the
 model for the ask itself (the panel sits beside the results). Example mode and
-Candidates are Phase 6b and not started.
+Candidates came in Phase 6b (below).
 
 Not done or not tested: Chromium only; no Content-Security-Policy header;
 staleness is only as current as the last `help:usl` fill; a pin vector with no
 row is ignored, and a retry after a partly failed embed could hit a duplicate
-key; no user identity (names are free text). Phases 6b, 7 and 8 not started.
+key; no user identity (names are free text). Phases 7 and 8 not started.
+
+## Phase 6b: Example mode and Candidates (2026-11-10)
+
+Built: Example mode on the Ask page (`core/example.ts`, `POST /api/example`,
+`components/ExampleView.tsx`), Candidates (`core/candidates.ts`,
+`POST /api/candidates`, `/candidates`), a Docs link to the candidates citing a
+file, `help:bakeoff`, and `HELP_EXAMPLE_MODEL`.
+
+Gate **[S]**:
+
+- `deno task check` clean; unit tests added for the generate/check/repair loop
+  and for saving candidates; 44 e2e tests pass (11 new: sources and one badge,
+  repair with the checker's message fed back, DDL unverified and collapsed, no
+  SQL from the model, script in SQL stays inert, save once and list, the server
+  decides the status, sources required, cross-site POST refused, no LLM, phone
+  width).
+- Bake-off over 10 requests with 3 models, all 8 of 10 or better within 3
+  attempts: see [evidence.md](evidence.md). **[LLM]**
+- Live through the app: a request produced a query labelled "dry-run passed"
+  with four source files; I ran it and the result matched the request; saving it
+  twice made one row; `/candidates` listed it and `?file=` filtered it. The test
+  row was removed.
+
+How the check works: `EXPLAIN <query>` parses and resolves a query without
+running it (a parse error comes back as HTTP 400, an unknown table or column as
+text in the plan). That is the only dry-run I found; `run_sql.py --dry-run` only
+prints statements and `VERIFY PIPELINE SPEC` checks pipelines. So the check
+covers `SELECT` / `WITH` only.
+
+Differences from the plan, on purpose:
+
+- Commands (`CREATE`, `COMPILE USL` and so on) are never checked, so they are
+  always "unverified". I did not try `EXPLAIN` on DDL, because I could not rule
+  out that it would run it.
+- The status line does not move through stages: the route returns one result
+  when done, so the page shows one message while it works. The attempts list
+  afterwards records each try.
+- Saving re-checks the SQL and sets the status on the server.
+- Candidates are read from `help_pg.candidates` directly, not through a
+  `help_usl` table. A USL table would need `help:usl --rebuild`, which I did not
+  run.
+
+Found:
+
+- A table added to an existing Postgres is not visible to Zetaris until
+  `REGISTER DATASOURCE TABLE "candidates" FROM help_pg`;
+  `REFRESH DATASOURCE
+  TABLES` does not add it. I created the table in the help
+  Postgres and registered it on this instance; both are one-time steps in the
+  README.
+- "Dry-run passed" is weaker than "correct": a model can pass with a query that
+  does not do what was asked (one of the ten was a script of commands).
+
+Not done or not tested: `qwen3-coder:30b` (not installed), `num_ctx` (the app
+does not set it; context is capped at 3 whole scripts and 2 guide passages),
+requests that need unregistered sources (the check would fail them), a second
+run of the bake-off, Chromium only. Phases 7 and 8 not started.

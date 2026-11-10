@@ -105,3 +105,39 @@ threshold (E5, similarity on the question alone) **[S]**, one run:
 Paraphrases score about the same as near-miss questions, so no threshold
 separates them. The app shows the pinned question with each past answer and
 makes using it opt-in. The threshold is `HELP_PIN_THRESHOLD`. [S]
+
+## Example mode bake-off (2026-11-10, Phase 6b) **[LLM]**
+
+Ten requests ([scripts/example_bakeoff.ts](../scripts/example_bakeoff.ts)), each
+retrieving the closest example scripts and asking for a new query, checked with
+`EXPLAIN` on the instance (up to 3 attempts, the checker's message fed back).
+All ten are queries over objects that exist on this instance (the
+`sic_edgar_usl` tables and `help_usl`), because only queries can be dry-run. One
+run per model, `num_ctx` not set by the app, wall-clock times include other work
+on the same LLM host, so read the times roughly.
+
+| Model                        | Size  | Pass at attempt 1 | Dry-run passed within 3 | Total time |
+| ---------------------------- | ----- | ----------------- | ----------------------- | ---------- |
+| `gpt-oss:20b`                | 14 GB | 8/10              | 9/10                    | 221 s      |
+| `gpt-oss:120b`               | 65 GB | 8/10              | 10/10                   | 242 s      |
+| `qwen3-next:80b-a3b-...q8_0` | 85 GB | 9/10              | 9/10                    | 151 s      |
+
+`qwen3-coder:30b` (the plan's default) is not installed on this LLM host, so it
+was not run. The acceptance bar (8 of 10 within 3 attempts) is met by all three.
+
+Error classes: the repairs fixed **wrong table names** (`help_usl` or
+`help_usl.chunks` without the full `lightning.metastore...` path); the two
+failures were different in kind. `gpt-oss:20b` kept using a table name the
+analyzer could not resolve (3 attempts, "chunks"), and `qwen3-next` answered a
+query request with a `CREATE`/`COMPILE USL` script, which cannot be dry-run, so
+it is labelled unverified (correctly, but it did not do what was asked).
+
+**What a pass means.** "Dry-run passed" is the analyzer accepting the query. It
+does not prove the query answers the request. One example was run and read
+(`five longest sic_code descriptions`): it returned lengths 103, 101, 101, 95,
+92, as intended. The other nine were not read. DDL cannot be dry-run at all.
+
+**Default.** Nothing separates the models by more than one request in one run.
+`gpt-oss:120b` is the only one that reached 10/10 and is not slower in this run,
+so set `HELP_EXAMPLE_MODEL=gpt-oss:120b` where it is available; `gpt-oss:20b` is
+an acceptable fallback. The code default is `OLLAMA_MODEL`. [S] [LLM]

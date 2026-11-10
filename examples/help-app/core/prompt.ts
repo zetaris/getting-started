@@ -35,12 +35,13 @@ export async function wholeFileContext(
   files: string[],
   read: (file: string) => Promise<string | null>,
   limit = 4,
+  keepHeader = false,
 ): Promise<{ header: string; text: string }[]> {
   const out: { header: string; text: string }[] = [];
   for (const f of files.slice(0, limit)) {
     const raw = await read(f);
     if (raw === null) continue;
-    const body = f.endsWith(".sql") ? stripSqlHeader(raw) : raw;
+    const body = f.endsWith(".sql") && !keepHeader ? stripSqlHeader(raw) : raw;
     out.push({
       header: `FILE: ${f}\nWHOLE FILE: yes`,
       text: body.slice(0, MAX_FILE_CHARS),

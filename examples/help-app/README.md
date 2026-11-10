@@ -88,6 +88,29 @@ deno task dev       # development server with hot reload instead
   (`HELP_PINS_COLLECTION`, default `help_pins`). A pin shows a warning when a
   file it cites has changed or is gone since it was pinned. That check compares
   with the `docs` table, which is as current as the last `help:usl` run.
+- **Example** (a third mode on the Ask page): describe what you want, for
+  example "same as the SIC and EDGAR check, but for companies whose sic is
+  7372". The app finds the closest example scripts (whole files, headers kept)
+  and guide passages, asks the model for a new example inspired by them, and
+  checks any query with Zetaris's own analyzer (`EXPLAIN`, which parses and
+  resolves a query and runs nothing). A rejected query goes back to the model
+  with the message, up to 3 attempts. The result has one badge: **Generated,
+  dry-run passed** or **Generated, unverified** (collapsed, with a warning). It
+  never says "verified", and it always lists the files it drew from. Only
+  queries (`SELECT` / `WITH`) can be checked; a script with `CREATE` or other
+  commands is always unverified. Nothing is run against your data. The model is
+  `HELP_EXAMPLE_MODEL`, or `OLLAMA_MODEL` when unset.
+- **Candidates** (`/candidates`): generated examples someone chose to save, for
+  review. Nothing is added to the repo or published from here. The server works
+  out the status again when saving (it never trusts the browser's label) and
+  refuses an example with no catalogued source file. Rows live in
+  `help_pg.candidates` (see `compose/postgres-init.sql`). On an existing
+  Postgres run that one `CREATE TABLE`, then, in Zetaris,
+  `REGISTER DATASOURCE TABLE "candidates" FROM
+  help_pg` (a table added after
+  the datasource was created is not visible until it is registered; `REFRESH`
+  does not add it). The Docs page links each file to the candidates that cite
+  it.
 - **Past answers.** When a question is close to a pinned question (similarity at
   least `HELP_PIN_THRESHOLD`, default 0.82 for the E5 model), a panel above the
   results shows it with its likes. **Use this answer** shows it without calling

@@ -80,7 +80,7 @@ test("a Zetaris error is shown without the server's text", async ({ page, reques
 test("without an LLM, Answer is disabled and Search still works", async ({ page }) => {
   await page.goto(APPS.nollm.url);
   await expect(page.getByLabel("Answer")).toBeDisabled();
-  await expect(page.getByText("Answer mode is off")).toBeVisible();
+  await expect(page.getByText("Answer and Example modes are off")).toBeVisible();
   await page.getByTestId("question").fill("How do I register a REST source?");
   await page.getByTestId("submit").click();
   await expect(page.getByTestId("source").first()).toBeVisible();

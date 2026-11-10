@@ -51,6 +51,8 @@ export function loadConfig() {
     pgPassword: env("HELP_PG_PASSWORD"),
     ollamaUrl: env("OLLAMA_URL"),
     ollamaModel: env("OLLAMA_MODEL"),
+    // Example mode can use a different (coding) model; falls back to OLLAMA_MODEL.
+    exampleModel: env("HELP_EXAMPLE_MODEL") || env("OLLAMA_MODEL"),
   };
 }
 
