@@ -29,9 +29,10 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0 Orientation         | Done (above).                                                                                                                                                                                                                                                                                                                                                                                     |
 | 1 Corpus and chunking | Done. `deno task help:verify --corpus`: 78 files (equals `find`), 1,237 segments, 798,526 bytes, longest segment 1,299 characters. 9 unit tests pass.                                                                                                                                                                                                                                             |
-| 1b Kbase corpus       | **Not started.** Needs the live page template inspected first.                                                                                                                                                                                                                                                                                                                                    |
+| 1b Kbase corpus       | Done (see Phase 1b below).                                                                                                                                                                                                                                                                                                                                                                        |
 | 2 Store and ingest    | Done. Re-run 2026-11-10 over both corpora: 2,347 segments (repo 1,254 + kbase 1,093) in 24 batches, about 5 minutes, Milvus count 2,347. Both known-question checks pass; `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. The earlier repo-only run (1,237 segments, about 196 s) was replaced. |
-| 3 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
+| 3 Query core          | Search side done; Answer side written but **not run** (needs an LLM). See Phase 3 below and [evidence.md](evidence.md).                                                                                                                                                                                                                                                                           |
+| 4 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Open items from Phase 2
 
@@ -85,3 +86,27 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 - **Counts.** About 814,000 characters and 1,093 segments for the kbase; the
   repo corpus is 80 files and 1,254 segments (it grew by this example's own
   docs).
+
+## Command reference vs the Kbase SQL Manual (2026-11-10)
+
+Question: is `docs/guides/zetaris-lightning-sql-commands.md` the same as the
+Kbase SQL Manual? Answer: **similar in part, not the same**, so both stay
+indexed and are labelled by corpus. This was a comparison of statement forms,
+not a line-by-line read.
+
+- The repo reference has about 138 statement forms: USL, DQ, pipelines, VDM,
+  REST, Hive and Glue.
+- The Kbase SQL Manual has about 54: SELECT and the function reference, older
+  per-vendor `CREATE DATASOURCE`, `ANALYZE DATASOURCE TABLE`, `CACHE`/`UNCACHE`,
+  partitioning, CSV import.
+- About 19 forms overlap. The three compared closely
+  (`CREATE LIGHTNING DATABASE`, `REGISTER DATASOURCE TABLES`,
+  `CREATE LIGHTNING FILESTORE`) agree.
+- The Kbase SQL Guide is a third, smaller set (about 18 forms).
+
+## Phase 3: query core (2026-11-10)
+
+Added `core/rank.ts`, `core/prompt.ts`, `core/query.ts` and `scripts/smoke.ts`
+(15 questions in `core/smoke_set.ts`). 24 unit tests pass. Results and caveats
+are in [evidence.md](evidence.md). Not done: the Answer side was never run, and
+the segmentation comparison (heading-aware vs plain windows) is still open.

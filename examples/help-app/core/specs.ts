@@ -1,6 +1,7 @@
 // Pipeline spec templates. Specs go to Zetaris as `RUN PIPELINE ON '<node>' LIMIT n SPEC {...}`
 // or `REGISTER PIPELINE RELATION CONTAINER <c> SPEC {...}`.
 import { type Segment, toBase64 } from "./corpus.ts";
+import { answerPrompt } from "./prompt.ts";
 import type { Config } from "./config.ts";
 
 // Pilot findings (Zetaris 2.4.3.1): settings use the nested `strategy`/`provider` + `config`
@@ -157,3 +158,45 @@ export const runPipeline = (node: string, limit: number, spec: unknown) =>
 
 export const registerRelation = (container: string, spec: unknown) =>
   `REGISTER PIPELINE RELATION CONTAINER ${container} SPEC ${specJson(spec)}`;
+
+/** Answer over passages the app chose and ranked: a one-table SQLTable source (prompt, content,
+ * similarity; text base64-encoded so quotes cannot break the statement) feeding the LLM node. */
+export function answerFromTableSpec(
+  cfg: Config,
+  question: string,
+  passages: { header: string; text: string; similarity: number }[],
+) {
+  const b64 = (t: string) => `decode(unbase64('${toBase64(t)}'),'UTF-8')`;
+  const sql = passages.map((p) =>
+    `select ${b64(question)} as prompt, ${
+      b64(`${p.header}\nTEXT: ${p.text}`)
+    } as content, ` +
+    `cast(${Number(p.similarity)} as double) as similarity`
+  ).join("\nunion all\n");
+  return {
+    name: "help_answer_adhoc",
+    description: "Answer from ranked passages",
+    nodes: [
+      {
+        nodeType: "SQLTable",
+        name: "src",
+        sources: [],
+        columns: [],
+        properties: [],
+        sqlExpression: sql,
+      },
+      {
+        nodeType: "LLM",
+        name: "llm_answer",
+        provider: "Ollama",
+        config: { ollamaUrl: cfg.ollamaUrl, ollamaModelName: cfg.ollamaModel },
+        prompt: answerPrompt(question),
+        topN: passages.length,
+        minScore: 0.0,
+        sources: ["src"],
+        columns: [],
+        properties: [],
+      },
+    ],
+  };
+}

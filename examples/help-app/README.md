@@ -1,9 +1,10 @@
 # Help app: a RAG worked example on Zetaris
 
-> **Status: in progress (Phase 2 of 8).** Corpus, ingest and the saved search
-> relation exist. The app, USL and VDM, and feedback do not yet. See
-> [docs/STATUS.md](docs/STATUS.md) for what has been run and what has not.
-> Nothing here is hosted: you run it yourself, on your own infrastructure.
+> **Status: in progress (Phase 3 of 8).** Corpus, ingest, the saved search
+> relation and a search-only query core exist. The app, USL and VDM, and
+> feedback do not yet. See [docs/STATUS.md](docs/STATUS.md) for what has been
+> run and what has not. Nothing here is hosted: you run it yourself, on your own
+> infrastructure.
 
 This example turns the Markdown in this repository into a searchable help index,
 and does as much of the work as possible inside Zetaris: the file text goes
@@ -40,6 +41,7 @@ From this folder:
 deno task help:verify --corpus      # walk the repo's Markdown: files, segments, bytes
 deno task help:ingest --dry-run     # show exactly what would be sent; changes nothing
 deno task help:ingest               # create the collection, ingest, verify, register relations
+deno task help:smoke                # 15 curated questions, search only, several keyword weights
 ```
 
 `help:ingest` drops and recreates only the collection named by

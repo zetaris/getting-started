@@ -5,7 +5,8 @@
     "help:verify": "deno run --allow-read --allow-env --allow-run=find scripts/verify.ts",
     "help:ingest": "deno run --allow-read --allow-write=.cache --allow-net --allow-env scripts/ingest.ts",
     "help:doctor": "deno run --allow-read --allow-net --allow-env scripts/doctor.ts",
-    "help:fetch-kbase": "deno run --allow-net=kbase.zetaris.com --allow-read=.cache --allow-write=corpus/kbase,.cache scripts/fetch_kbase.ts"
+    "help:fetch-kbase": "deno run --allow-net=kbase.zetaris.com --allow-read=.cache --allow-write=corpus/kbase,.cache scripts/fetch_kbase.ts",
+    "help:smoke": "deno run --allow-read --allow-write=.cache --allow-net --allow-env scripts/smoke.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.13",
