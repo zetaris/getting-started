@@ -180,9 +180,14 @@ test("while it works, the page lists each step with a spinner on the current one
   await expect(steps).toBeVisible();
   await expect(steps).toContainText("Searching the docs for the closest examples");
   await expect(steps.locator(".spinner")).toHaveCount(1);
+  await expect(steps.locator(".step")).toHaveCount(1); // only the running step is shown
+  await expect(steps.locator("#step-log")).toBeHidden();
   await expect(steps).toContainText("Writing the SQL with");
   await expect(steps).toContainText("Checking the SQL against Zetaris");
   await expect(steps).toContainText("Zetaris rejected attempt 1");
+  await steps.getByTestId("steps-toggle").click();
+  await expect(steps.locator("#step-log")).toBeVisible();
+  await expect(steps.locator("#step-log .failed")).toHaveCount(1);
   await expect(steps).toContainText("Fixing the SQL with");
   await expect(page.getByTestId("example-status")).toHaveText("Generated, dry-run passed");
   await expect(page.getByTestId("steps")).toHaveCount(0);

@@ -123,18 +123,19 @@ on the same LLM host, so read the times roughly.
 | `qwen3-next:80b-a3b-...q8_0` | 85 GB | 6/10              | 6/10                    | 156 s      |
 
 Second run (2026-11-09), after the Example-mode changes made for the "connect to
-a database" complaint (command-reference section hints, a "not covered"
-refusal, applied only to setup-style requests). The first run gave 8/10, 8/10
-and 9/10 at attempt 1, and 9/10, 10/10 and 9/10 within 3. The table above
-replaces it. Both `gpt-oss` models still meet the bar of 8 of 10 within 3
-attempts. `qwen3-next` does not: in this run it answered three of the ten
-requests with `SHOW NAMESPACES` or `COMPILE USL` (commands the checker cannot
-dry-run, so they stay "unverified") and once returned no SQL. I did not
-investigate why it changed, and one run per model is a weak measurement, so
-treat the qwen drop as unexplained, not as a finding about the model.
+a database" complaint (command-reference section hints, a "not covered" refusal,
+applied only to setup-style requests). The first run gave 8/10, 8/10 and 9/10 at
+attempt 1, and 9/10, 10/10 and 9/10 within 3. The table above replaces it. Both
+`gpt-oss` models still meet the bar of 8 of 10 within 3 attempts. `qwen3-next`
+does not: in this run it answered three of the ten requests with
+`SHOW NAMESPACES` or `COMPILE USL` (commands the checker cannot dry-run, so they
+stay "unverified") and once returned no SQL. I did not investigate why it
+changed, and one run per model is a weak measurement, so treat the qwen drop as
+unexplained, not as a finding about the model.
 
 `qwen3-coder:30b` (the plan's default) is not installed on this LLM host, so it
-was not run. The acceptance bar (8 of 10 within 3 attempts) is met by the two `gpt-oss` models and missed by `qwen3-next` in the second run.
+was not run. The acceptance bar (8 of 10 within 3 attempts) is met by the two
+`gpt-oss` models and missed by `qwen3-next` in the second run.
 
 Error classes: the repairs fixed **wrong table names** (`help_usl` or
 `help_usl.chunks` without the full `lightning.metastore...` path); the two

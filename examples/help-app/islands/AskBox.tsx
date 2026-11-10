@@ -44,6 +44,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
   const pin = useSignal<PinState>({ kind: "none" });
   const used = useSignal<PastAnswerOut | null>(null);
   const abort = useRef<AbortController | null>(null);
+  const showSteps = useSignal(false);
   const now = useSignal(0); // ticks while loading, so elapsed times update
   const loading = state.value.kind === "loading";
   useEffect(() => {
@@ -336,24 +337,60 @@ export default function AskBox({ llmConfigured, model }: Props) {
         data-testid="status"
       >
         {s.kind === "loading" && (
-          <ol class="steps" data-testid="steps">
-            {s.steps.map((st, i) => {
-              const last = i === s.steps.length - 1;
-              const secs = ((last ? now.value : s.steps[i + 1].at) - st.at) /
-                1000;
+          <div class="steps" data-testid="steps">
+            {(() => {
+              const cur = s.steps[s.steps.length - 1];
+              const before = s.steps.slice(0, -1);
+              const secs = (t0: number, t1: number) => {
+                const v = Math.max(0, (t1 - t0) / 1000);
+                return `${v.toFixed(v < 10 ? 1 : 0)} s`;
+              };
               return (
-                <li key={i} class={last ? "step active" : "step done"}>
-                  <span class={last ? "spinner" : "tick"} aria-hidden="true">
-                    {last ? "" : "✓"}
-                  </span>
-                  <span class="step-label">{st.label}</span>
-                  <span class="step-time">
-                    {Math.max(0, secs).toFixed(secs < 10 ? 1 : 0)} s
-                  </span>
-                </li>
+                <>
+                  <div class="step active">
+                    <span class="spinner" aria-hidden="true" />
+                    <span class="step-label">{cur.label}</span>
+                    <span class="step-time">
+                      {secs(s.steps[0].at, now.value)}
+                    </span>
+                    {before.length > 0 && (
+                      <button
+                        type="button"
+                        class="chev"
+                        aria-expanded={showSteps.value}
+                        aria-controls="step-log"
+                        onClick={() => showSteps.value = !showSteps.value}
+                        data-testid="steps-toggle"
+                      >
+                        <span aria-hidden="true">
+                          {showSteps.value ? "▾" : "▸"}
+                        </span>{" "}
+                        {before.length} done
+                      </button>
+                    )}
+                  </div>
+                  <ol class="step-log" id="step-log" hidden={!showSteps.value}>
+                    {before.map((st, i) => (
+                      <li
+                        key={i}
+                        class={/rejected|did not/i.test(st.label)
+                          ? "failed"
+                          : ""}
+                      >
+                        <span class="tick" aria-hidden="true">
+                          {/rejected|did not/i.test(st.label) ? "✗" : "✓"}
+                        </span>
+                        <span class="step-label">{st.label}</span>
+                        <span class="step-time">
+                          {secs(st.at, s.steps[i + 1].at)}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </>
               );
-            })}
-          </ol>
+            })()}
+          </div>
         )}
         {s.kind === "example" &&
           `Done in ${s.seconds.toFixed(0)} s. ${s.result.attempts.length} ${
