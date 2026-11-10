@@ -240,6 +240,8 @@ The supplied USL guide describes these capabilities. The table is a guide summar
 
 In the RAG pilot (2026-11-05, Zetaris 2.4.3.1, local Docker), a USL table was also activated over a saved pipeline relation and over a REST table, not only over SchemaStore views. See [section 9.9](#99-rag-in-the-semantic-layer-usl-and-vdm). [C]
 
+An activated USL table can also be added to a Virtual Data Mart with `ADD DATAMART TABLE <table> INTO <mart> FROM <usl table> VSCHEMA (...)`, which needs every column named; see [section 7](#7-virtual-data-marts-vdm--the-sql-free-consumption-layer-and-where-usl-changes-this). [C]
+
 ### 8.3 Practical implications for this repo's REST sources
 
 - `CACHE TABLE` is a session cache. `MATERIALIZE USL TABLE` is described as a persistent export. The repo has not live-tested materialization or its interaction with a cache.
@@ -453,6 +455,7 @@ RAG items from the pilot (section 9) still open:
 - Can Zetaris push a vector operator down to pgvector, and can a REST table page past 100 Milvus rows?
 - Spark SQL vector search (section 9.10) was re-run once on a Postgres on another LAN machine; concurrency and larger tables are open.
 - Stale catalog entries: after dropping a Postgres table, `SHOW TABLES IN <datasource>` still listed it, and no SQL form to unregister it was found (`DROP DATASOURCE TABLE` did not parse).
+- Can a `USING spark <engine>` or `USING presto` clause be used inside a USL table query or a pipeline SQL Table node? The Kbase shows it only on ad hoc queries ([Query Director](https://kbase.zetaris.com/knowledge/query-director), [engines](https://kbase.zetaris.com/knowledge/how-to-create-spark-and-presto-engines)) and the Virtual Pipeline guide says SQL Table functions are Spark-specific. Not tested; the local instance has no Presto engine, so only a Spark engine could be tried.
 - Concurrent users, other Zetaris builds, other Milvus or Ollama versions, and non-local topologies were not tested.
 
 ---

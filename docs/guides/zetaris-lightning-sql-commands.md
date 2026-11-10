@@ -2434,6 +2434,7 @@ Adds a virtual table over a source table; every source column must be given a vi
 **Remarks**
 
 - Query a data-mart table as `<datamart>.<table>`.
+- The source can also be an activated USL table (`<usl table>`) or a saved pipeline relation (`<container>.<relation>`). `VSCHEMA` must still list every source column: a partial list failed with "Data mart table schemas do not match source table's". Tested on 2.4.3.1; see the [companion guide, section 7](zetaris-lightning-sql-companion.md#7-virtual-data-marts-vdm--the-sql-free-consumption-layer-and-where-usl-changes-this).
 
 **Example**
 
