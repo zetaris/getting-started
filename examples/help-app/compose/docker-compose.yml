@@ -1,0 +1,31 @@
+# Milvus for the help app: standalone, embedded etcd, local storage, one container.
+# NOT RUN in this repo yet (see docs/STATUS.md): the example was tested against a Milvus that was
+# already running on the default ports. Pin the image tag you have tested; none is recorded here.
+#
+# Ports are shifted from Milvus's defaults (19530, 9091) so this does not collide with another
+# Milvus on the same machine. If you use these, set in .env.local:
+#   MILVUS_HOST_URI=http://127.0.0.1:19531
+#   MILVUS_URI=http://host.docker.internal:19531
+services:
+  milvus:
+    image: milvusdb/milvus:${MILVUS_IMAGE_TAG:?set MILVUS_IMAGE_TAG to a Milvus release you have tested}
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_USE_EMBED: "true"
+      ETCD_DATA_DIR: /var/lib/milvus/etcd
+      ETCD_CONFIG_PATH: /milvus/configs/embedEtcd.yaml
+      COMMON_STORAGETYPE: local
+    volumes:
+      - milvus-data:/var/lib/milvus
+      - ./embedEtcd.yaml:/milvus/configs/embedEtcd.yaml:ro
+    ports:
+      - "127.0.0.1:19531:19530"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    security_opt:
+      - seccomp:unconfined
+volumes:
+  milvus-data:

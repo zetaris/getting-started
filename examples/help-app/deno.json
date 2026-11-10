@@ -1,0 +1,14 @@
+{
+  "tasks": {
+    "check": "deno fmt --check . && deno lint . && deno check core/*.ts scripts/*.ts",
+    "test": "deno test --allow-read --allow-env core/",
+    "help:verify": "deno run --allow-read --allow-env --allow-run=find scripts/verify.ts",
+    "help:ingest": "deno run --allow-read --allow-write=.cache --allow-net --allow-env scripts/ingest.ts",
+    "help:doctor": "deno run --allow-read --allow-net --allow-env scripts/doctor.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1.0.13"
+  },
+  "fmt": { "exclude": ["corpus/", ".cache/"] },
+  "lint": { "exclude": ["corpus/", ".cache/"] }
+}
