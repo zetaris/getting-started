@@ -1,16 +1,17 @@
 # Help app: a RAG worked example on Zetaris
 
-> **Status: in progress (Phase 5 of 8).** Corpus, ingest, the saved search
-> relation and a search-only query core exist. The app, USL and VDM, and
-> feedback do not yet. See [docs/STATUS.md](docs/STATUS.md) for what has been
-> run and what has not. Nothing here is hosted: you run it yourself, on your own
+> **Status:** Phases 1 to 7 of the plan are built; Phase 8 (OpenSearch,
+> Spark-only retrieval, incremental re-ingest) is not started. Every "works"
+> claim here was run once on one machine (Zetaris Lightning 2.4.3.1, local
+> Docker); see [docs/STATUS.md](docs/STATUS.md) for what ran, what did not, and
+> the limits. Nothing is hosted: you run it yourself, on your own
 > infrastructure.
 
 This example turns the Markdown in this repository into a searchable help index,
 and does as much of the work as possible inside Zetaris: the file text goes
 through a pipeline of **SQLTable → Chunking → Embedding → VectorStoreSink**, and
-a question goes through **VectorStoreSearch** (and, later, an LLM node). The
-rules and gotchas it relies on are written up in the
+a question goes through **VectorStoreSearch** (and, for answers, an LLM node).
+The rules and gotchas it relies on are written up in the
 [SQL companion guide, section 9](../../docs/guides/zetaris-lightning-sql-companion.md#9-rag-on-zetaris-chunking-embeddings-search-and-answers)
 (draft). The guide states the rules; this example shows them in context.
 
@@ -21,11 +22,91 @@ rules and gotchas it relies on are written up in the
 | Zetaris Lightning | A running instance (local or AWS, per the [install guides](../../docs/install)), reachable over REST. The example was tested on Zetaris Lightning 2.4.3.1 in a local Docker deployment.                                                                    |
 | Deno              | 2.9 or later (`deno --version`).                                                                                                                                                                                                                           |
 | A vector store    | Milvus. [compose/docker-compose.yml](compose/docker-compose.yml) is provided but **has not been run** yet; the example was tested against a Milvus already running locally. About 1 GB of RAM is a reasonable floor for a corpus this size (not measured). |
-| Postgres          | 16. [compose/docker-compose.postgres.yml](compose/docker-compose.postgres.yml) starts one on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs and, later, the pin log.                                                  |
-| An LLM endpoint   | Only for Answer mode (later phases): Ollama, or any server the Zetaris LLM node can reach. Search-only mode needs none.                                                                                                                                    |
+| Postgres          | 16. [compose/docker-compose.postgres.yml](compose/docker-compose.postgres.yml) starts one on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs, the pin log and the candidates.                                          |
+| An LLM endpoint   | Only for Answer and Example modes: Ollama, or any server the Zetaris LLM node can reach. Search only needs none.                                                                                                                                           |
 
 The Zetaris containers must be able to reach Milvus (and Ollama). On a single
 machine that means `host.docker.internal`, not `localhost`.
+
+**Sizing.** What was measured here: the corpus is 309 files and 2,788 segments
+(the repo's Markdown and SQL plus a 171-page Kbase snapshot), and a full ingest
+takes about 6 minutes. Models seen on the LLM host used for the tests:
+`gpt-oss:20b` 14 GB, `gpt-oss:120b` 65 GB (see
+[docs/evidence.md](docs/evidence.md) for what each did). A pilot run (a smaller
+corpus) left the Zetaris driver at about 2.2 GiB and Milvus at about 320 MiB;
+that is indicative only, and this example's own memory use was not measured.
+Search only needs no LLM and answers in about half a second.
+
+## Quick start
+
+The shortest path to a working Ask page (Search only), from a fresh clone. Steps
+4 and 5 are only for the Docs, Pinned and Candidates pages.
+
+1. **Settings.** Copy the lines you need from [.env.example](.env.example) into
+   the repo root's `.env.local`, and add your Zetaris REST key
+   (`ZETARIS_API_KEY`, created in the Zetaris GUI). For a Milvus on this machine
+   the defaults work.
+2. **Check the prerequisites.** From this folder:
+   ```bash
+   deno task help:doctor
+   ```
+   It is read-only. Fix every FAIL line before going on; WARN lines are for
+   features you may not use yet.
+3. **Install, index, build, start.**
+   ```bash
+   deno install                   # the app's packages (not needed for the ingest)
+   deno task help:ingest          # about 6 minutes: creates the collection and indexes the corpus
+   deno task build
+   deno task start                # http://127.0.0.1:8000
+   ```
+   Open it, leave **Search only** selected and ask "How do I onboard a REST API
+   source?". Ranked sources should come back in under a second.
+4. **Optional: the catalog (Docs, Pinned, Candidates).** Set `HELP_PG_PASSWORD`,
+   then start Postgres and build the USL (details in
+   [The USL and the data mart](#the-usl-and-the-data-mart)):
+   ```bash
+   docker compose --env-file ../../.env.local -f compose/docker-compose.postgres.yml up -d
+   deno task help:usl
+   ```
+5. **Optional: Answer and Example modes.** Set `OLLAMA_URL` and `OLLAMA_MODEL`
+   (and, if you like, `HELP_EXAMPLE_MODEL`) in `.env.local` and restart the app.
+   The URL must be one the Zetaris containers can resolve. The saved
+   `help_answer` relation is only registered when `OLLAMA_URL` is set at ingest
+   time; the app does not need it.
+
+If something fails, see [Troubleshooting](#troubleshooting).
+
+## What is done in Zetaris and what in the app
+
+| Step                                    | Where                                                                                   |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| Walk the repo, cut files into segments  | App (`core/corpus.ts`): the Chunking node's header only covers a document's first chunk |
+| Chunk guard, embedding, write to Milvus | Zetaris pipeline `SQLTable → Chunking → Embedding → VectorStoreSink`                    |
+| Create the Milvus collection            | App, through Milvus's REST API (the sink does not create it)                            |
+| Search for a question                   | Zetaris `VectorStoreSearch`, one pipeline run per question                              |
+| Re-rank (similarity plus keyword bonus) | App (`core/rank.ts`), because short or code-like questions rank better with it          |
+| Write the answer                        | Zetaris LLM node pointed at Ollama; the app picks the passages and the prompt           |
+| Check a generated query                 | Zetaris `EXPLAIN`; the app decides the label                                            |
+| Doc and chunk catalog, pins, candidates | Postgres rows, read and written through Zetaris (`help_pg`, `help_usl`)                 |
+| Pin scoring (likes, uses)               | Zetaris USL `pin_scores`, from the append-only event log                                |
+| Rendering, safety checks, pages         | App (Fresh): safe Markdown, same-origin checks, one answer at a time per session        |
+
+## Troubleshooting
+
+- **`Could not find a matching package for 'npm:...'`**: run `deno install`.
+- **Doctor says Milvus is unreachable**: check `MILVUS_HOST_URI` (this machine's
+  view) and `MILVUS_URI` (the Zetaris containers' view, usually
+  `host.docker.internal`).
+- **Ingest ends with a count mismatch or "duplicate primary keys"**: see
+  [docs/STATUS.md](docs/STATUS.md) and the companion guide, section 9; the sink
+  uses the chunk text as its key.
+- **Answer or Example fails, Search works**: the LLM host must be reachable from
+  the Zetaris containers, not only from your shell.
+- **The app shows old code after a change**: `deno task build` again.
+- **Candidates fail with "table or view not found"**: run the `CREATE TABLE` and
+  `REGISTER DATASOURCE TABLE` step described under Candidates.
+- **A pinned or generated result seems wrong**: Answer text and Example SQL are
+  written by a language model. Read the cited files.
 
 ## Configure
 
@@ -181,7 +262,7 @@ Things to know:
   scripts over REST alone, and these need a Postgres datasource created with a
   password and a filled catalog first.
 
-## How it works (so far)
+## How it works
 
 1. **Walk.** Every `*.md` and `*.sql` in the repo, skipping dot directories,
    `node_modules`, and the top-level `dist`, `site`, `tmp` and `reports`

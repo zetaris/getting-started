@@ -36,6 +36,7 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 | 5 App shell and Ask    | Done. See Phase 5 below.                                                                                                                                                                                                                                                                                                                                                                          |
 | 6 Docs and feedback    | Done. See Phase 6 below.                                                                                                                                                                                                                                                                                                                                                                          |
 | 6b Example, Candidates | Done. See Phase 6b below.                                                                                                                                                                                                                                                                                                                                                                         |
+| 7 Write-up, hardening  | Done. See Phase 7 below.                                                                                                                                                                                                                                                                                                                                                                          |
 
 ## Open items from Phase 2
 
@@ -300,3 +301,37 @@ Not done or not tested: `qwen3-coder:30b` (not installed), `num_ctx` (the app
 does not set it; context is capped at 3 whole scripts and 2 guide passages),
 requests that need unregistered sources (the check would fail them), a second
 run of the bake-off, Chromium only. Phases 7 and 8 not started.
+
+## Phase 7: write-up and hardening (2026-11-10)
+
+Built: `deno task help:doctor` (read-only prerequisite check), a README with a
+quick start, a Zetaris-versus-app table, sizing and troubleshooting,
+[vector-store-notes.md](vector-store-notes.md).
+
+Gate **[S]** (clean directory, one run): I cloned the branch into a new folder,
+copied only `.env.local` into it, and followed the README quick start with a
+different collection and container (`help_clean`) so the working index stayed
+untouched. Findings from doing it:
+
+- `help:doctor` failed before `deno install`, because it imported the app's code
+  and so its npm packages. Fixed: it no longer imports them, and it now says
+  when dependencies are not installed. The README now has `deno install` as a
+  step. Without that step, `deno task build` and the app fail too.
+- After that: doctor passed, `help:verify --corpus` passed (309 files, 2,788
+  segments), `help:ingest` ran from scratch (28 batches of about 13 s, both
+  known-question checks passed, relations registered, 100 rows),
+  `deno task
+  build` and `deno task start` worked, a Search-only ask returned
+  `open_data/rest_apis/HOWTO.md` first in 168 ms, and the status page showed
+  every check OK.
+
+Not covered by that run: the USL and Postgres steps (they would have replaced
+the working `help_pg` and `help_usl`), Answer and Example modes in the clean
+clone, a person other than me following the README, Windows or Linux, and the
+Milvus compose file (still never run). `help_clean` left a Lightning container
+with two relations on the instance; only the Zetaris Data Explorer can remove
+them. I dropped its Milvus collection and deleted the clone.
+
+The RAG section of the SQL companion guide already exists as section 9 (draft);
+the README links to it rather than repeating it. OpenSearch was not tried: the
+vector-store notes say so.
