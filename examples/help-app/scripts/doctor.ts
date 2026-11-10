@@ -3,13 +3,28 @@
 // Usage: deno task help:doctor
 import { loadConfig } from "../core/config.ts";
 import { countRows, hasCollection } from "../core/milvus.ts";
-import { toAskError } from "../core/ask.ts";
 import { zetarisClient, ZetarisError } from "../core/zetaris.ts";
 
 type Level = "ok" | "warn" | "fail";
 const rows: { level: Level; name: string; detail: string }[] = [];
 const add = (level: Level, name: string, detail: string) =>
   rows.push({ level, name, detail });
+
+// What a failed Zetaris call means, in words that say what to do. (Not core/ask.ts: that pulls in
+// the app's npm packages, and this check must run before `deno install`.)
+function zetarisMessage(e: unknown): string {
+  if (e instanceof ZetarisError) {
+    return {
+      unreachable:
+        "cannot reach Zetaris: check ZETARIS_REST_URL and that it is running.",
+      timeout: "Zetaris did not answer in time.",
+      config: "ZETARIS_API_KEY is not set.",
+      http:
+        "Zetaris refused the request: a bad key (401) or a bad ZETARIS_ORG_ID (400) are the usual causes.",
+    }[e.kind];
+  }
+  return "unexpected error talking to Zetaris.";
+}
 
 // 1. Deno
 const [major, minor] = Deno.version.deno.split(".").map(Number);
@@ -63,7 +78,7 @@ if (z) {
       );
     } catch { /* optional */ }
   } catch (e) {
-    add("fail", "Zetaris REST", toAskError(e).message);
+    add("fail", "Zetaris REST", zetarisMessage(e));
   }
 } else {
   add("fail", "Zetaris REST", "skipped: no API key.");
@@ -148,6 +163,13 @@ add(
   (await exists("corpus/kbase/manifest.json"))
     ? "present"
     : "missing: `deno task help:fetch-kbase`, or ingest with --no-kbase.",
+);
+add(
+  (await exists("node_modules")) ? "ok" : "warn",
+  "Dependencies",
+  (await exists("node_modules"))
+    ? "installed"
+    : "not installed yet: run `deno install` (the app and its tests need it; the ingest does not).",
 );
 add(
   (await exists("_fresh")) ? "ok" : "warn",
