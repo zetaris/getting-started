@@ -1,0 +1,62 @@
+/* Colour tokens from the atlas project (zetaris.com palette), trimmed to what this app uses.
+   Dark is the default. The theme follows the system setting until the toggle stores a choice. */
+:root {
+  --accent: #4052f2;
+  --accent-2: #6c7cff;
+  --page-bg: #06070d;
+  --card-bg: #1e1e1e;
+  --surface: #101018;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #f2f2f5;
+  --text-muted: #a8a8b4;
+  --text-faint: #8a8a96;
+  --good: #34d399;
+  --good-bg: rgba(52, 211, 153, 0.14);
+  --warn: #fbbf24;
+  --warn-bg: rgba(251, 191, 36, 0.14);
+  --bad: #fb7185;
+  --bad-bg: rgba(251, 113, 133, 0.14);
+  --accent-tint: rgba(64, 82, 242, 0.14);
+  --radius: 14px;
+  --control-h: 44px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --page-bg: #f6f7fb;
+  --card-bg: #ffffff;
+  --surface: #ffffff;
+  --border: rgba(10, 12, 40, 0.12);
+  --border-strong: rgba(10, 12, 40, 0.22);
+  --text: #12131c;
+  --text-muted: #4b4d5c;
+  --text-faint: #6a6c7a;
+  --good: #0b7a4f;
+  --good-bg: rgba(11, 122, 79, 0.1);
+  --warn: #8a5a00;
+  --warn-bg: rgba(200, 130, 0, 0.12);
+  --bad: #b4233c;
+  --bad-bg: rgba(180, 35, 60, 0.09);
+  --accent-tint: rgba(64, 82, 242, 0.09);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --page-bg: #f6f7fb;
+    --card-bg: #ffffff;
+    --surface: #ffffff;
+    --border: rgba(10, 12, 40, 0.12);
+    --border-strong: rgba(10, 12, 40, 0.22);
+    --text: #12131c;
+    --text-muted: #4b4d5c;
+    --text-faint: #6a6c7a;
+    --good: #0b7a4f;
+    --good-bg: rgba(11, 122, 79, 0.1);
+    --warn: #8a5a00;
+    --warn-bg: rgba(200, 130, 0, 0.12);
+    --bad: #b4233c;
+    --bad-bg: rgba(180, 35, 60, 0.09);
+    --accent-tint: rgba(64, 82, 242, 0.09);
+    color-scheme: light;
+  }
+}

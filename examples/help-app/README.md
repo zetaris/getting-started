@@ -1,6 +1,6 @@
 # Help app: a RAG worked example on Zetaris
 
-> **Status: in progress (Phase 4 of 8).** Corpus, ingest, the saved search
+> **Status: in progress (Phase 5 of 8).** Corpus, ingest, the saved search
 > relation and a search-only query core exist. The app, USL and VDM, and
 > feedback do not yet. See [docs/STATUS.md](docs/STATUS.md) for what has been
 > run and what has not. Nothing here is hosted: you run it yourself, on your own
@@ -49,6 +49,37 @@ deno task help:smoke                # 15 curated questions, search only, several
 `HELP_COLLECTION`, and refuses to drop a non-empty one without `--yes`. It
 always sends `LIMIT 100000` on the sink run: a small `LIMIT` silently writes
 only part of the data.
+
+## Run the app
+
+```bash
+deno task build     # once, and after code changes
+deno task start     # http://127.0.0.1:8000 (HELP_HOST and HELP_PORT change this)
+deno task dev       # development server with hot reload instead
+```
+
+- **Ask** (`/`): type a question, choose **Search only** (no LLM needed) or
+  **Answer**, and read the ranked sources, then the answer. Answer mode needs
+  `OLLAMA_URL` and `OLLAMA_MODEL`; without them it is disabled and the page says
+  so. Questions that ask for SQL or an example give the model whole script
+  files.
+- **Status** (`/admin`): connectivity checks (Zetaris, the saved relations,
+  `help_usl`, the vector index, the LLM), the last ingest, and the commands to
+  re-ingest. `/api/status` returns the same as JSON.
+- All Zetaris access is on the server. The browser never sees the API key, the
+  SQL or Zetaris's error text. The server logs the mode, the question's length
+  and timings, never its text.
+- The app has **no login** and binds to `127.0.0.1`. Anyone who can reach it can
+  use your Zetaris and LLM, so do not expose it. One Answer request at a time is
+  allowed per browser session.
+- The answer is shown as plain text, so Markdown markers such as `**bold**`
+  appear as typed. That is deliberate until there is a sanitizing renderer:
+  model output is untrusted.
+
+![Ask page, desktop](docs/screenshots/ask-desktop.png)
+
+Screenshots (desktop and phone, Ask and Status) are in
+[docs/screenshots](docs/screenshots), taken against a live local stack.
 
 ## The USL and the data mart
 
@@ -133,7 +164,13 @@ Things to know:
 ```bash
 deno task test    # unit tests, no Zetaris needed
 deno task check   # fmt, lint, type check
+cd e2e && npm install && npm test   # Playwright; builds the app and runs it against a mock Zetaris
 ```
+
+The e2e suite needs no live stack: it starts a small mock of Zetaris, Milvus and
+Ollama and three copies of the app (everything configured, no LLM, Zetaris
+unreachable). It needs Node 20 or later and Playwright's Chromium
+(`npx playwright install chromium`).
 
 ## Tags used in this folder
 

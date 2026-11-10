@@ -2,7 +2,18 @@
 // route scripts/zetaris_sql.py uses. Never logs the key.
 import type { Config } from "./config.ts";
 
-export class ZetarisError extends Error {}
+export type ZetarisErrorKind = "unreachable" | "timeout" | "http" | "config";
+
+/** `kind` says why a call failed, so callers can show a clear message without the raw text. */
+export class ZetarisError extends Error {
+  constructor(
+    message: string,
+    public kind: ZetarisErrorKind = "http",
+    public status?: number,
+  ) {
+    super(message);
+  }
+}
 
 export interface SqlResult {
   rows: string[][];
@@ -11,7 +22,7 @@ export interface SqlResult {
 
 export function zetarisClient(cfg: Config, timeoutMs = 120_000) {
   if (!cfg.apiKey) {
-    throw new ZetarisError("Set ZETARIS_API_KEY in .env.local.");
+    throw new ZetarisError("Set ZETARIS_API_KEY in .env.local.", "config");
   }
   return {
     async run(sql: string, limit = 100): Promise<SqlResult> {
@@ -34,10 +45,14 @@ export function zetarisClient(cfg: Config, timeoutMs = 120_000) {
           signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (e) {
+        const timedOut = e instanceof DOMException && e.name === "TimeoutError";
         throw new ZetarisError(
-          `Cannot reach ${cfg.zetarisUrl}: ${
-            e instanceof Error ? e.message : e
-          }`,
+          timedOut
+            ? `No answer from ${cfg.zetarisUrl} within ${timeoutMs / 1000} s`
+            : `Cannot reach ${cfg.zetarisUrl}: ${
+              e instanceof Error ? e.message : e
+            }`,
+          timedOut ? "timeout" : "unreachable",
         );
       }
       const text = await res.text();
@@ -46,7 +61,11 @@ export function zetarisClient(cfg: Config, timeoutMs = 120_000) {
         try {
           msg = JSON.parse(text).msg ?? text;
         } catch { /* keep the raw text */ }
-        throw new ZetarisError(`HTTP ${res.status}: ${msg.slice(0, 400)}`);
+        throw new ZetarisError(
+          `HTTP ${res.status}: ${msg.slice(0, 400)}`,
+          "http",
+          res.status,
+        );
       }
       const out = JSON.parse(text || "null");
       return { rows: out?.data ?? [], headers: out?.headers ?? [] };

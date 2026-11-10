@@ -1,7 +1,7 @@
 // Kbase page handling: sitemap parsing, HTML to Markdown, credential redaction, page kind.
 // Pure functions (no network) so they can be unit tested; scripts/fetch_kbase.ts does the I/O.
 import { DOMParser } from "@b-fuze/deno-dom";
-import TurndownService from "turndown";
+import TurndownModule from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 
 export interface SitemapEntry {
@@ -70,6 +70,10 @@ export interface ConvertedPage {
   images: number;
   embeds: number;
 }
+
+// turndown ships no types; with node_modules in manual mode Deno resolves it to a bare object type.
+// deno-lint-ignore no-explicit-any
+const TurndownService = TurndownModule as any;
 
 function turndown() {
   const td = new TurndownService({

@@ -33,7 +33,8 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 | 2 Store and ingest    | Done. Re-run 2026-11-10 over both corpora: 2,347 segments (repo 1,254 + kbase 1,093) in 24 batches, about 5 minutes, Milvus count 2,347. Both known-question checks pass; `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. The earlier repo-only run (1,237 segments, about 196 s) was replaced. |
 | 3 Query core          | Done. Search 10/12; Answer run on all 15 with `gpt-oss:20b`. SQL scripts now indexed (2,767 segments); the REST answer is now a faithful template, the USL activate answer is still wrong. Details in evidence.md. See Phase 3 below and [evidence.md](evidence.md).                                                                                                                              |
 | 4 USL and VDM         | Done. See Phase 4 below.                                                                                                                                                                                                                                                                                                                                                                          |
-| 5 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
+| 5 App shell and Ask   | Done. See Phase 5 below.                                                                                                                                                                                                                                                                                                                                                                          |
+| 6 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Open items from Phase 2
 
@@ -147,3 +148,52 @@ Found:
 No construct was rejected, so there is no `known_to_fail` pair. Not done or not
 tested: pin rows through the USL (Phase 6), the Milvus compose file (still never
 run), teardown of the datasource and mart.
+
+## Phase 5: app shell and Ask (2026-11-10)
+
+Built: Fresh 2 + Vite app (`main.ts`, `routes/`, `islands/`, `components/`,
+`design/tokens.css`), the Ask page, the Status page, `/api/ask` and
+`/api/status`, `core/ask.ts` (flow and error mapping), `core/limit.ts`,
+`core/status.ts`, `scripts/start.ts`, and a Playwright suite in `e2e/`.
+
+Gate results **[S]** (one run each):
+
+- `deno task check` clean; `deno task test` 42 unit tests pass.
+- e2e: 17 tests pass (desktop 15, phone 2) against the mock: ask and see
+  sources, Answer mode, example chip, empty question (nothing sent), no matches,
+  Zetaris down (clear message, no host, no SQL), a Zetaris error with server
+  text that must not appear, Answer disabled without an LLM, bad JSON and
+  oversized body, one Answer at a time per session (429 on the second), theme
+  toggle persists, no console errors, no sideways scroll at phone width.
+- Live, against the real stack: search 0.2 to 0.4 s; Answer about 4 to 5 s with
+  `gpt-oss:20b`; the PUDL question returns the query from
+  `examples/pudl-chart/query.sql`; the status page reports every check OK.
+  Screenshots at desktop and phone widths are in `docs/screenshots/`.
+
+Differences from the plan, on purpose:
+
+- No separate `/api/search`: Search only is a mode of `/api/ask`.
+- No `AnswerStream` island: the pipeline returns the whole answer, so there is
+  nothing to stream.
+- System fonts instead of Plus Jakarta Sans, so the app makes no requests to a
+  font CDN. Colours are atlas's tokens.
+- Answer text is plain text, not Markdown (no sanitizer yet). `marked` arrives
+  with the Docs browser in Phase 6.
+- No Docs, Pinned or Candidates pages yet (Phases 6 and 6b).
+
+Found:
+
+- Built server code resolves `import.meta.url` inside `_fresh/`, so file paths
+  must come from the working directory (the app folder). The tasks run from
+  there; running the server from elsewhere breaks the Status page's last-ingest
+  and whole-file reads.
+- `nodeModulesDir: "manual"` changed how `turndown` is typed in the older Kbase
+  code; it now has an `any` cast with a comment.
+- The sources are ordered by similarity plus the keyword bonus, so the displayed
+  similarity is not strictly descending; the page says so.
+- The e2e mock cannot catch a change in what real Zetaris returns; the live
+  check above covers that for now.
+
+Not done or not tested: WebKit and Firefox runs (Chromium only), a keyboard-only
+walkthrough beyond the skip link and labelled controls, running the server from
+another directory, the Milvus compose file.
