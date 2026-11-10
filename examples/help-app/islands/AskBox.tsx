@@ -391,6 +391,31 @@ export default function AskBox({ llmConfigured, model }: Props) {
                 })()}
               </div>
             )}
+            {s.kind === "error" && (
+              <div
+                class="status-err"
+                role="alert"
+                data-testid="error"
+                data-code={s.code}
+              >
+                {s.message}
+                {s.code === "not_found" && mode.value === "example" && (
+                  <div class="actions">
+                    <button
+                      type="button"
+                      class="btn ghost"
+                      data-testid="try-answer"
+                      onClick={() => {
+                        pick("answer");
+                        submit(question.value);
+                      }}
+                    >
+                      Ask this in Answer mode
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {s.kind === "example" &&
               `Done in ${s.seconds.toFixed(0)} s. ${s.result.attempts.length} ${
                 s.result.attempts.length === 1 ? "attempt" : "attempts"
@@ -415,27 +440,6 @@ export default function AskBox({ llmConfigured, model }: Props) {
           </p>
         )}
       </form>
-
-      {s.kind === "error" && (
-        <div class="alert" role="alert" data-testid="error" data-code={s.code}>
-          {s.message}
-          {s.code === "not_found" && mode.value === "example" && (
-            <div class="actions">
-              <button
-                type="button"
-                class="btn ghost"
-                data-testid="try-answer"
-                onClick={() => {
-                  pick("answer");
-                  submit(question.value);
-                }}
-              >
-                Ask this in Answer mode
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
       {s.kind === "example" && (
         <section aria-label="Generated example">

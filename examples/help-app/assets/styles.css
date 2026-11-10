@@ -1008,3 +1008,20 @@ th {
     flex-basis: 100%;
   }
 }
+
+.status-err {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 0;
+  color: var(--bad);
+  line-height: 1.4;
+}
+.status-err::before {
+  content: "✕";
+  font-weight: 700;
+}
+.status-err .actions {
+  margin: 0;
+}
