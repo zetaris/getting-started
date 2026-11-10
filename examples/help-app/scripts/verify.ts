@@ -1,6 +1,6 @@
 // Prints what the corpus walk finds and checks the file count against `find`.
 // Usage: deno task help:verify --corpus
-import { loadRepoCorpus, MAX_TEXT } from "../core/corpus.ts";
+import { loadKbaseCorpus, loadRepoCorpus, MAX_TEXT } from "../core/corpus.ts";
 
 export const ROOT = new URL("../../..", import.meta.url).pathname.replace(
   /\/$/,
@@ -69,6 +69,26 @@ if (import.meta.main) {
       "FAIL: file count differs from find, or a segment is too long.",
     );
     Deno.exit(1);
+  }
+  try {
+    const kb = await loadKbaseCorpus("corpus/kbase");
+    const manifest = JSON.parse(
+      await Deno.readTextFile("corpus/kbase/manifest.json"),
+    );
+    const kbLongest = Math.max(...kb.segments.map((s) => s.text.length));
+    console.log(
+      `kbase pages: ${kb.docs.length} (manifest ok: ${manifest.ok}, of ${manifest.pages} in the sitemap)`,
+    );
+    console.log(`kbase segments: ${kb.segments.length}, longest ${kbLongest}`);
+    if (kb.docs.length !== manifest.ok || kbLongest > MAX_TEXT) {
+      console.error(
+        "FAIL: kbase file count differs from the manifest, or a segment is too long.",
+      );
+      Deno.exit(1);
+    }
+  } catch (e) {
+    if (!(e instanceof Deno.errors.NotFound)) throw e;
+    console.log("kbase: no snapshot (run deno task help:fetch-kbase)");
   }
   console.log("ok");
 }

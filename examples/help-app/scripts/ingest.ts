@@ -3,7 +3,11 @@
 //   deno task help:ingest [--yes]     drop and recreate the collection, ingest, verify, register
 // Safe to run twice: the collection is recreated and the counts are checked. A non-empty
 // collection is only dropped with --yes.
-import { loadRepoCorpus, type Segment } from "../core/corpus.ts";
+import {
+  loadKbaseCorpus,
+  loadRepoCorpus,
+  type Segment,
+} from "../core/corpus.ts";
 import { loadConfig } from "../core/config.ts";
 import {
   collectionBody,
@@ -46,7 +50,21 @@ function mask(spec: ReturnType<typeof ingestSpec>) {
   return copy;
 }
 
-const { docs, segments } = await loadRepoCorpus(ROOT, { skipPrefixes: SKIP });
+const repo = await loadRepoCorpus(ROOT, { skipPrefixes: SKIP });
+let kbase = { docs: [] as typeof repo.docs, segments: [] as Segment[] };
+if (!Deno.args.includes("--no-kbase")) {
+  try {
+    kbase = await loadKbaseCorpus("corpus/kbase");
+  } catch (e) {
+    if (!(e instanceof Deno.errors.NotFound)) throw e;
+    console.log("no corpus/kbase snapshot: indexing the repo only");
+  }
+}
+const docs = [...repo.docs, ...kbase.docs];
+const segments = [...repo.segments, ...kbase.segments];
+console.log(
+  `repo: ${repo.docs.length} files, ${repo.segments.length} segments; kbase: ${kbase.docs.length} pages, ${kbase.segments.length} segments`,
+);
 const batches: Segment[][] = [];
 for (let i = 0; i < segments.length; i += cfg.batch) {
   batches.push(segments.slice(i, i + cfg.batch));

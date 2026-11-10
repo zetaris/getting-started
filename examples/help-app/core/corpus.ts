@@ -286,3 +286,37 @@ export async function loadRepoCorpus(
   }
   return { docs, segments };
 }
+
+/** The kbase snapshot under corpus/kbase: one Markdown file per page with a `---` header. The
+ * header is stripped before segmenting; the page URL is the segment's `file`. */
+export async function loadKbaseCorpus(dir: string): Promise<Corpusload> {
+  const docs: DocInfo[] = [];
+  const segments: Segment[] = [];
+  const names: string[] = [];
+  for await (const e of Deno.readDir(dir)) {
+    if (e.isFile && e.name.endsWith(".md") && e.name !== "README.md") {
+      names.push(e.name);
+    }
+  }
+  for (const name of names.sort()) {
+    const raw = await Deno.readTextFile(`${dir}/${name}`);
+    const m = raw.match(/^---\n([\s\S]*?)\n---\n/);
+    if (!m) continue;
+    const head = (k: string) =>
+      m[1].match(new RegExp(`^${k}: (.*)$`, "m"))?.[1]?.trim() ?? "";
+    const url = head("url");
+    const body = raw.slice(m[0].length);
+    const segs = splitDocument("kbase", url, body);
+    segments.push(...segs);
+    docs.push({
+      corpus: "kbase",
+      path: url,
+      title: JSON.parse(head("title") || '""'),
+      kind: head("kind"),
+      bytes: new TextEncoder().encode(raw).length,
+      gitSha: head("sha256"),
+      chunkCount: segs.length,
+    });
+  }
+  return { docs, segments };
+}

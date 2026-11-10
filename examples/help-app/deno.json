@@ -1,14 +1,28 @@
 {
   "tasks": {
     "check": "deno fmt --check . && deno lint . && deno check core/*.ts scripts/*.ts",
-    "test": "deno test --allow-read --allow-env core/",
+    "test": "deno test --allow-read --allow-env --allow-net=jsr.io,npmjs.org core/",
     "help:verify": "deno run --allow-read --allow-env --allow-run=find scripts/verify.ts",
     "help:ingest": "deno run --allow-read --allow-write=.cache --allow-net --allow-env scripts/ingest.ts",
-    "help:doctor": "deno run --allow-read --allow-net --allow-env scripts/doctor.ts"
+    "help:doctor": "deno run --allow-read --allow-net --allow-env scripts/doctor.ts",
+    "help:fetch-kbase": "deno run --allow-net=kbase.zetaris.com --allow-read=.cache --allow-write=corpus/kbase,.cache scripts/fetch_kbase.ts"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1.0.13"
+    "@std/assert": "jsr:@std/assert@1.0.13",
+    "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",
+    "turndown": "npm:turndown@7.2.0",
+    "turndown-plugin-gfm": "npm:turndown-plugin-gfm@1.0.2"
   },
-  "fmt": { "exclude": ["corpus/", ".cache/"] },
-  "lint": { "exclude": ["corpus/", ".cache/"] }
+  "fmt": {
+    "exclude": [
+      "corpus/",
+      ".cache/"
+    ]
+  },
+  "lint": {
+    "exclude": [
+      "corpus/",
+      ".cache/"
+    ]
+  }
 }

@@ -25,13 +25,13 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 
 ## Phases
 
-| Phase                 | State                                                                                                                                                                                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 Orientation         | Done (above).                                                                                                                                                                                                                                 |
-| 1 Corpus and chunking | Done. `deno task help:verify --corpus`: 78 files (equals `find`), 1,237 segments, 798,526 bytes, longest segment 1,299 characters. 9 unit tests pass.                                                                                         |
-| 1b Kbase corpus       | **Not started.** Needs the live page template inspected first.                                                                                                                                                                                |
-| 2 Store and ingest    | Done except the items below. 1,237 segments in 13 batches, about 196 s, Milvus count 1,237. `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. |
-| 3 to 8                | Not started.                                                                                                                                                                                                                                  |
+| Phase                 | State                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 Orientation         | Done (above).                                                                                                                                                                                                                                                                                                                                                                                     |
+| 1 Corpus and chunking | Done. `deno task help:verify --corpus`: 78 files (equals `find`), 1,237 segments, 798,526 bytes, longest segment 1,299 characters. 9 unit tests pass.                                                                                                                                                                                                                                             |
+| 1b Kbase corpus       | **Not started.** Needs the live page template inspected first.                                                                                                                                                                                                                                                                                                                                    |
+| 2 Store and ingest    | Done. Re-run 2026-11-10 over both corpora: 2,347 segments (repo 1,254 + kbase 1,093) in 24 batches, about 5 minutes, Milvus count 2,347. Both known-question checks pass; `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. The earlier repo-only run (1,237 segments, about 196 s) was replaced. |
+| 3 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Open items from Phase 2
 
@@ -50,3 +50,38 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
   repo (they are part of the corpus).
 - **Not tested:** concurrent ingest, other Zetaris builds, Milvus version (the
   version of the Milvus used here was v3.0.5; behaviour on others is unknown).
+
+## Phase 1b: Kbase snapshot (2026-11-10)
+
+- **Gate.** Sitemap pages 233 = 171 converted + 59 image-only + 3 non-content
+  (`kb-404`, `kb-search-results`, `knowledge`). Every sitemap page is accounted
+  for in `corpus/kbase/manifest.json`.
+- **Template.** Page text sits in `article.knowledgebase-post`. The SQL Manual
+  is a second template (Sphinx-style `div.section` blocks, with only the word
+  "test" in the article wrapper); a fallback handles it (48,876 characters, 208
+  fenced blocks). Only that page was found to need it.
+- **Spot-check of 5 pages** (SQL Guide, an internal-network troubleshooting
+  page, the 2.4.1.0 release note, the support FAQ page, a how-to): text reads
+  cleanly, SQL and shell blocks are fenced, no credentials remain. Not checked
+  page by page: the other 166.
+- **Redaction** is regex-based and over-matches: it replaced documentation
+  placeholders (for example `password=<your_password>` and a `token@host` URL)
+  as well as the e-mail addresses of named employees. 37 pages needed at least
+  one replacement; counts are in the manifest. It can also eat a word after
+  `password:` in prose.
+- **Skipped as image-only (text only in v1):** 59 pages, mostly step-by-step
+  how-tos made of screenshots (the Query Builder, SQL editor, Cloud Gateway,
+  coding-agent connection guides). Their slugs are in the manifest with status
+  `skipped-textless`. Pages that mix text and screenshots were kept, with the
+  image links (query strings removed) and no alt text, since most images have
+  none.
+- **Kinds.** The kind labels come from slug and title patterns and are weak: 132
+  of 171 pages are `other`. Treat `kind` on kbase pages as provisional.
+- **SQL Guide** is marked "CURRENTLY IN REVISION" on the live page; the snapshot
+  says so.
+- **Not covered:** per-page change detection (`help:sync-kbase`), and whether
+  any page is internal or customer-specific (the README asks for that check
+  before publishing).
+- **Counts.** About 814,000 characters and 1,093 segments for the kbase; the
+  repo corpus is 80 files and 1,254 segments (it grew by this example's own
+  docs).
