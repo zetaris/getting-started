@@ -1,0 +1,28 @@
+# Postgres for the help app's doc catalog and pin log (Phase 4). Separate from the Milvus file so
+# either can be started alone. Run it with the repo's env file so the password is not typed here:
+#   docker compose --env-file ../../.env.local -f compose/docker-compose.postgres.yml up -d
+# (from examples/help-app). Port 5434 on this machine; the Zetaris containers reach it as
+# host.docker.internal:5434.
+name: help-app-postgres
+services:
+  postgres:
+    image: postgres:${HELP_PG_IMAGE_TAG:-16}
+    environment:
+      POSTGRES_DB: ${HELP_PG_DB:-help}
+      POSTGRES_USER: ${HELP_PG_USER:-help}
+      POSTGRES_PASSWORD: ${HELP_PG_PASSWORD:?set HELP_PG_PASSWORD in .env.local}
+    volumes:
+      - help-pg-data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "pg_isready -U ${HELP_PG_USER:-help} -d ${HELP_PG_DB:-help}",
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  help-pg-data:

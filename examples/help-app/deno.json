@@ -7,7 +7,8 @@
     "help:doctor": "deno run --allow-read --allow-net --allow-env scripts/doctor.ts",
     "help:fetch-kbase": "deno run --allow-net=kbase.zetaris.com --allow-read=.cache --allow-write=corpus/kbase,.cache scripts/fetch_kbase.ts",
     "help:smoke": "deno run --allow-read --allow-write=.cache --allow-net --allow-env scripts/smoke.ts",
-    "help:answer": "deno run --allow-read --allow-net --allow-env scripts/answer_smoke.ts"
+    "help:answer": "deno run --allow-read --allow-net --allow-env scripts/answer_smoke.ts",
+    "help:usl": "deno run --allow-read --allow-net --allow-env --allow-run=python3 scripts/build_usl.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.13",

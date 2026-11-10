@@ -1,6 +1,6 @@
 # Help app: a RAG worked example on Zetaris
 
-> **Status: in progress (Phase 3 of 8).** Corpus, ingest, the saved search
+> **Status: in progress (Phase 4 of 8).** Corpus, ingest, the saved search
 > relation and a search-only query core exist. The app, USL and VDM, and
 > feedback do not yet. See [docs/STATUS.md](docs/STATUS.md) for what has been
 > run and what has not. Nothing here is hosted: you run it yourself, on your own
@@ -21,6 +21,7 @@ rules and gotchas it relies on are written up in the
 | Zetaris Lightning | A running instance (local or AWS, per the [install guides](../../docs/install)), reachable over REST. The example was tested on Zetaris Lightning 2.4.3.1 in a local Docker deployment.                                                                    |
 | Deno              | 2.9 or later (`deno --version`).                                                                                                                                                                                                                           |
 | A vector store    | Milvus. [compose/docker-compose.yml](compose/docker-compose.yml) is provided but **has not been run** yet; the example was tested against a Milvus already running locally. About 1 GB of RAM is a reasonable floor for a corpus this size (not measured). |
+| Postgres          | 16. [compose/docker-compose.postgres.yml](compose/docker-compose.postgres.yml) starts one on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs and, later, the pin log.                                                  |
 | An LLM endpoint   | Only for Answer mode (later phases): Ollama, or any server the Zetaris LLM node can reach. Search-only mode needs none.                                                                                                                                    |
 
 The Zetaris containers must be able to reach Milvus (and Ollama). On a single
@@ -48,6 +49,64 @@ deno task help:smoke                # 15 curated questions, search only, several
 `HELP_COLLECTION`, and refuses to drop a non-empty one without `--yes`. It
 always sends `LIMIT 100000` on the sink run: a small `LIMIT` silently writes
 only part of the data.
+
+## The USL and the data mart
+
+`deno task help:usl` registers the Postgres database in Zetaris as datasource
+`help_pg`, fills its `docs` and `chunks` tables (one row per file and per
+segment, written through Zetaris `INSERT`), then builds `help_usl` and
+`help_mart` from the numbered scripts in [sql/](sql/). Start Postgres first:
+
+```bash
+docker compose --env-file ../../.env.local -f compose/docker-compose.postgres.yml up -d
+deno task help:usl --dry-run   # the steps; sends nothing
+deno task help:usl             # add --rebuild to drop and recompile help_usl
+```
+
+Set `HELP_PG_PASSWORD` (your own choice) in `.env.local` first; the other
+`HELP_PG_*` settings are in [.env.example](.env.example). The password only
+travels in the datasource statement and is never printed.
+
+| USL table                          | Over                                    | Note                                                                                  |
+| ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------- |
+| `docs`                             | `help_pg.docs`                          | one row per file: path, corpus, title, kind, bytes, git_sha, chunk_count              |
+| `chunks`                           | `help_pg.chunks`                        | one row per segment; `path` is a foreign key to `docs.path`                           |
+| `search`                           | relation `help_app.help_search`         | a fixed question, 100 rows; a `SELECT` runs the search pipeline                       |
+| `answers`                          | relation `help_app.help_answer`         | a fixed question; **a `SELECT` calls the LLM every time**. Do not join it to anything |
+| `pins`, `pin_events`, `pin_scores` | `help_pg.pins` and `help_pg.pin_events` | empty until pins exist (Phase 6)                                                      |
+
+Three queries to try in the Zetaris UI (the namespace is
+`lightning.metastore.help_app_usl.help_usl`):
+
+```sql
+-- how much of each corpus is indexed
+SELECT d.corpus, count(*) AS chunks
+FROM lightning.metastore.help_app_usl.help_usl.chunks c
+JOIN lightning.metastore.help_app_usl.help_usl.docs d ON d.path = c.path
+GROUP BY d.corpus
+```
+
+```sql
+-- the doc catalog by kind, through the data mart
+SELECT kind, count(*) AS n FROM help_mart.doc_catalog GROUP BY kind ORDER BY n DESC
+```
+
+```sql
+-- which files have the most segments
+SELECT path, chunk_count FROM help_mart.doc_catalog ORDER BY chunk_count DESC LIMIT 10
+```
+
+Things to know:
+
+- Zetaris `INSERT` only appends, so `help:usl` fills the catalog **once**. To
+  refill after the corpus changes, run `TRUNCATE docs, chunks` in Postgres and
+  run it again.
+- The catalog is the corpus as the script walks it now. The Milvus index is only
+  as current as the last `help:ingest`, so the two can differ until you
+  re-ingest.
+- These scripts are not in `open_data/manifest.json`: its `usl` kind runs
+  scripts over REST alone, and these need a Postgres datasource created with a
+  password and a filled catalog first.
 
 ## How it works (so far)
 

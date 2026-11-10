@@ -32,7 +32,8 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 | 1b Kbase corpus       | Done (see Phase 1b below).                                                                                                                                                                                                                                                                                                                                                                        |
 | 2 Store and ingest    | Done. Re-run 2026-11-10 over both corpora: 2,347 segments (repo 1,254 + kbase 1,093) in 24 batches, about 5 minutes, Milvus count 2,347. Both known-question checks pass; `help_app.help_search` registered and `SELECT` returned 100 rows. `help_answer` is registered only when `OLLAMA_URL` is set; not registered here. The earlier repo-only run (1,237 segments, about 196 s) was replaced. |
 | 3 Query core          | Done. Search 10/12; Answer run on all 15 with `gpt-oss:20b`. SQL scripts now indexed (2,767 segments); the REST answer is now a faithful template, the USL activate answer is still wrong. Details in evidence.md. See Phase 3 below and [evidence.md](evidence.md).                                                                                                                              |
-| 4 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
+| 4 USL and VDM         | Done. See Phase 4 below.                                                                                                                                                                                                                                                                                                                                                                          |
+| 5 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Open items from Phase 2
 
@@ -110,3 +111,39 @@ Added `core/rank.ts`, `core/prompt.ts`, `core/query.ts` and `scripts/smoke.ts`
 (15 questions in `core/smoke_set.ts`). 24 unit tests pass. Results and caveats
 are in [evidence.md](evidence.md). Not done: the Answer side was never run, and
 the segmentation comparison (heading-aware vs plain windows) is still open.
+
+## Phase 4: USL and data mart (2026-11-10)
+
+Built: a Postgres service (`compose/docker-compose.postgres.yml`, Postgres
+16.15), `sql/01` to `03`, `core/catalog.ts` and `scripts/build_usl.ts`
+(`deno task help:usl`, `--dry-run`, `--rebuild`). 30 unit tests pass.
+
+Gate results, all on the local instance **[S]** (one build, then a rebuild):
+
+- Counts through the USL equal Postgres counted directly: `docs` 309, `chunks`
+  2,775, 0 orphans. `search` returns 100 rows. `answers` returns its row (the
+  LLM ran). `pins`, `pin_events` and `pin_scores` are 0, as expected.
+- Data quality: the `chunks.path` foreign key rule reports 2,775 checked, 2,775
+  valid, 0 invalid. It is not vacuous: with one orphan chunk inserted it
+  reported 2,776 / 2,775 / 1, and 0 invalid again after the orphan was removed.
+- The mart: `help_mart.doc_catalog` 309 rows, `answer_scores` 0 rows (no pins
+  yet). It still returned 309 after `--rebuild` replaced the USL underneath it.
+- `--rebuild` re-run end to end, after adding `--skip-exists` for the mart (it
+  failed on the first try because the mart existed).
+
+Found:
+
+- `COMPILE USL` needs the namespace to exist first
+  (`CREATE NAMESPACE IF NOT EXISTS`); it was already in the AGENTS notes and I
+  missed it the first time.
+- `help_answer.contexts` is an array, which a USL rejects by the known rule, so
+  `answers.contexts` is `concat_ws(...)` of it. I avoided the array by design
+  and did not test the rejection here.
+- Zetaris `INSERT` appends only and there is no way to clear a table from it, so
+  refilling means a `TRUNCATE` in Postgres.
+- The corpus now has 309 docs and 2,775 segments; the Milvus index holds 2,767
+  (before this phase added SQL files). Re-ingest to realign.
+
+No construct was rejected, so there is no `known_to_fail` pair. Not done or not
+tested: pin rows through the USL (Phase 6), the Milvus compose file (still never
+run), teardown of the datasource and mart.

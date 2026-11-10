@@ -42,6 +42,11 @@ export function loadConfig() {
     dim,
     container: env("HELP_CONTAINER", "help_app"),
     batch,
+    pgHost: env("HELP_PG_HOST", "host.docker.internal"),
+    pgPort: env("HELP_PG_PORT", "5434"),
+    pgDb: env("HELP_PG_DB", "help"),
+    pgUser: env("HELP_PG_USER", "help"),
+    pgPassword: env("HELP_PG_PASSWORD"),
     ollamaUrl: env("OLLAMA_URL"),
     ollamaModel: env("OLLAMA_MODEL"),
   };
