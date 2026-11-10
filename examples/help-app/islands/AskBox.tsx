@@ -45,31 +45,11 @@ export default function AskBox({ llmConfigured, model }: Props) {
   const used = useSignal<PastAnswerOut | null>(null);
   const abort = useRef<AbortController | null>(null);
   const showSteps = useSignal(false);
-  // The answer card has two faces. `side` is the face in the page; `turn` drives the flip.
+  // The answer card has two tabs: the answer and its sources.
   const side = useSignal<"answer" | "sources">("answer");
-  const target = useRef<"answer" | "sources">("answer");
-  const turn = useSignal<"" | "out" | "in">("");
   const shown = side; // the tab that looks selected
   function flipTo(k: "answer" | "sources") {
-    if (turn.value !== "") {
-      target.current = k; // a click during a turn: end up on the last one clicked
-      return;
-    }
-    if (k === side.value) return;
-    const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")
-      .matches;
-    if (reduce) {
-      side.value = k;
-      return;
-    }
-    target.current = k;
-    turn.value = "out";
-  }
-  function turned() {
-    if (turn.value === "out") {
-      side.value = target.current;
-      turn.value = "in";
-    } else turn.value = target.current !== side.value ? "out" : "";
+    side.value = k;
   }
   const now = useSignal(0); // ticks while loading, so elapsed times update
   const loading = state.value.kind === "loading";
@@ -117,7 +97,6 @@ export default function AskBox({ llmConfigured, model }: Props) {
     const started = performance.now();
     copied.value = false;
     side.value = "answer";
-    turn.value = "";
     pin.value = { kind: "none" };
     used.value = null;
     state.value = {
@@ -557,8 +536,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
             if (!hasAnswer) return sourcesFace;
             return (
               <div
-                class={`flipcard ${turn.value}`}
-                onAnimationEnd={turned}
+                class="flipcard"
                 data-testid="flipcard"
                 data-side={side.value}
               >
@@ -623,7 +601,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
                         class="btn ghost"
                         onClick={() => flipTo("sources")}
                       >
-                        See the {r.sources.length} sources ↻
+                        See the {r.sources.length} sources
                       </button>
                     </div>
                     {pin.value.kind === "pinned" && (
@@ -639,9 +617,9 @@ export default function AskBox({ llmConfigured, model }: Props) {
                       </div>
                     )}
                     <p class="fine">
-                      Written by a language model from the sources on the back.
-                      Check the cited files, and treat generated SQL as
-                      unverified.
+                      Written by a language model from the sources in the
+                      Sources tab. Check the cited files, and treat generated
+                      SQL as unverified.
                     </p>
                   </div>
                   <div

@@ -142,7 +142,7 @@ test("the page has a skip link, labelled controls and no console errors", async 
   expect(errors).toEqual([]);
 });
 
-test("the answer card flips to its sources and back", async ({ page }) => {
+test("the answer card switches to its sources and back", async ({ page }) => {
   await page.goto(APPS.full.url);
   await page.getByRole("radio", { name: "Answer" }).check({ force: true });
   await expect(page.getByRole("radio", { name: "Answer" })).toBeChecked();
