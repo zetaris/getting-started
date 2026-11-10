@@ -1,27 +1,41 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import type { AskResult, Mode } from "../core/ask.ts";
+import type { AskResult, Mode, PastAnswerOut } from "../core/ask.ts";
 import { SourceCard } from "../components/SourceCard.tsx";
+import { StaleBadge } from "../components/StaleBadge.tsx";
+import { Html } from "../components/Html.tsx";
+import LikeButton from "./LikeButton.tsx";
+import NameField from "./NameField.tsx";
+import { getName, postEvent } from "./prefs.ts";
 
 const MODE_KEY = "help_mode";
 const CLIENT_TIMEOUT_MS = 130_000;
 
 interface Props {
   llmConfigured: boolean;
+  model: string;
   examples: string[];
 }
 
 type State =
   | { kind: "idle" }
   | { kind: "loading"; mode: Mode }
-  | { kind: "done"; result: AskResult; seconds: number }
+  | { kind: "done"; result: AskResult; question: string; seconds: number }
   | { kind: "error"; code: string; message: string };
 
-export default function AskBox({ llmConfigured, examples }: Props) {
+type PinState =
+  | { kind: "none" }
+  | { kind: "pinning" }
+  | { kind: "pinned"; existing: boolean }
+  | { kind: "error"; message: string };
+
+export default function AskBox({ llmConfigured, model, examples }: Props) {
   const question = useSignal("");
   const mode = useSignal<Mode>("search");
   const state = useSignal<State>({ kind: "idle" });
   const copied = useSignal(false);
+  const pin = useSignal<PinState>({ kind: "none" });
+  const used = useSignal<PastAnswerOut | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -55,6 +69,8 @@ export default function AskBox({ llmConfigured, examples }: Props) {
     const timer = setTimeout(() => ctl.abort(), CLIENT_TIMEOUT_MS);
     const started = performance.now();
     copied.value = false;
+    pin.value = { kind: "none" };
+    used.value = null;
     state.value = { kind: "loading", mode: mode.value };
     try {
       const res = await fetch("/api/ask", {
@@ -76,6 +92,7 @@ export default function AskBox({ llmConfigured, examples }: Props) {
       state.value = {
         kind: "done",
         result: body as AskResult,
+        question: text,
         seconds: (performance.now() - started) / 1000,
       };
     } catch (e) {
@@ -97,6 +114,35 @@ export default function AskBox({ llmConfigured, examples }: Props) {
       await navigator.clipboard.writeText(text);
       copied.value = true;
     } catch { /* clipboard blocked */ }
+  }
+
+  async function pinAnswer(s: Extract<State, { kind: "done" }>) {
+    pin.value = { kind: "pinning" };
+    try {
+      const res = await fetch("/api/pins", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          question: s.question,
+          answer: s.result.answer,
+          model,
+          sources: s.result.sources.map((x) => ({ file: x.file })),
+          who: getName(),
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || body?.error) {
+        throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
+      }
+      pin.value = { kind: "pinned", existing: Boolean(body.existing) };
+    } catch (e) {
+      pin.value = { kind: "error", message: (e as Error).message };
+    }
+  }
+
+  function useAnswer(p: PastAnswerOut) {
+    used.value = p;
+    postEvent(p.pinId, "use").catch(() => {}); // a missed count is not worth an error
   }
 
   const s = state.value;
@@ -187,6 +233,7 @@ export default function AskBox({ llmConfigured, examples }: Props) {
             </button>
           ))}
         </div>
+        <NameField />
       </form>
 
       <div class="status" role="status" aria-live="polite" data-testid="status">
@@ -210,6 +257,57 @@ export default function AskBox({ llmConfigured, examples }: Props) {
 
       {s.kind === "done" && (
         <section aria-label="Results">
+          {s.result.pastAnswers.length > 0 && (
+            <section aria-label="Past answers" data-testid="past">
+              <h2>Past answers</h2>
+              <p class="lead" style="margin:-4px 0 12px;font-size:0.9rem">
+                Someone asked something similar and pinned an answer. Using it
+                needs no model call.
+              </p>
+              {s.result.pastAnswers.map((p) => (
+                <article class="card past" data-testid="past-answer">
+                  <h3>
+                    <span
+                      class="lead"
+                      style="font-size:0.85rem;font-weight:400"
+                    >
+                      Pinned for:
+                    </span>{" "}
+                    {p.question}
+                  </h3>
+                  <div class="meta">
+                    <span
+                      class="pill"
+                      title="Cosine similarity to your question"
+                    >
+                      similarity {p.similarity.toFixed(2)}
+                    </span>
+                    <span>pinned by {p.pinnedBy}</span>
+                    {p.model && <span>{p.model}</span>}
+                    <StaleBadge stale={p.stale} />
+                  </div>
+                  <div class="actions">
+                    <button
+                      type="button"
+                      class="btn ghost"
+                      data-testid="use"
+                      onClick={() =>
+                        useAnswer(p)}
+                    >
+                      Use this answer
+                    </button>
+                    <LikeButton pinId={p.pinId} likes={p.likes} />
+                  </div>
+                </article>
+              ))}
+              {used.value && (
+                <div data-testid="used-answer">
+                  <h2>Pinned answer</h2>
+                  <Html html={used.value.answerHtml} class="md answer-md" />
+                </div>
+              )}
+            </section>
+          )}
           <h2>Sources</h2>
           <p class="lead" style="margin:-4px 0 12px;font-size:0.9rem">
             Ordered by similarity plus a small bonus for matching words, so the
@@ -227,7 +325,11 @@ export default function AskBox({ llmConfigured, examples }: Props) {
           {s.result.answer !== null && (
             <>
               <h2>Answer</h2>
-              <pre class="answer" data-testid="answer">{s.result.answer}</pre>
+              <Html
+                html={s.result.answerHtml ?? ""}
+                class="md answer-md"
+                testid="answer"
+              />
               <div class="actions">
                 <button
                   type="button"
@@ -236,7 +338,33 @@ export default function AskBox({ llmConfigured, examples }: Props) {
                 >
                   {copied.value ? "Copied" : "Copy"}
                 </button>
+                <button
+                  type="button"
+                  class="btn ghost"
+                  data-testid="pin"
+                  disabled={pin.value.kind === "pinning" ||
+                    pin.value.kind === "pinned"}
+                  onClick={() => pinAnswer(s)}
+                >
+                  {pin.value.kind === "pinning"
+                    ? "Pinning…"
+                    : pin.value.kind === "pinned"
+                    ? "Pinned"
+                    : "Pin this answer"}
+                </button>
               </div>
+              {pin.value.kind === "pinned" && (
+                <p class="lead" role="status" data-testid="pinned">
+                  {pin.value.existing
+                    ? "This answer was already pinned."
+                    : "Pinned. People who ask something similar will see it under Past answers."}
+                </p>
+              )}
+              {pin.value.kind === "error" && (
+                <div class="alert" role="alert" data-testid="pin-error">
+                  {pin.value.message}
+                </div>
+              )}
               <p class="lead" style="margin-top:10px;font-size:0.9rem">
                 Written by a language model from the sources above. Check the
                 cited files, and treat generated SQL as unverified.

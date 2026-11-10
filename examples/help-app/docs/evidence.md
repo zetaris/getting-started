@@ -84,3 +84,24 @@ grades stand only for the earlier index.
 script. It does not stop the model from mixing a statement's syntax with what it
 does. Show generated SQL as unverified, and prefer linking the source script.
 [S]
+
+## Pinned-answer threshold (2026-11-10, Phase 6)
+
+One pin ("How do I clone a pipeline?") against questions at the default 0.82
+threshold (E5, similarity on the question alone) **[S]**, one run:
+
+| Question                                           | Similarity | Shown? |
+| -------------------------------------------------- | ---------- | ------ |
+| What are the steps to clone a pipeline in Zetaris? | 0.911      | yes    |
+| how can I make a copy of an existing pipeline      | 0.868      | yes    |
+| create a new pipeline                              | 0.869      | yes    |
+| clone a git repository                             | 0.847      | yes    |
+| delete a pipeline                                  | 0.846      | yes    |
+| clone a data source                                | 0.842      | yes    |
+| schedule a pipeline daily                          | 0.834      | yes    |
+| What is a virtual pipeline?                        | 0.806      | no     |
+| unrelated questions                                | 0.73-0.76  | no     |
+
+Paraphrases score about the same as near-miss questions, so no threshold
+separates them. The app shows the pinned question with each past answer and
+makes using it opt-in. The threshold is `HELP_PIN_THRESHOLD`. [S]

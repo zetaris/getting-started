@@ -34,7 +34,7 @@ Fixes to the seed bundle: `sql/06` needs the full `VSCHEMA` column list;
 | 3 Query core          | Done. Search 10/12; Answer run on all 15 with `gpt-oss:20b`. SQL scripts now indexed (2,767 segments); the REST answer is now a faithful template, the USL activate answer is still wrong. Details in evidence.md. See Phase 3 below and [evidence.md](evidence.md).                                                                                                                              |
 | 4 USL and VDM         | Done. See Phase 4 below.                                                                                                                                                                                                                                                                                                                                                                          |
 | 5 App shell and Ask   | Done. See Phase 5 below.                                                                                                                                                                                                                                                                                                                                                                          |
-| 6 to 8                | Not started.                                                                                                                                                                                                                                                                                                                                                                                      |
+| 6 Docs and feedback   | Done. See Phase 6 below.                                                                                                                                                                                                                                                                                                                                                                          |
 
 ## Open items from Phase 2
 
@@ -177,8 +177,7 @@ Differences from the plan, on purpose:
   nothing to stream.
 - System fonts instead of Plus Jakarta Sans, so the app makes no requests to a
   font CDN. Colours are atlas's tokens.
-- Answer text is plain text, not Markdown (no sanitizer yet). `marked` arrives
-  with the Docs browser in Phase 6.
+- Answer text was plain text in Phase 5; Phase 6 renders it as safe Markdown.
 - No Docs, Pinned or Candidates pages yet (Phases 6 and 6b).
 
 Found:
@@ -197,3 +196,49 @@ Found:
 Not done or not tested: WebKit and Firefox runs (Chromium only), a keyboard-only
 walkthrough beyond the skip link and labelled controls, running the server from
 another directory, the Milvus compose file.
+
+## Phase 6: docs browser and feedback (2026-11-10)
+
+Built: `/docs` (index, file view with chunks, Kbase view), `/pins`, the Past
+answers panel, `POST /api/pins` and `/api/pin-event`, safe Markdown
+(`core/markdown.ts`), `core/pins.ts`, `core/docs.ts`, `core/security.ts`
+(same-origin check on POSTs), `core/http.ts`, and e2e specs `pins` and `docs`.
+
+Gate (pin, like twice, ask a paraphrase) **[S]** (one run, real stack): an
+Answer-mode ask pinned in about 1 s; pinning again returned the existing pin;
+two likes (two names) gave likes 1 then 2; the paraphrases "What are the steps
+to clone a pipeline in Zetaris?" (similarity 0.911) and "how can I make a copy
+of an existing pipeline" (0.868) showed the pin first with likes 2; "capital of
+France" showed none. Postgres `pin_events` had 2 `like` rows, USL `pin_scores`
+likes = 2, USL `pin_events` count = 2, and `help_pins` held 1 entry. The test
+rows were removed afterwards.
+
+Also checked: `deno task check` clean; 70 unit tests; 33 e2e tests (pin once,
+like persists, paraphrase shows the pin with its likes, Use this answer calls no
+model, unrelated question shows nothing, stale flag, cross-site POSTs 403,
+script in model output stays inert, docs index and filter, traversal and
+uncatalogued paths 404, phone width). Live: `/docs`, a repo file (16 chunks), a
+SQL file and a Kbase page return 200; 9 traversal variants return 404; two test
+pins with a wrong git sha and a missing file were flagged stale, the real one
+was not.
+
+Found:
+
+- **Precision of the threshold.** Similarity cannot tell the same question from
+  the same topic. With one pin ("clone a pipeline"), at 0.82 these also showed
+  it: "create a new pipeline" 0.869, "delete a pipeline" 0.846, "clone a git
+  repository" 0.847, "clone a data source" 0.842, "schedule a pipeline daily"
+  0.834. "What is a virtual pipeline?" (0.806) and unrelated questions (0.73 to
+  0.76) did not. So the panel names the pinned question and using it is opt-in.
+  See [evidence.md](evidence.md).
+- The remembered Answer mode is restored after the page is live, which can
+  override an early click; the e2e test waits for it.
+
+Differences from the plan: "Use this answer" still lets Answer mode run the
+model for the ask itself (the panel sits beside the results). Example mode and
+Candidates are Phase 6b and not started.
+
+Not done or not tested: Chromium only; no Content-Security-Policy header;
+staleness is only as current as the last `help:usl` fill; a pin vector with no
+row is ignored, and a retry after a partly failed embed could hit a duplicate
+key; no user identity (names are free text). Phases 6b, 7 and 8 not started.

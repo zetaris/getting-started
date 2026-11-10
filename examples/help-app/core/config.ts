@@ -41,6 +41,8 @@ export function loadConfig() {
     embeddingModel: model,
     dim,
     container: env("HELP_CONTAINER", "help_app"),
+    pinsCollection: env("HELP_PINS_COLLECTION", "help_pins"),
+    pinThreshold: Number(env("HELP_PIN_THRESHOLD", "0.82")),
     batch,
     pgHost: env("HELP_PG_HOST", "host.docker.internal"),
     pgPort: env("HELP_PG_PORT", "5434"),

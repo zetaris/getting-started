@@ -1,5 +1,8 @@
 // The Ask flow, with its dependencies passed in so it can be tested without Zetaris or an LLM:
 // clean the question, search, re-rank, group by file, and (Answer mode) build context and ask the model.
+import { docHref } from "./docs.ts";
+import { renderMarkdown } from "./markdown.ts";
+import type { PastAnswer } from "./pins.ts";
 import { isCodeQuestion, pickCodeFiles, wholeFileContext } from "./prompt.ts";
 import { cleanQuestion, type Passage } from "./query.ts";
 import { type FileHit, rerank, topFiles } from "./rank.ts";
@@ -15,14 +18,22 @@ export interface Source {
   similarity: number;
   /** Best passage text, trimmed for display. */
   excerpt: string;
-  /** A link only when the file is a web page (the Kbase). */
+  /** The original web page, only for Kbase files. */
   url: string | null;
+  /** The in-app page for this file in the Docs browser. */
+  docHref: string;
 }
+
+/** A pinned answer matching the question, with its answer already rendered to safe HTML. */
+export type PastAnswerOut = PastAnswer & { answerHtml: string };
 
 export interface AskResult {
   mode: Mode;
   sources: Source[];
   answer: string | null;
+  /** The answer rendered to safe HTML (raw HTML in model output is escaped). */
+  answerHtml: string | null;
+  pastAnswers: PastAnswerOut[];
   timings: { searchMs: number; answerMs: number | null };
 }
 
@@ -37,11 +48,14 @@ export interface AskDeps {
   llmConfigured: boolean;
   /** Keyword weight for re-ranking. */
   weight?: number;
+  /** Pinned answers similar to the question. Failures are ignored: this is an extra, not the answer. */
+  pastAnswers?(question: string): Promise<PastAnswer[]>;
 }
 
 export type AskErrorCode =
   | "empty_question"
   | "bad_request"
+  | "not_found"
   | "llm_not_configured"
   | "busy"
   | "zetaris_unreachable"
@@ -119,6 +133,7 @@ export function toSource(h: FileHit): Source {
       ? `${best.text.slice(0, EXCERPT)}…`
       : best.text,
     url: /^https?:\/\//.test(h.file) ? h.file : null,
+    docHref: docHref(h.file),
   };
 }
 
@@ -165,11 +180,22 @@ export async function ask(
   }
   const t0 = performance.now();
   let passages: Passage[];
+  let past: PastAnswer[] = [];
   try {
-    passages = await deps.search(question, 100);
+    [passages, past] = await Promise.all([
+      deps.search(question, 100),
+      (deps.pastAnswers?.(question) ?? Promise.resolve([])).catch((e) => {
+        console.log(`past answers skipped: ${(e as Error)?.name}`);
+        return [] as PastAnswer[];
+      }),
+    ]);
   } catch (e) {
     throw toAskError(e);
   }
+  const pastAnswers = past.map((p) => ({
+    ...p,
+    answerHtml: renderMarkdown(p.answer),
+  }));
   const ranked = rerank(question, passages, { weight: deps.weight });
   const sources = topFiles(ranked, 5).map(toSource);
   const searchMs = Math.round(performance.now() - t0);
@@ -178,6 +204,8 @@ export async function ask(
       mode: "search",
       sources,
       answer: null,
+      answerHtml: null,
+      pastAnswers,
       timings: { searchMs, answerMs: null },
     };
   }
@@ -189,6 +217,8 @@ export async function ask(
       mode: "answer",
       sources,
       answer,
+      answerHtml: renderMarkdown(answer),
+      pastAnswers,
       timings: { searchMs, answerMs: Math.round(performance.now() - t1) },
     };
   } catch (e) {

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { APPS, MOCK } from "../support/env.ts";
 
 test.beforeEach(async ({ request }) => {
-  await request.get(`${MOCK}/__control`); // reset delay and failure
+  await request.get(`${MOCK}/__control?reset=1`); // reset switches, pins and events
 });
 
 test("asking a question shows ranked sources, with the corpus labelled", async ({ page }) => {

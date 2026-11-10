@@ -16,7 +16,11 @@ export default define.page(function Home() {
           Searches this repository's docs and SQL scripts, and the Zetaris
           Knowledge base, through Zetaris pipelines.
         </p>
-        <AskBox llmConfigured={llm} examples={EXAMPLES} />
+        <AskBox
+          llmConfigured={llm}
+          model={cfg.ollamaModel}
+          examples={EXAMPLES}
+        />
       </main>
     </>
   );

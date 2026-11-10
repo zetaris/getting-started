@@ -1,7 +1,7 @@
 // Corpus: walk the repo's Markdown, describe each file, and cut it into segments.
 // Pure functions where possible so they can be unit tested without a Zetaris stack.
 
-export type Corpus = "repo" | "kbase";
+export type Corpus = "repo" | "kbase" | "pin";
 
 export interface Segment {
   corpus: Corpus;

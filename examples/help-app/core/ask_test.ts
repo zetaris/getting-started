@@ -132,3 +132,46 @@ Deno.test("only one request per session is allowed at a time", () => {
   r1();
   assert(l.tryStart("s1"));
 });
+
+const pastOf = (answer: string) =>
+  ({
+    pinId: "a".repeat(64),
+    question: "How do I register a REST source?",
+    answer,
+    sources: [],
+    likes: 2,
+    uses: 0,
+    stale: "current",
+    similarity: 0.9,
+    score: 0.93,
+  }) as unknown as import("./pins.ts").PastAnswer;
+
+Deno.test("past answers are returned with safe HTML", async () => {
+  const r = await ask(
+    deps({
+      pastAnswers: () => Promise.resolve([pastOf("hi <script>x()</script>")]),
+    }),
+    { question: "register a rest source", mode: "search" },
+  );
+  assertEquals(r.pastAnswers.length, 1);
+  assert(!r.pastAnswers[0].answerHtml.includes("<script>"));
+});
+
+Deno.test("a failing past-answer lookup does not fail the ask", async () => {
+  const r = await ask(
+    deps({ pastAnswers: () => Promise.reject(new Error("milvus down")) }),
+    { question: "register a rest source", mode: "search" },
+  );
+  assertEquals(r.pastAnswers, []);
+  assert(r.sources.length > 0);
+});
+
+Deno.test("answer HTML escapes raw HTML from the model", async () => {
+  const r = await ask(
+    deps({
+      answer: () => Promise.resolve("ok <img src=x onerror=alert(1)>"),
+    }),
+    { question: "how do I register", mode: "answer" },
+  );
+  assert(r.answerHtml !== null && !r.answerHtml.includes("<img"));
+});

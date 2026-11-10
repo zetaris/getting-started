@@ -4,13 +4,9 @@ export function SourceCard({ s, rank }: { s: Source; rank: number }) {
   return (
     <article class="card" data-testid="source">
       <h3>
-        {s.url
-          ? (
-            <a href={s.url} target="_blank" rel="noopener noreferrer">
-              {s.url.replace(/^https?:\/\//, "")}
-            </a>
-          )
-          : s.file}
+        <a href={s.docHref}>
+          {s.url ? s.url.replace(/^https?:\/\//, "") : s.file}
+        </a>
       </h3>
       <div class="meta">
         <span class="pill">{rank}</span>
@@ -21,6 +17,11 @@ export function SourceCard({ s, rank }: { s: Source; rank: number }) {
         <span title="Cosine similarity of the best passage">
           similarity {s.similarity.toFixed(2)}
         </span>
+        {s.url && (
+          <a href={s.url} target="_blank" rel="noopener noreferrer">
+            Original page
+          </a>
+        )}
       </div>
       <details>
         <summary>Best passage</summary>

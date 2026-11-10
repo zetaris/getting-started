@@ -71,10 +71,29 @@ deno task dev       # development server with hot reload instead
   and timings, never its text.
 - The app has **no login** and binds to `127.0.0.1`. Anyone who can reach it can
   use your Zetaris and LLM, so do not expose it. One Answer request at a time is
-  allowed per browser session.
-- The answer is shown as plain text, so Markdown markers such as `**bold**`
-  appear as typed. That is deliberate until there is a sanitizing renderer:
-  model output is untrusted.
+  allowed per browser session. Pins and likes carry only the free-text name
+  typed into the name field (kept in the browser's local storage). It is not
+  verified, so it is a label, not an identity, and a browser can like a pin once
+  only because it remembers it did.
+- Answers are rendered as Markdown on the server with `marked`. Raw HTML in the
+  model's output is shown as text, and links other than http, https, mailto and
+  relative ones are dropped, so model output cannot run script.
+- **Docs** (`/docs`): the indexed files, grouped by corpus and kind, with a
+  filter. A file opens rendered, with the chunks the index holds for it. Only
+  files in the `docs` table can be opened (not any path), and Kbase pages come
+  from the local snapshot. Source cards on the Ask page link here.
+- **Pinned** (`/pins`): answers someone pinned, most liked first. Pin an answer
+  with **Pin this answer** on the Ask page. A pin is stored as rows in `help_pg`
+  (read through `help_usl`) and embedded in its own Milvus collection
+  (`HELP_PINS_COLLECTION`, default `help_pins`). A pin shows a warning when a
+  file it cites has changed or is gone since it was pinned. That check compares
+  with the `docs` table, which is as current as the last `help:usl` run.
+- **Past answers.** When a question is close to a pinned question (similarity at
+  least `HELP_PIN_THRESHOLD`, default 0.82 for the E5 model), a panel above the
+  results shows it with its likes. **Use this answer** shows it without calling
+  the model. Ranking adds `0.03 * ln(1 + likes)` to the similarity. The
+  threshold is loose: questions on the same topic also reach it, so the panel
+  shows the question each answer was pinned for.
 
 ![Ask page, desktop](docs/screenshots/ask-desktop.png)
 
@@ -104,7 +123,7 @@ travels in the datasource statement and is never printed.
 | `chunks`                           | `help_pg.chunks`                        | one row per segment; `path` is a foreign key to `docs.path`                           |
 | `search`                           | relation `help_app.help_search`         | a fixed question, 100 rows; a `SELECT` runs the search pipeline                       |
 | `answers`                          | relation `help_app.help_answer`         | a fixed question; **a `SELECT` calls the LLM every time**. Do not join it to anything |
-| `pins`, `pin_events`, `pin_scores` | `help_pg.pins` and `help_pg.pin_events` | empty until pins exist (Phase 6)                                                      |
+| `pins`, `pin_events`, `pin_scores` | `help_pg.pins` and `help_pg.pin_events` | written by the Pinned feature; empty until something is pinned                        |
 
 Three queries to try in the Zetaris UI (the namespace is
 `lightning.metastore.help_app_usl.help_usl`):
