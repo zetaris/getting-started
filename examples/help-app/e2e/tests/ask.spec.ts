@@ -29,11 +29,18 @@ test("Answer mode shows the answer after the sources", async ({ page }) => {
   await expect(page.getByTestId("source").first()).toBeVisible();
 });
 
-test("an example chip asks straight away", async ({ page }) => {
+test("the search page is just a search box, mode tabs and results: no example chips", async ({ page }) => {
   await page.goto(APPS.full.url);
-  await page.getByRole("button", { name: "How do I clone a pipeline?" }).click();
-  await expect(page.getByTestId("source").first()).toBeVisible();
-  await expect(page.getByTestId("question")).toHaveValue("How do I clone a pipeline?");
+  await expect(page.getByTestId("question")).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "How do I clone a pipeline?" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText([
+    "Search",
+    "Docs",
+    "Pinned",
+    "Candidates",
+    "Status",
+  ]);
 });
 
 test("an empty question gets a message and sends nothing", async ({ page }) => {

@@ -4,7 +4,9 @@ import {
   type ExampleDeps,
   extractSql,
   generateExample,
+  hintedSections,
   isQuery,
+  isSetupRequest,
   splitStatements,
 } from "./example.ts";
 import type { Passage } from "./query.ts";
@@ -26,7 +28,7 @@ Deno.test("isQuery accepts SELECT and WITH only", () => {
 Deno.test("extractSql takes the first fenced block and the note around it", () => {
   const r = extractSql("Here.\n```sql\nSELECT 1\n```\nDrew from: a.sql");
   assertEquals(r?.sql, "SELECT 1");
-  assert(r?.notes.includes("Here.") && r.notes.includes("Drew from"));
+  assert(r?.notes.includes("Here.") && !r.notes.includes("Drew from"));
   assertEquals(extractSql("no code here"), null);
   assertEquals(extractSql("```sql\n\n```"), null);
 });
@@ -55,7 +57,7 @@ Deno.test("checkSql: a pass, an analysis error, a parse error, and unchecked DDL
     "CREATE NAMESPACE x; SELECT 1",
   );
   assertEquals(d.error, null);
-  assertEquals(d.unchecked, ["CREATE NAMESPACE X"]);
+  assertEquals(d.unchecked, ["CREATE NAMESPACE"]);
 });
 
 const passage = (file: string, corpus = "repo"): Passage => ({
@@ -155,4 +157,37 @@ Deno.test("a model that never returns SQL is an error, and an empty request is r
     generateExample(deps({ llm: () => Promise.resolve("sorry") }), "x")
   );
   await assertRejects(() => generateExample(deps(), "  "));
+});
+
+Deno.test("hintedSections pulls the whole reference section a topic points to", async () => {
+  const doc =
+    "## 4. Data Sources\n\n### 4.1 CREATE DATASOURCE\n\nSyntax\n\n```sql\nCREATE DATASOURCE <name> OPTIONS (k 'v')\n```\n\n### 4.2 REGISTER DATASOURCE TABLE\n\nother";
+  const read = (f: string) =>
+    Promise.resolve(f.endsWith("commands.md") ? doc : null);
+  const h = await hintedSections("Show me how I connect to a database", read);
+  assertEquals(h.length, 1);
+  assert(h[0].text.includes("OPTIONS") && !h[0].text.includes("other"));
+  assert(h[0].header.includes("4.1 CREATE DATASOURCE"));
+  assertEquals(await hintedSections("count the rows", read), []);
+  assertEquals(
+    await hintedSections("connect", () => Promise.resolve(null)),
+    [],
+  );
+});
+
+Deno.test("isSetupRequest separates setup asks from queries", () => {
+  for (
+    const q of [
+      "Show me how I connect to a database with Zetaris",
+      "How do I register a REST source?",
+      "set up a pipeline",
+    ]
+  ) assert(isSetupRequest(q), q);
+  for (
+    const q of [
+      "Count the files per kind in the help_usl docs table",
+      "Show the five longest sic_code descriptions",
+      "List docs larger than 20000 bytes with their title",
+    ]
+  ) assert(!isSetupRequest(q), q);
 });

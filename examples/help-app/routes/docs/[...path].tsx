@@ -1,9 +1,9 @@
 import { page } from "fresh";
 import { HttpError } from "fresh";
 import { define } from "../../utils.ts";
-import { TopBar } from "../../components/TopBar.tsx";
+import { DocsShell } from "../../components/DocsShell.tsx";
 import { DocView } from "../../components/DocView.tsx";
-import { docChunks, openDoc } from "../../core/docs.ts";
+import { docChunks, docHref, listDocs, openDoc } from "../../core/docs.ts";
 import { toAskError } from "../../core/ask.ts";
 import { docIo, getZetaris } from "../../core/server.ts";
 
@@ -19,7 +19,11 @@ export const handler = define.handlers({
     try {
       const doc = await openDoc(z, docIo, "repo", ctx.params.path);
       if (!doc) throw new HttpError(404, "That file is not in the index.");
-      return page({ doc, chunks: await docChunks(z, doc.row.path) });
+      return page({
+        doc,
+        chunks: await docChunks(z, doc.row.path),
+        rows: await listDocs(z),
+      });
     } catch (e) {
       if (e instanceof HttpError) throw e;
       throw new HttpError(502, toAskError(e).message);
@@ -29,11 +33,8 @@ export const handler = define.handlers({
 
 export default define.page<typeof handler>(function Doc({ data }) {
   return (
-    <>
-      <TopBar path="/docs" />
-      <main id="main">
-        <DocView doc={data.doc} chunks={data.chunks} />
-      </main>
-    </>
+    <DocsShell rows={data.rows} current={docHref(data.doc.row.path)}>
+      <DocView doc={data.doc} chunks={data.chunks} />
+    </DocsShell>
   );
 });

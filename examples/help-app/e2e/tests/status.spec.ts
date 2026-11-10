@@ -8,6 +8,7 @@ test("the status page lists each check, the USL tables and the re-ingest command
   await expect(page.getByTestId("check-Vector index")).toContainText("42 rows");
   await expect(page.getByTestId("check-LLM")).toContainText("mock-model is available");
   await expect(page.getByText("help_usl tables")).toBeVisible();
+  await page.getByText("Re-ingest commands").click();
   await expect(page.getByText("deno task help:ingest --dry-run")).toBeVisible();
 });
 

@@ -16,6 +16,16 @@ const MAX_ERROR = 300;
 const MAX_SQL = 8000;
 const SQL_FILES = 3;
 const GOTCHA_PASSAGES = 2;
+const SETUP_GOTCHA_PASSAGES = 4;
+const KBASE_PASSAGES = 2;
+
+/** A request to set something up (connect, register, create) rather than to query data. These need
+ * the commands reference and Kbase how-tos, which a query request does not; adding them to every
+ * request crowded out the example scripts and lowered the pass rate. */
+export function isSetupRequest(request: string): boolean {
+  return /\b(connect|connection|register|set ?up|onboard|install|configure|create (a|an|the) (data ?source|source|table|usl|pipeline|container)|how (do|to|can) (i|we)? ?(connect|register|create|add|set))\b/i
+    .test(request);
+}
 
 export type ExampleStatus = "dry-run passed" | "unverified";
 
@@ -24,6 +34,8 @@ export interface Attempt {
   sql: string;
   /** What the check reported, or why it could not run; null when this attempt passed. */
   error: string | null;
+  /** True when nothing rejected it but it could not be checked (it is not a query). */
+  unchecked?: boolean;
 }
 
 export interface ExampleSource {
@@ -112,8 +124,10 @@ export function extractSql(
   if (!m) return null;
   const sql = m[1].trim().slice(0, MAX_SQL);
   if (!sql) return null;
+  // The "Drew from:" line is dropped: the page lists the sources it actually supplied.
   const notes = (text.slice(0, m.index) + text.slice(m.index! + m[0].length))
-    .trim().slice(0, 1500);
+    .split("\n").filter((l) => !/^\s*drew from\b/i.test(l)).join("\n")
+    .replace(/\s*Drew from:.*$/is, "").trim().slice(0, 1500);
   return { sql, notes };
 }
 
@@ -130,7 +144,7 @@ export async function checkSql(
   const unchecked: string[] = [];
   for (const s of stmts) {
     if (isCommand(s)) {
-      unchecked.push(s.split(/\s+/).slice(0, 3).join(" ").toUpperCase());
+      unchecked.push(s.split(/\s+/).slice(0, 2).join(" ").toUpperCase());
       continue;
     }
     let plan: string;
@@ -161,12 +175,22 @@ const CHECKLIST = `Checklist (known mistakes):
 - Use only table and column names that appear in the files or the request.
 - No trailing semicolon after the last statement is needed; one statement per query.`;
 
-export function generatePrompt(request: string): string {
+export function generatePrompt(
+  request: string,
+  setup = isSetupRequest(request),
+): string {
   return `Request: ${request}
 
 Write ONE new example in Zetaris Lightning SQL, inspired by the supplied example files. ` +
     `Do not copy a file; change the table, filter or columns to fit the request, and use only syntax ` +
-    `shown in the supplied files. Reply with a short note (two sentences at most), then the SQL in a ` +
+    `shown in the supplied files. Do exactly what the request asks: if it asks how to connect or set ` +
+    `something up, write the statement that does that (for example a CREATE statement from the files) ` +
+    `with marked placeholders such as <host> and <password>, never real credentials, and do not ` +
+    `substitute a different command (such as SHOW or a query) for it. ` +
+    (setup
+      ? `If the supplied files do not show the syntax needed, reply exactly "Not covered in the supplied files." and write no SQL; never guess keywords. `
+      : "") +
+    `Reply with a short note (two sentences at most), then the SQL in a ` +
     `single \`\`\`sql block, then one line "Drew from:" listing the FILE names you used.\n\n${CHECKLIST}`;
 }
 
@@ -196,6 +220,7 @@ const GUIDE = /(docs\/guides\/|HOWTO\.md$|companion)/i;
 export async function exampleContext(
   ranked: Ranked[],
   readFile: (f: string) => Promise<string | null>,
+  setup = false,
 ): Promise<{ ctx: Ctx[]; files: string[] }> {
   const repo = topFiles(ranked, 40).filter((f) => f.corpus === "repo");
   const sqlFiles = repo.filter((f) => f.file.endsWith(".sql")).map((f) =>
@@ -205,10 +230,13 @@ export async function exampleContext(
   const sim = ranked[0]?.similarity ?? 0;
   const whole = await wholeFileContext(sqlFiles, readFile, SQL_FILES, true);
   const ctx: Ctx[] = whole.map((w) => ({ ...w, similarity: sim }));
+  // The commands reference holds the real syntax, so its passages come first.
+  const isRef = (f: string) => /sql-commands/.test(f);
   const gotchas = ranked.filter((p) =>
     p.corpus === "repo" && GUIDE.test(p.file)
   )
-    .slice(0, GOTCHA_PASSAGES);
+    .sort((a, b) => Number(isRef(b.file)) - Number(isRef(a.file)))
+    .slice(0, setup ? SETUP_GOTCHA_PASSAGES : GOTCHA_PASSAGES);
   for (const p of gotchas) {
     ctx.push({
       header: `FILE: ${p.file}\nSECTION: ${p.section}`,
@@ -216,8 +244,72 @@ export async function exampleContext(
       similarity: p.similarity,
     });
   }
-  const files = [...new Set([...sqlFiles, ...gotchas.map((p) => p.file)])];
+  // Kbase pages show connection and setup steps; they are labelled as Kbase in the header.
+  const kb = setup
+    ? ranked.filter((p) => p.corpus === "kbase").slice(0, KBASE_PASSAGES)
+    : [];
+  for (const p of kb) {
+    ctx.push({
+      header: `REPO: kbase\nFILE: ${p.file}\nSECTION: ${p.section}`,
+      text: p.text,
+      similarity: p.similarity,
+    });
+  }
+  const files = [
+    ...new Set([
+      ...sqlFiles,
+      ...gotchas.map((p) => p.file),
+      ...kb.map((p) => p.file),
+    ]),
+  ];
   return { ctx, files };
+}
+
+// Plain-English requests rarely match the commands reference by embedding alone ("connect to a
+// database" never finds CREATE DATASOURCE). These hints name the reference section to pull in
+// whole when the request mentions the topic. Small on purpose: add a line when a topic misses.
+export const COMMAND_HINTS: [RegExp, string][] = [
+  [
+    /\b(connect|connection|database|jdbc|postgres(ql)?|mysql|oracle|sql server|datasource|data source)\b/i,
+    "CREATE DATASOURCE",
+  ],
+  [/\b(rest|api|endpoint|http)\b/i, "CREATE LIGHTNING REST TABLE"],
+  [/\b(csv|parquet|files?|s3|bucket)\b/i, "CREATE LIGHTNING FILESTORE TABLE"],
+  [/\b(usl|unified semantic)\b/i, "COMPILE USL"],
+  [/\b(pipeline)\b/i, "RUN PIPELINE"],
+];
+const COMMANDS_DOC = "docs/guides/zetaris-lightning-sql-commands.md";
+const SECTION_CHARS = 2500;
+
+/** The reference sections the request's topics point to, whole (heading to next heading). */
+export async function hintedSections(
+  request: string,
+  readFile: (f: string) => Promise<string | null>,
+): Promise<Ctx[]> {
+  const wanted = [
+    ...new Set(
+      COMMAND_HINTS.filter(([re]) => re.test(request)).map(([, t]) => t),
+    ),
+  ].slice(0, 2);
+  if (wanted.length === 0) return [];
+  const doc = await readFile(COMMANDS_DOC);
+  if (!doc) return [];
+  const out: Ctx[] = [];
+  for (const title of wanted) {
+    const m = doc.match(new RegExp(`^###\\s+[\\d.]+\\s+${title}\\b.*$`, "m"));
+    if (!m || m.index === undefined) continue;
+    const rest = doc.slice(m.index + m[0].length);
+    const next = rest.search(/^#{2,3}\s/m);
+    const body = (next === -1 ? rest : rest.slice(0, next)).trim();
+    out.push({
+      header: `FILE: ${COMMANDS_DOC}\nSECTION: ${
+        m[0].replace(/^#+\s*/, "")
+      }\nWHOLE SECTION: yes`,
+      text: body.slice(0, SECTION_CHARS),
+      similarity: 1,
+    });
+  }
+  return out;
 }
 
 export function cleanRequest(r: unknown): string {
@@ -243,12 +335,36 @@ export async function generateExample(
 ): Promise<ExampleResult> {
   const request = cleanRequest(requestRaw);
   const t0 = performance.now();
-  onStage("retrieving");
-  const passages = await deps.search(request, 100);
-  const { ctx, files } = await exampleContext(
+  onStage("Searching the docs for the closest examples");
+  const setup = isSetupRequest(request);
+  // A setup request is also searched worded like the commands reference, because plain-English
+  // requests mostly match how-to pages and miss the syntax section. Queries search once.
+  const [a, b] = await Promise.all([
+    deps.search(request, 100),
+    setup
+      ? deps.search(`Lightning SQL command syntax and example: ${request}`, 100)
+      : Promise.resolve([] as Passage[]),
+  ]);
+  const seen = new Set<string>();
+  const passages = [...a, ...b].filter((p) => {
+    const k = `${p.file}#${p.part}`;
+    return seen.has(k) ? false : (seen.add(k), true);
+  });
+  const found = await exampleContext(
     rerank(request, passages),
     deps.readFile,
+    setup,
   );
+  const hinted = setup ? await hintedSections(request, deps.readFile) : [];
+  const ctx = [...hinted, ...found.ctx];
+  onStage(
+    `Found ${found.files.length} example ${
+      found.files.length === 1 ? "file" : "files"
+    }${hinted.length > 0 ? " and the command reference" : ""}`,
+  );
+  const files = hinted.length > 0
+    ? [...new Set([COMMANDS_DOC, ...found.files])]
+    : found.files;
   if (files.length === 0 || ctx.length === 0) {
     throw new AskError(
       "not_found",
@@ -257,32 +373,42 @@ export async function generateExample(
     );
   }
   const attempts: Attempt[] = [];
-  let prompt = generatePrompt(request);
+  let prompt = generatePrompt(request, setup);
   let reason: string | null = null;
   let final: { sql: string; notes: string } | null = null;
   let passed = false;
   for (let n = 1; n <= MAX_ATTEMPTS; n++) {
     onStage(
-      n === 1 ? "generating" : `repairing (attempt ${n} of ${MAX_ATTEMPTS})`,
+      n === 1
+        ? `Writing the SQL with ${deps.model}`
+        : `Fixing the SQL with ${deps.model} (attempt ${n} of ${MAX_ATTEMPTS})`,
     );
     const text = await deps.llm(prompt, ctx);
     const got = extractSql(text);
+    if (!got && /not covered/i.test(text)) {
+      throw new AskError(
+        "not_found",
+        "The supplied files do not show how to do that, so nothing was generated. Try Answer mode, or name a source type.",
+        404,
+      );
+    }
     if (!got) {
       attempts.push({
         n,
         sql: "",
         error: "The model did not return a SQL block.",
       });
-      prompt = generatePrompt(request);
+      prompt = generatePrompt(request, setup);
       reason = "The model did not return a SQL block.";
       continue;
     }
     final = got;
-    onStage("checking");
+    onStage("Checking the SQL against Zetaris (dry run, nothing is executed)");
     const check = await checkSql(deps.explain, got.sql);
     if (check.error) {
       attempts.push({ n, sql: got.sql, error: check.error });
       reason = check.error;
+      onStage(`Zetaris rejected attempt ${n}: ${check.error.slice(0, 140)}`);
       prompt = repairPrompt(request, got.sql, check.error);
       continue;
     }
@@ -290,11 +416,10 @@ export async function generateExample(
       attempts.push({
         n,
         sql: got.sql,
-        error: `Not checked: ${
-          [...new Set(check.unchecked)].join(", ")
-        } cannot be dry-run.`,
+        error: `${[...new Set(check.unchecked)].join(", ")} cannot be dry-run.`,
+        unchecked: true,
       });
-      reason = `Contains statements the checker cannot run (${
+      reason = `This contains statements the checker cannot run (${
         [...new Set(check.unchecked)].join(", ")
       }). Only queries can be dry-run.`;
       break;

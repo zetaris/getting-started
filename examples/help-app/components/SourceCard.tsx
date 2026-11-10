@@ -2,14 +2,14 @@ import type { Source } from "../core/ask.ts";
 
 export function SourceCard({ s, rank }: { s: Source; rank: number }) {
   return (
-    <article class="card" data-testid="source">
+    <li class="item" data-testid="source">
       <h3>
+        <span class="rank">{rank}</span>{" "}
         <a href={s.docHref}>
           {s.url ? s.url.replace(/^https?:\/\//, "") : s.file}
         </a>
       </h3>
       <div class="meta">
-        <span class="pill">{rank}</span>
         <span class={`pill ${s.corpus === "kbase" ? "warn" : ""}`}>
           {s.corpus === "kbase" ? "Knowledge base" : "Repo docs"}
         </span>
@@ -27,6 +27,6 @@ export function SourceCard({ s, rank }: { s: Source; rank: number }) {
         <summary>Best passage</summary>
         <pre>{s.excerpt}</pre>
       </details>
-    </article>
+    </li>
   );
 }

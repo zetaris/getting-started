@@ -1,62 +1,65 @@
-/* Colour tokens from the atlas project (zetaris.com palette), trimmed to what this app uses.
-   Dark is the default. The theme follows the system setting until the toggle stores a choice. */
+/* Tokens taken from the Zetaris getting-started site (zetaris.github.io/getting-started):
+   near-black page, #15171f panels, #2a2d39 selected item, #4052f2 accent. Dark is the default;
+   the theme follows the system setting until the toggle stores a choice. */
 :root {
+  --bg: #06070d;
+  --panel: #15171f;
+  --panel-2: #1c1e28;
+  --line: #262936;
+  --selected: #2a2d39;
+  --on-selected: #dbe0fd;
+  --text: #f4f5fa;
+  --muted: #9ba1b5;
   --accent: #4052f2;
-  --accent-2: #6c7cff;
-  --page-bg: #06070d;
-  --card-bg: #1e1e1e;
-  --surface: #101018;
-  --border: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --text: #f2f2f5;
-  --text-muted: #a8a8b4;
-  --text-faint: #8a8a96;
+  --accent-hover: #5565f5;
+  --link: #8a96f8;
   --good: #34d399;
-  --good-bg: rgba(52, 211, 153, 0.14);
+  --good-bg: rgba(52, 211, 153, 0.13);
   --warn: #fbbf24;
-  --warn-bg: rgba(251, 191, 36, 0.14);
+  --warn-bg: rgba(251, 191, 36, 0.12);
   --bad: #fb7185;
-  --bad-bg: rgba(251, 113, 133, 0.14);
-  --accent-tint: rgba(64, 82, 242, 0.14);
-  --radius: 14px;
-  --control-h: 44px;
+  --bad-bg: rgba(251, 113, 133, 0.12);
+  --radius: 10px;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --page-bg: #f6f7fb;
-  --card-bg: #ffffff;
-  --surface: #ffffff;
-  --border: rgba(10, 12, 40, 0.12);
-  --border-strong: rgba(10, 12, 40, 0.22);
-  --text: #12131c;
-  --text-muted: #4b4d5c;
-  --text-faint: #6a6c7a;
+  --bg: #ffffff;
+  --panel: #f3f5fe;
+  --panel-2: #eceffd;
+  --line: #e2e4ee;
+  --selected: #dbe0fd;
+  --on-selected: #1f2a8f;
+  --text: #06070d;
+  --muted: #595e6e;
+  --accent: #4052f2;
+  --accent-hover: #2f3ec2;
+  --link: #3342c9;
   --good: #0b7a4f;
   --good-bg: rgba(11, 122, 79, 0.1);
   --warn: #8a5a00;
   --warn-bg: rgba(200, 130, 0, 0.12);
   --bad: #b4233c;
   --bad-bg: rgba(180, 35, 60, 0.09);
-  --accent-tint: rgba(64, 82, 242, 0.09);
   color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --page-bg: #f6f7fb;
-    --card-bg: #ffffff;
-    --surface: #ffffff;
-    --border: rgba(10, 12, 40, 0.12);
-    --border-strong: rgba(10, 12, 40, 0.22);
-    --text: #12131c;
-    --text-muted: #4b4d5c;
-    --text-faint: #6a6c7a;
+    --bg: #ffffff;
+    --panel: #f3f5fe;
+    --panel-2: #eceffd;
+    --line: #e2e4ee;
+    --selected: #dbe0fd;
+    --on-selected: #1f2a8f;
+    --text: #06070d;
+    --muted: #595e6e;
+    --accent-hover: #2f3ec2;
+    --link: #3342c9;
     --good: #0b7a4f;
     --good-bg: rgba(11, 122, 79, 0.1);
     --warn: #8a5a00;
     --warn-bg: rgba(200, 130, 0, 0.12);
     --bad: #b4233c;
     --bad-bg: rgba(180, 35, 60, 0.09);
-    --accent-tint: rgba(64, 82, 242, 0.09);
     color-scheme: light;
   }
 }

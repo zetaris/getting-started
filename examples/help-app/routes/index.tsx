@@ -1,7 +1,6 @@
 import { define } from "../utils.ts";
 import { TopBar } from "../components/TopBar.tsx";
 import AskBox from "../islands/AskBox.tsx";
-import { EXAMPLES } from "../core/examples.ts";
 import { getConfig } from "../core/server.ts";
 
 export default define.page(function Home() {
@@ -11,16 +10,8 @@ export default define.page(function Home() {
     <>
       <TopBar path="/" />
       <main id="main">
-        <h1>Ask the Zetaris docs</h1>
-        <p class="lead">
-          Searches this repository's docs and SQL scripts, and the Zetaris
-          Knowledge base, through Zetaris pipelines.
-        </p>
-        <AskBox
-          llmConfigured={llm}
-          model={cfg.ollamaModel}
-          examples={EXAMPLES}
-        />
+        <h1 class="sr-only">Search the Zetaris docs</h1>
+        <AskBox llmConfigured={llm} model={cfg.ollamaModel} />
       </main>
     </>
   );

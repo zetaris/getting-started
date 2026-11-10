@@ -48,21 +48,39 @@ test("a rejected example is repaired once the checker's message is fed back", as
   expect(st.llmPrompts).toEqual(["generate", "repair-with-error"]);
 });
 
-test("DDL is unverified and its SQL is collapsed behind a warning", async ({ page, request }) => {
+test("a command is unchecked: said plainly, SQL visible, no 'rejected' alarm", async ({ page, request }) => {
   await generate(page, "ddl", request);
-  const badge = page.getByTestId("example-status");
-  await expect(badge).toHaveText("Generated, unverified");
+  await expect(page.getByTestId("example-status")).toHaveText("Generated, unverified");
+  await expect(page.getByTestId("example-unchecked")).toContainText("Nothing checked this");
+  await expect(page.getByTestId("example-sql")).toBeVisible();
+  await expect(page.getByTestId("example-unverified")).toHaveCount(0);
+  await page.getByTestId("attempts").locator("summary").click();
+  await expect(page.getByTestId("attempts")).toContainText("Not dry-run:");
+  await expect(page.getByTestId("attempts")).not.toContainText("Rejected");
+  expect((await (await request.get(`${MOCK}/__state`)).json()).explainRuns).toBe(0); // never EXPLAINed
+});
+
+test("a query the checker rejects three times is collapsed behind a warning", async ({ page, request }) => {
+  await generate(page, "alwaysbad", request);
+  await expect(page.getByTestId("example-status")).toHaveText("Generated, unverified");
   await expect(page.getByTestId("example-sql")).toBeHidden();
-  await expect(page.getByTestId("example-unverified")).toContainText("cannot run");
+  await expect(page.getByTestId("example-unverified")).toContainText("rejected every attempt");
   await page.getByTestId("example-unverified").locator("summary").click();
   await expect(page.getByTestId("example-sql")).toBeVisible();
-  expect((await (await request.get(`${MOCK}/__state`)).json()).explainRuns).toBe(0); // never EXPLAINed
 });
 
 test("a model that returns no SQL gives a clear error", async ({ page, request }) => {
   await generate(page, "never", request);
   await expect(page.getByTestId("error")).toContainText("did not return an example");
   await expect(page.getByTestId("example")).toHaveCount(0);
+});
+
+test("when the files do not cover the request, it says so and offers Answer mode", async ({ page, request }) => {
+  await generate(page, "notcovered", request);
+  await expect(page.getByTestId("error")).toContainText("do not show how to do that");
+  await expect(page.getByTestId("example")).toHaveCount(0);
+  await page.getByTestId("try-answer").click();
+  await expect(page.getByTestId("answer")).toBeVisible();
 });
 
 test("SQL from the model is shown as text, never run", async ({ page, request }) => {
@@ -153,4 +171,19 @@ test("Candidates and an example result fit a phone", async ({ page, request }) =
   expect(await over()).toBeLessThanOrEqual(0);
   await page.goto(`${APPS.full.url}/candidates`);
   expect(await over()).toBeLessThanOrEqual(0);
+});
+
+test("while it works, the page lists each step with a spinner on the current one", async ({ page, request }) => {
+  await request.get(`${MOCK}/__control?answerDelayMs=1500&exampleMode=repair`);
+  await generate(page);
+  const steps = page.getByTestId("steps");
+  await expect(steps).toBeVisible();
+  await expect(steps).toContainText("Searching the docs for the closest examples");
+  await expect(steps.locator(".spinner")).toHaveCount(1);
+  await expect(steps).toContainText("Writing the SQL with");
+  await expect(steps).toContainText("Checking the SQL against Zetaris");
+  await expect(steps).toContainText("Zetaris rejected attempt 1");
+  await expect(steps).toContainText("Fixing the SQL with");
+  await expect(page.getByTestId("example-status")).toHaveText("Generated, dry-run passed");
+  await expect(page.getByTestId("steps")).toHaveCount(0);
 });

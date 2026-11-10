@@ -1,4 +1,5 @@
 import ThemeToggle from "../islands/ThemeToggle.tsx";
+import NameField from "../islands/NameField.tsx";
 
 export function TopBar({ path }: { path: string }) {
   const item = (href: string, label: string) => (
@@ -17,13 +18,16 @@ export function TopBar({ path }: { path: string }) {
         Zetaris <span>help</span>
       </a>
       <nav class="nav" aria-label="Main">
-        {item("/", "Ask")}
+        {item("/", "Search")}
         {item("/docs", "Docs")}
         {item("/pins", "Pinned")}
         {item("/candidates", "Candidates")}
         {item("/admin", "Status")}
       </nav>
-      <ThemeToggle />
+      <div class="topbar-end">
+        <NameField />
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

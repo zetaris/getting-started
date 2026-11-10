@@ -4,7 +4,6 @@ import { TopBar } from "../components/TopBar.tsx";
 import { Html } from "../components/Html.tsx";
 import { StaleBadge } from "../components/StaleBadge.tsx";
 import LikeButton from "../islands/LikeButton.tsx";
-import NameField from "../islands/NameField.tsx";
 import { docHref } from "../core/docs.ts";
 import { toAskError } from "../core/ask.ts";
 import { renderMarkdown } from "../core/markdown.ts";
@@ -31,13 +30,12 @@ export default define.page<typeof handler>(function Pins({ data }) {
     <>
       <TopBar path="/pins" />
       <main id="main">
+        <p class="eyebrow">Pinned</p>
         <h1>Pinned answers</h1>
         <p class="lead">
           Answers people pinned, most liked first. A pin is flagged when a file
-          it cites has changed or gone since it was pinned. There is no login:
-          names are free text.
+          it cites has changed or gone since it was pinned.
         </p>
-        <NameField />
         {data.error && (
           <div class="alert" role="alert" data-testid="error">{data.error}</div>
         )}
@@ -47,36 +45,40 @@ export default define.page<typeof handler>(function Pins({ data }) {
             answer.
           </p>
         )}
-        {data.pins.map((p) => (
-          <article class="card" data-testid="pin-card">
-            <h3>{p.question}</h3>
-            <div class="meta">
-              <span class="pill good" data-testid="pin-likes">
-                {p.likes} {p.likes === 1 ? "like" : "likes"}
-              </span>
-              <span>used {p.uses}×</span>
-              <span>pinned by {p.pinnedBy}</span>
-              {p.model && <span>{p.model}</span>}
-              <StaleBadge stale={p.stale} />
-            </div>
-            <details>
-              <summary>Answer</summary>
-              <Html html={renderMarkdown(p.answer)} />
-            </details>
-            {p.sources.length > 0 && (
-              <p class="meta">
-                Cites: {p.sources.map((s) => (
-                  <a href={docHref(s.file)}>
-                    {s.file.replace(/^https?:\/\//, "")}
-                  </a>
-                ))}
-              </p>
-            )}
-            <div class="actions">
-              <LikeButton pinId={p.pinId} likes={p.likes} />
-            </div>
-          </article>
-        ))}
+        {data.pins.length > 0 && (
+          <ul class="list">
+            {data.pins.map((p) => (
+              <li class="item" data-testid="pin-card">
+                <h3>{p.question}</h3>
+                <div class="meta">
+                  <span class="pill good" data-testid="pin-likes">
+                    {p.likes} {p.likes === 1 ? "like" : "likes"}
+                  </span>
+                  <span>used {p.uses}×</span>
+                  <span>pinned by {p.pinnedBy}</span>
+                  {p.model && <span>{p.model}</span>}
+                  <StaleBadge stale={p.stale} />
+                </div>
+                <details>
+                  <summary>Answer</summary>
+                  <Html html={renderMarkdown(p.answer)} class="md" />
+                </details>
+                {p.sources.length > 0 && (
+                  <p class="meta">
+                    Cites: {p.sources.map((s) => (
+                      <a href={docHref(s.file)}>
+                        {s.file.replace(/^https?:\/\//, "")}
+                      </a>
+                    ))}
+                  </p>
+                )}
+                <div class="actions">
+                  <LikeButton pinId={p.pinId} likes={p.likes} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
     </>
   );

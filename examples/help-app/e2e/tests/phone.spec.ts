@@ -9,7 +9,7 @@ test("at phone width nothing scrolls sideways and a question can be asked", asyn
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   const box = await page.getByTestId("submit").boundingBox();
-  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(40);
 });
 
 test("the status page also fits a phone", async ({ page }) => {

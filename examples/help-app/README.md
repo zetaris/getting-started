@@ -39,8 +39,8 @@ Search only needs no LLM and answers in about half a second.
 
 ## Quick start
 
-The shortest path to a working Ask page (Search only), from a fresh clone. Steps
-4 and 5 are only for the Docs, Pinned and Candidates pages.
+The shortest path to a working Search page (Search only), from a fresh clone.
+Steps 4 and 5 are only for the Docs, Pinned and Candidates pages.
 
 1. **Settings.** Copy the lines you need from [.env.example](.env.example) into
    the repo root's `.env.local`, and add your Zetaris REST key
@@ -153,23 +153,27 @@ deno task dev       # development server with hot reload instead
 - The app has **no login** and binds to `127.0.0.1`. Anyone who can reach it can
   use your Zetaris and LLM, so do not expose it. One Answer request at a time is
   allowed per browser session. Pins and likes carry only the free-text name
-  typed into the name field (kept in the browser's local storage). It is not
-  verified, so it is a label, not an identity, and a browser can like a pin once
-  only because it remembers it did.
+  typed into the name field in the top bar (kept in the browser's local
+  storage). It is not verified, so it is a label, not an identity, and a browser
+  can like a pin once only because it remembers it did.
 - Answers are rendered as Markdown on the server with `marked`. Raw HTML in the
   model's output is shown as text, and links other than http, https, mailto and
   relative ones are dropped, so model output cannot run script.
-- **Docs** (`/docs`): the indexed files, grouped by corpus and kind, with a
-  filter. A file opens rendered, with the chunks the index holds for it. Only
+- **Docs** (`/docs`): laid out like a docs site. The index is on the left
+  (grouped by corpus and kind), search is at the top. Search there is the same
+  meaning search as the Search page (vector search plus the rerank), so it finds
+  files by what they are about, not by matching words; results are files with an
+  excerpt. A file opens rendered, with the chunks the index holds for it. Only
   files in the `docs` table can be opened (not any path), and Kbase pages come
-  from the local snapshot. Source cards on the Ask page link here.
+  from the local snapshot. Source cards on the Search page link here. On a phone
+  the index moves behind **Browse all docs**.
 - **Pinned** (`/pins`): answers someone pinned, most liked first. Pin an answer
-  with **Pin this answer** on the Ask page. A pin is stored as rows in `help_pg`
-  (read through `help_usl`) and embedded in its own Milvus collection
+  with **Pin this answer** on the Search page. A pin is stored as rows in
+  `help_pg` (read through `help_usl`) and embedded in its own Milvus collection
   (`HELP_PINS_COLLECTION`, default `help_pins`). A pin shows a warning when a
   file it cites has changed or is gone since it was pinned. That check compares
   with the `docs` table, which is as current as the last `help:usl` run.
-- **Example** (a third mode on the Ask page): describe what you want, for
+- **Example** (a third mode on the Search page): describe what you want, for
   example "same as the SIC and EDGAR check, but for companies whose sic is
   7372". The app finds the closest example scripts (whole files, headers kept)
   and guide passages, asks the model for a new example inspired by them, and
@@ -199,7 +203,7 @@ deno task dev       # development server with hot reload instead
   threshold is loose: questions on the same topic also reach it, so the panel
   shows the question each answer was pinned for.
 
-![Ask page, desktop](docs/screenshots/ask-desktop.png)
+![Search page, desktop](docs/screenshots/ask-desktop.png)
 
 Screenshots (desktop and phone, Ask and Status) are in
 [docs/screenshots](docs/screenshots), taken against a live local stack.

@@ -335,3 +335,32 @@ them. I dropped its Milvus collection and deleted the clone.
 The RAG section of the SQL companion guide already exists as section 9 (draft);
 the README links to it rather than repeating it. OpenSearch was not tried: the
 vector-store notes say so.
+
+## After Phase 7: review feedback and redesign (2026-11-09)
+
+The first hands-on try gave two complaints. Example mode answered "show me how I
+connect to a database with Zetaris" with an unverified `SHOW DATASOURCES`, and
+the UI was judged unusable. What changed:
+
+- **Example mode.** Setup-style requests now get the matching section of the SQL
+  command reference (whole section, `COMMAND_HINTS`), a second search worded like
+  the reference, and a "Not covered in the supplied files." refusal the app turns
+  into a not-found message with an "Ask this in Answer mode" button. My first
+  version applied this to every request and the re-run bake-off dropped to
+  7/10, 8/10 and 6/10; gating it with `isSetupRequest` fixed query requests.
+  `COMMAND_HINTS` is a small hand-written list, so other setup topics get only
+  the second search. Bake-off results are in [evidence.md](evidence.md): both
+  `gpt-oss` models meet the bar; `qwen3-next` did not (6/10), unexplained.
+- **UI.** Rebuilt in the style of the getting-started site: one Search page
+  (box, small mode tabs, results; no chips), compact top tabs, a Docs page with
+  the index on the left and meaning search at the top (`/docs/search`, vector
+  search plus the rerank), tidied Status, Pinned and Candidates pages.
+- **Progress.** Example mode streams its steps (`application/x-ndjson`) and the
+  page shows a spinner and the step list with times.
+- **Tests.** 49 end-to-end, 88 unit; Docs, Ask, Status and phone specs rewritten.
+- **A mistake worth noting.** Rebuilding while the server ran left it pointing at
+  a stylesheet that no longer existed, so the page showed unstyled. Restart the
+  server after `deno task build`.
+
+Not done: Pinned and Candidates were not checked visually, README screenshots
+are the old UI, Answer mode has no step list, Phase 8 not started.

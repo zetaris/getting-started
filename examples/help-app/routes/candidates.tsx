@@ -34,15 +34,14 @@ export default define.page<typeof handler>(function Candidates({ data }) {
     <>
       <TopBar path="/candidates" />
       <main id="main">
-        <h1>Candidate examples</h1>
+        <p class="eyebrow">Candidates</p>
+        <h1>Saved examples</h1>
         <p class="lead">
-          Generated examples someone saved for review. Nothing here is added to
-          the repo or run against data; a person decides what, if anything,
-          becomes a real example. "Dry-run passed" means Zetaris's analyzer
-          accepted the query, not that it is verified.
+          SQL examples the Example mode generated and someone saved for review.
+          Nothing here is added to the repo or run against data.
         </p>
         {data.file && (
-          <p data-testid="file-filter">
+          <p class="fine" data-testid="file-filter">
             Only examples that cite <code>{data.file}</code>.{" "}
             <a href="/candidates">Show all</a>
           </p>
@@ -52,45 +51,49 @@ export default define.page<typeof handler>(function Candidates({ data }) {
         )}
         {!data.error && data.items.length === 0 && (
           <p data-testid="no-candidates">
-            No candidates yet. In Example mode, generate one and choose "Save as
-            candidate".
+            Nothing saved yet. In Search, choose Example, generate one and press
+            "Save as candidate".
           </p>
         )}
-        {data.items.map((c) => (
-          <article class="card" data-testid="candidate">
-            <h3>{c.request}</h3>
-            <div class="meta">
-              <span
-                class={`pill ${
-                  c.status === "dry-run passed" ? "good" : "warn"
-                }`}
-                data-testid="candidate-status"
-              >
-                {c.status === "dry-run passed"
-                  ? "Generated, dry-run passed"
-                  : "Generated, unverified"}
-              </span>
-              <span>
-                {c.attempts} {c.attempts === 1 ? "attempt" : "attempts"}
-              </span>
-              <span>{c.model}</span>
-              <span>saved by {c.createdBy}</span>
-              <span>{c.createdAt}</span>
-            </div>
-            <details>
-              <summary>SQL</summary>
-              <pre class="code"><code>{c.sql}</code></pre>
-            </details>
-            {c.sources.length > 0 && (
-              <p class="meta">
-                Inspired by:{" "}
-                {c.sources.map((f) => (
-                  <a href={docHref(f)}>{f.replace(/^https?:\/\//, "")}</a>
-                ))}
-              </p>
-            )}
-          </article>
-        ))}
+        {data.items.length > 0 && (
+          <ul class="list">
+            {data.items.map((c) => (
+              <li class="item" data-testid="candidate">
+                <h3>{c.request}</h3>
+                <div class="meta">
+                  <span
+                    class={`pill ${
+                      c.status === "dry-run passed" ? "good" : "warn"
+                    }`}
+                    data-testid="candidate-status"
+                  >
+                    {c.status === "dry-run passed"
+                      ? "Generated, dry-run passed"
+                      : "Generated, unverified"}
+                  </span>
+                  <span>
+                    {c.attempts} {c.attempts === 1 ? "attempt" : "attempts"}
+                  </span>
+                  <span>{c.model}</span>
+                  <span>saved by {c.createdBy}</span>
+                  <span>{c.createdAt}</span>
+                </div>
+                <details>
+                  <summary>Show SQL</summary>
+                  <pre class="code"><code>{c.sql}</code></pre>
+                </details>
+                {c.sources.length > 0 && (
+                  <p class="meta">
+                    Inspired by:{" "}
+                    {c.sources.map((f) => (
+                      <a href={docHref(f)}>{f.replace(/^https?:\/\//, "")}</a>
+                    ))}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
     </>
   );

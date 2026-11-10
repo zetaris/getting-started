@@ -43,6 +43,7 @@ const EXAMPLES = {
   ddl: "Makes a namespace.\n```sql\nCREATE NAMESPACE IF NOT EXISTS lightning.metastore.zz\n```",
   xss: "Shows text.\n```sql\nSELECT '<script>window.__pwned=1</script>' AS x\n```",
   never: "I cannot write that.",
+  notcovered: "Not covered in the supplied files.",
 };
 
 function send(res, status, body) {
@@ -147,10 +148,11 @@ createServer((req, res) => {
       if (sql.includes("RUN PIPELINE ON 'llm_answer'") && sql.includes("Write ONE new example")) {
         state.llmPrompts.push("generate");
         const m = state.exampleMode;
-        const text = m === "repair" ? EXAMPLES.bad : (EXAMPLES[m] ?? EXAMPLES.pass);
+        const text = m === "repair" || m === "alwaysbad" ? EXAMPLES.bad : (EXAMPLES[m] ?? EXAMPLES.pass);
         return send(res, 200, { data: [["q", text, "ctx"]] });
       }
       if (sql.includes("RUN PIPELINE ON 'llm_answer'") && sql.includes("rejected by the SQL checker")) {
+        if (state.answerDelayMs) await new Promise((r) => setTimeout(r, state.answerDelayMs));
         state.llmPrompts.push(sql.includes("BADCOL") ? "repair-with-error" : "repair");
         const text = state.exampleMode === "repair" ? EXAMPLES.pass : EXAMPLES.bad;
         return send(res, 200, { data: [["q", text, "ctx"]] });

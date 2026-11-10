@@ -10,11 +10,13 @@ export default function NameField() {
   }, []);
   return (
     <label class="namefield">
-      <span>Your name (optional)</span>
+      <span class="sr-only">Your name (optional)</span>
       <input
         type="text"
         maxLength={100}
         autocomplete="off"
+        placeholder="Your name"
+        title="Optional. Shown on pins, likes and saved examples. There is no login."
         data-testid="name"
         value={name.value}
         onInput={(e) => {

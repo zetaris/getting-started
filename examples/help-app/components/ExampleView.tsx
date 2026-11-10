@@ -20,6 +20,8 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
   const save = useSignal<Save>({ kind: "none" });
   const copied = useSignal(false);
   const passed = result.status === "dry-run passed";
+  // Not checkable (a command, not a query) is different from rejected by the checker.
+  const unchecked = !passed && result.attempts.at(-1)?.unchecked === true;
 
   async function copy() {
     try {
@@ -55,61 +57,61 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
   }
 
   const code = (
-    <pre class="code" data-testid="example-sql"><code>{result.sql}</code></pre>
-  );
-  return (
-    <div data-testid="example">
-      <h2>Inspired by</h2>
-      <div class="strip" data-testid="example-sources">
-        {result.sources.map((s) => (
-          <article class="card" data-testid="example-source">
-            <h3>
-              {s.docHref ? <a href={s.docHref}>{s.file}</a> : s.file}
-            </h3>
-          </article>
-        ))}
+    <div class="codebox">
+      <div class="codebar">
+        <span>SQL</span>
+        <button type="button" data-testid="copy" onClick={copy}>
+          {copied.value ? "Copied" : "Copy"}
+        </button>
       </div>
-      <h2>Generated example</h2>
-      <div class="meta">
+      <pre
+        class="code"
+        data-testid="example-sql"
+      ><code>{result.sql}</code></pre>
+    </div>
+  );
+  const nAttempts = result.attempts.length;
+  return (
+    <div class="example" data-testid="example">
+      <div class="example-head">
+        <h2>Generated example</h2>
         <span
           class={`pill ${passed ? "good" : "warn"}`}
           data-testid="example-status"
         >
           {passed ? "Generated, dry-run passed" : "Generated, unverified"}
         </span>
-        <span>
-          {result.attempts.length}{" "}
-          {result.attempts.length === 1 ? "attempt" : "attempts"}
-        </span>
-        <span>{result.model}</span>
-        <span>{(result.ms / 1000).toFixed(0)} s</span>
       </div>
-      {result.notes && <p class="lead" style="margin:8px 0">{result.notes}</p>}
-      {passed ? code : (
-        <details data-testid="example-unverified">
-          <summary>
-            Unverified: {result.reason ?? "it was not checked"}{" "}
-            Show the SQL anyway
-          </summary>
-          <p class="alert" role="note">
-            Do not run this without reading it. It was not accepted by the
-            checker.
-          </p>
-          {code}
-        </details>
-      )}
+      <p class="fine">
+        {nAttempts} {nAttempts === 1 ? "attempt" : "attempts"} · {result.model}
+        {" "}
+        · {(result.ms / 1000).toFixed(0)} s
+      </p>
+      {result.notes && <p class="note-text">{result.notes}</p>}
+      {passed ? code : unchecked
+        ? (
+          <>
+            <div class="callout" role="note" data-testid="example-unchecked">
+              <strong>Nothing checked this.</strong> {result.reason}{" "}
+              Read it before you run it, and replace any placeholders.
+            </div>
+            {code}
+          </>
+        )
+        : (
+          <details class="callout bad" data-testid="example-unverified">
+            <summary>
+              The checker rejected every attempt: {result.reason}{" "}
+              <span class="linkish">Show the SQL anyway</span>
+            </summary>
+            <p>Do not run this without reading it.</p>
+            {code}
+          </details>
+        )}
       <div class="actions">
         <button
           type="button"
-          class="btn ghost"
-          data-testid="copy"
-          onClick={copy}
-        >
-          {copied.value ? "Copied" : "Copy"}
-        </button>
-        <button
-          type="button"
-          class="btn ghost"
+          class="btn"
           data-testid="save-candidate"
           disabled={save.value.kind === "saving" || save.value.kind === "saved"}
           onClick={saveCandidate}
@@ -126,7 +128,7 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
         </button>
       </div>
       {save.value.kind === "saved" && (
-        <p class="lead" role="status" data-testid="saved">
+        <p class="fine" role="status" data-testid="saved">
           {save.value.existing ? "Already saved." : "Saved."}{" "}
           <a href="/candidates">See Candidates</a>
         </p>
@@ -136,25 +138,39 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
           {save.value.message}
         </div>
       )}
-      <details data-testid="attempts">
-        <summary>Attempts ({result.attempts.length})</summary>
+      <h3 class="sub">Inspired by</h3>
+      <ul class="srclist" data-testid="example-sources">
+        {result.sources.map((s) => (
+          <li data-testid="example-source">
+            {s.docHref ? <a href={s.docHref}>{s.file}</a> : s.file}
+          </li>
+        ))}
+      </ul>
+      <details data-testid="attempts" class="quiet">
+        <summary>Attempts ({nAttempts})</summary>
         <ol>
           {result.attempts.map((a) => (
             <li>
               {a.error === null
                 ? "Passed the dry-run."
+                : a.unchecked
+                ? `Not dry-run: ${a.error}`
                 : `Rejected: ${a.error}`}
               {a.sql && <pre class="code"><code>{a.sql}</code></pre>}
             </li>
           ))}
         </ol>
       </details>
-      <p class="lead" style="margin-top:10px;font-size:0.9rem">
-        Written by a language model from the files above. "Dry-run passed" means
-        Zetaris's analyzer accepted the query (EXPLAIN); nothing was run against
-        data, and it is not "verified" in the sense of CONTRIBUTING.md. Only
-        queries can be checked; other statements stay unverified.
-      </p>
+      <details class="quiet">
+        <summary>How to read this label</summary>
+        <p class="fine">
+          Written by a language model from the files above. "Dry-run passed"
+          means Zetaris's analyzer accepted the query (EXPLAIN); nothing was run
+          against data, and it is not "verified" in the sense of
+          CONTRIBUTING.md. Only queries can be checked; other statements stay
+          unverified.
+        </p>
+      </details>
     </div>
   );
 }
