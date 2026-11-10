@@ -973,3 +973,19 @@ th {
   border: 0;
   background: none;
 }
+
+.excerpt {
+  margin-top: 8px;
+  padding: 2px 14px;
+  border-left: 2px solid var(--line);
+  font-size: 13.5px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.excerpt h1,
+.excerpt h2,
+.excerpt h3,
+.excerpt h4 {
+  font-size: 14px;
+  margin: 10px 0 4px;
+}

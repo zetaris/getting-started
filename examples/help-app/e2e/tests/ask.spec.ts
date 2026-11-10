@@ -157,3 +157,14 @@ test("the answer card switches to its sources and back", async ({ page }) => {
   await page.getByTestId("tab-answer").click();
   await expect(page.getByTestId("answer")).toBeVisible();
 });
+
+test("a source's best passage is rendered Markdown, not raw text", async ({ page }) => {
+  await page.goto(APPS.full.url);
+  await page.getByTestId("question").fill("How do I register a REST source?");
+  await page.getByTestId("submit").click();
+  const first = page.getByTestId("source").first();
+  await first.getByText("Best passage").click();
+  const ex = first.locator(".excerpt");
+  await expect(ex).toBeVisible();
+  expect(await ex.innerText()).not.toMatch(/^#{1,6} |\*\*|!\[/m);
+});

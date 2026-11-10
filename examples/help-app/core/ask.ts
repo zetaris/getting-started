@@ -18,6 +18,8 @@ export interface Source {
   similarity: number;
   /** Best passage text, trimmed for display. */
   excerpt: string;
+  /** The excerpt as safe HTML (Markdown rendered, images left out). */
+  excerptHtml: string;
   /** The original web page, only for Kbase files. */
   url: string | null;
   /** The in-app page for this file in the Docs browser. */
@@ -124,14 +126,19 @@ const EXCERPT = 600;
 
 export function toSource(h: FileHit): Source {
   const best = h.passages[0];
+  const excerpt = best.text.length > EXCERPT
+    ? `${best.text.slice(0, EXCERPT)}…`
+    : best.text;
   return {
     file: h.file,
     corpus: h.corpus,
     section: best.section,
     similarity: Number(best.similarity.toFixed(3)),
-    excerpt: best.text.length > EXCERPT
-      ? `${best.text.slice(0, EXCERPT)}…`
-      : best.text,
+    excerpt,
+    // Images in a short excerpt are noise (and may be cut off mid-link), so they are dropped.
+    excerptHtml: renderMarkdown(
+      excerpt.replace(/!\[[^\]]*\]\([^)]*\)?/g, ""),
+    ),
     url: /^https?:\/\//.test(h.file) ? h.file : null,
     docHref: docHref(h.file),
   };

@@ -1,3 +1,4 @@
+import { Html } from "./Html.tsx";
 import type { Source } from "../core/ask.ts";
 
 export function SourceCard({ s, rank }: { s: Source; rank: number }) {
@@ -25,7 +26,7 @@ export function SourceCard({ s, rank }: { s: Source; rank: number }) {
       </div>
       <details>
         <summary>Best passage</summary>
-        <pre>{s.excerpt}</pre>
+        <Html html={s.excerptHtml} class="md excerpt" />
       </details>
     </li>
   );
