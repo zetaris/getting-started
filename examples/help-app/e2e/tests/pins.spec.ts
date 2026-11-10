@@ -80,7 +80,7 @@ test("an unrelated question shows no past answers", async ({ page }) => {
   await expect(page.getByTestId("pinned")).toBeVisible();
   await page.getByTestId("question").fill("What is the capital of France?");
   await page.getByTestId("submit").click();
-  await expect(page.getByTestId("source").first()).toBeVisible();
+  await expect(page.getByTestId("answer")).toBeVisible();
   await expect(page.getByTestId("past")).toHaveCount(0);
 });
 

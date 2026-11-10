@@ -45,6 +45,32 @@ export default function AskBox({ llmConfigured, model }: Props) {
   const used = useSignal<PastAnswerOut | null>(null);
   const abort = useRef<AbortController | null>(null);
   const showSteps = useSignal(false);
+  // The answer card has two faces. `side` is the face in the page; `turn` drives the flip.
+  const side = useSignal<"answer" | "sources">("answer");
+  const target = useRef<"answer" | "sources">("answer");
+  const turn = useSignal<"" | "out" | "in">("");
+  const shown = side; // the tab that looks selected
+  function flipTo(k: "answer" | "sources") {
+    if (turn.value !== "") {
+      target.current = k; // a click during a turn: end up on the last one clicked
+      return;
+    }
+    if (k === side.value) return;
+    const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")
+      .matches;
+    if (reduce) {
+      side.value = k;
+      return;
+    }
+    target.current = k;
+    turn.value = "out";
+  }
+  function turned() {
+    if (turn.value === "out") {
+      side.value = target.current;
+      turn.value = "in";
+    } else turn.value = target.current !== side.value ? "out" : "";
+  }
   const now = useSignal(0); // ticks while loading, so elapsed times update
   const loading = state.value.kind === "loading";
   useEffect(() => {
@@ -90,6 +116,8 @@ export default function AskBox({ llmConfigured, model }: Props) {
     );
     const started = performance.now();
     copied.value = false;
+    side.value = "answer";
+    turn.value = "";
     pin.value = { kind: "none" };
     used.value = null;
     state.value = {
@@ -488,76 +516,145 @@ export default function AskBox({ llmConfigured, model }: Props) {
               )}
             </section>
           )}
-          {s.result.answer !== null && (
-            <>
-              <div class="sectionhead">
-                <h2>Answer</h2>
+          {(() => {
+            const r = s.result;
+            const hasAnswer = r.answer !== null;
+            const sourcesFace = (
+              <div
+                data-testid="sources-face"
+                hidden={hasAnswer && side.value !== "sources"}
+              >
+                {!hasAnswer && (
+                  <div class="sectionhead">
+                    <h2>Sources</h2>
+                    <span class="fine">
+                      Similarity plus a small keyword bonus, so not strictly
+                      descending.
+                    </span>
+                  </div>
+                )}
+                {hasAnswer && (
+                  <p class="fine">
+                    Similarity plus a small keyword bonus, so not strictly
+                    descending.
+                  </p>
+                )}
+                {r.sources.length === 0
+                  ? (
+                    <p data-testid="no-sources">
+                      Nothing matched. Try different words.
+                    </p>
+                  )
+                  : (
+                    <ul class="list">
+                      {r.sources.map((src, i) => (
+                        <SourceCard s={src} rank={i + 1} />
+                      ))}
+                    </ul>
+                  )}
               </div>
-              <Html
-                html={s.result.answerHtml ?? ""}
-                class="md answer-md"
-                testid="answer"
-              />
-              <div class="actions">
-                <button
-                  type="button"
-                  class="btn ghost"
-                  onClick={() => copy(s.result.answer ?? "")}
+            );
+            if (!hasAnswer) return sourcesFace;
+            return (
+              <div
+                class="flipcard"
+                data-testid="flipcard"
+                data-side={side.value}
+              >
+                <div
+                  class="flipbar"
+                  role="tablist"
+                  aria-label="Answer or sources"
                 >
-                  {copied.value ? "Copied" : "Copy"}
-                </button>
-                <button
-                  type="button"
-                  class="btn ghost"
-                  data-testid="pin"
-                  disabled={pin.value.kind === "pinning" ||
-                    pin.value.kind === "pinned"}
-                  onClick={() => pinAnswer(s)}
-                >
-                  {pin.value.kind === "pinning"
-                    ? "Pinning…"
-                    : pin.value.kind === "pinned"
-                    ? "Pinned"
-                    : "Pin this answer"}
-                </button>
-              </div>
-              {pin.value.kind === "pinned" && (
-                <p class="fine" role="status" data-testid="pinned">
-                  {pin.value.existing
-                    ? "This answer was already pinned."
-                    : "Pinned. People who ask something similar will see it under Past answers."}
-                </p>
-              )}
-              {pin.value.kind === "error" && (
-                <div class="alert" role="alert" data-testid="pin-error">
-                  {pin.value.message}
+                  {(["answer", "sources"] as const).map((k) => (
+                    <button
+                      type="button"
+                      role="tab"
+                      id={`tab-${k}`}
+                      aria-selected={shown.value === k}
+                      aria-controls={`face-${k}`}
+                      class={shown.value === k ? "on" : ""}
+                      data-testid={`tab-${k}`}
+                      onClick={() => flipTo(k)}
+                    >
+                      {k === "answer"
+                        ? "Answer"
+                        : `Sources (${r.sources.length})`}
+                    </button>
+                  ))}
                 </div>
-              )}
-              <p class="fine">
-                Written by a language model from the sources below. Check the
-                cited files, and treat generated SQL as unverified.
-              </p>
-            </>
-          )}
-          <div class="sectionhead">
-            <h2>Sources</h2>
-            <span class="fine">
-              Similarity plus a small keyword bonus, so not strictly descending.
-            </span>
-          </div>
-          {s.result.sources.length === 0
-            ? (
-              <p data-testid="no-sources">
-                Nothing matched. Try different words.
-              </p>
-            )
-            : (
-              <ul class="list">
-                {s.result.sources.map((src, i) => (
-                  <SourceCard s={src} rank={i + 1} />
-                ))}
-              </ul>
-            )}
+                <div class={`flipbody ${turn.value}`} onAnimationEnd={turned}>
+                  <div
+                    id="face-answer"
+                    role="tabpanel"
+                    aria-labelledby="tab-answer"
+                    hidden={side.value !== "answer"}
+                  >
+                    <Html
+                      html={r.answerHtml ?? ""}
+                      class="md answer-md"
+                      testid="answer"
+                    />
+                    <div class="actions">
+                      <button
+                        type="button"
+                        class="btn ghost"
+                        onClick={() => copy(r.answer ?? "")}
+                      >
+                        {copied.value ? "Copied" : "Copy"}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn ghost"
+                        data-testid="pin"
+                        disabled={pin.value.kind === "pinning" ||
+                          pin.value.kind === "pinned"}
+                        onClick={() => pinAnswer(s)}
+                      >
+                        {pin.value.kind === "pinning"
+                          ? "Pinning…"
+                          : pin.value.kind === "pinned"
+                          ? "Pinned"
+                          : "Pin this answer"}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn ghost"
+                        onClick={() => flipTo("sources")}
+                      >
+                        See the {r.sources.length} sources ↻
+                      </button>
+                    </div>
+                    {pin.value.kind === "pinned" && (
+                      <p class="fine" role="status" data-testid="pinned">
+                        {pin.value.existing
+                          ? "This answer was already pinned."
+                          : "Pinned. People who ask something similar will see it under Past answers."}
+                      </p>
+                    )}
+                    {pin.value.kind === "error" && (
+                      <div class="alert" role="alert" data-testid="pin-error">
+                        {pin.value.message}
+                      </div>
+                    )}
+                    <p class="fine">
+                      Written by a language model from the sources on the back.
+                      Check the cited files, and treat generated SQL as
+                      unverified.
+                    </p>
+                  </div>
+                  <div
+                    id="face-sources"
+                    role="tabpanel"
+                    aria-labelledby="tab-sources"
+                    hidden={side.value !== "sources"}
+                  >
+                    {sourcesFace}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
       )}
     </div>

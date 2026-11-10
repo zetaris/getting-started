@@ -20,12 +20,13 @@ test("asking a question shows ranked sources, with the corpus labelled", async (
   await expect(page.getByTestId("answer")).toHaveCount(0); // Search only by default
 });
 
-test("Answer mode shows the answer after the sources", async ({ page }) => {
+test("Answer mode shows the answer, with the sources on the back of the card", async ({ page }) => {
   await page.goto(APPS.full.url);
   await page.getByLabel("Answer").check({ force: true });
   await page.getByTestId("question").fill("How do I register a REST source?");
   await page.getByTestId("submit").click();
   await expect(page.getByTestId("answer")).toContainText("CREATE LIGHTNING REST TABLE");
+  await page.getByTestId("tab-sources").click();
   await expect(page.getByTestId("source").first()).toBeVisible();
 });
 
@@ -139,4 +140,20 @@ test("the page has a skip link, labelled controls and no console errors", async 
   await expect(page.getByLabel("Your question")).toBeVisible();
   await expect(page.getByRole("group", { name: "Mode" })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("the answer card flips to its sources and back", async ({ page }) => {
+  await page.goto(APPS.full.url);
+  await page.getByRole("radio", { name: "Answer" }).check({ force: true });
+  await expect(page.getByRole("radio", { name: "Answer" })).toBeChecked();
+  await page.getByTestId("question").fill("How do I register a REST source?");
+  await page.getByTestId("submit").click();
+  await expect(page.getByTestId("answer")).toBeVisible();
+  await expect(page.getByTestId("source").first()).toBeHidden();
+  await page.getByTestId("tab-sources").click();
+  await expect(page.getByTestId("source").first()).toBeVisible();
+  await expect(page.getByTestId("answer")).toBeHidden();
+  await expect(page.getByTestId("tab-sources")).toHaveAttribute("aria-selected", "true");
+  await page.getByTestId("tab-answer").click();
+  await expect(page.getByTestId("answer")).toBeVisible();
 });
