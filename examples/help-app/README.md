@@ -268,6 +268,52 @@ Things to know:
 
 ## How it works
 
+Two flows. Indexing builds the stores. A question uses them through a new, unsaved pipeline each time.
+
+### Indexing
+
+```mermaid
+flowchart TD
+  files[Repo Markdown and SQL plus the Kbase snapshot]
+  cut[Deno cuts each file into segments]
+  files --> cut
+  cut -->|creates the collection directly| milvus[(Milvus help_index)]
+  cut -->|each batch is an unsaved pipeline| ingest[Zetaris SQLTable then Chunking then Embedding then VectorStoreSink]
+  ingest --> milvus
+  cut -->|help USL writes rows through Zetaris| pg[(Postgres help_pg)]
+  pg --> usl[USL help_usl and data mart help_mart]
+  saved[Saved relations help_search and help_answer] --> usl
+  milvus -.->|those relations search this collection| saved
+```
+
+Deno creates `help_index` by calling Milvus itself. Zetaris does the embedding and the write, one batch at a time. That ingest pipeline is discarded after the run, so it does not appear in the pipeline list. The Postgres tables are a catalog of the same segments. `help_usl.docs` and `help_usl.chunks` read that catalog.
+
+`help_app.help_search` and `help_app.help_answer` are the only saved help pipelines. Each has one question baked in, and both search `help_index`. `help_usl.search` and `help_usl.answers` select them. Selecting `answers` calls the model every time.
+
+### A question
+
+```mermaid
+flowchart TD
+  page[Search page in the browser]
+  app[Deno app]
+  page --> app
+  app -->|Search Answer and Example| search[Zetaris unsaved VectorStoreSearch]
+  search --> milvus[(Milvus help_index)]
+  search --> app
+  app --> rank[Deno reranks passages]
+  rank -->|Answer and Example only| llm[Zetaris unsaved pipeline then LLM node]
+  llm --> ollama[Ollama]
+  llm --> page
+  rank -->|Search only| page
+  app -->|Example only EXPLAIN| check[Zetaris analyzer]
+```
+
+The page builds a new `RUN PIPELINE` for each question, with that question as the prompt. Zetaris embeds it and reads `help_index`. Deno reranks the passages. Search mode stops there.
+
+Answer mode sends the chosen passages back through a second unsaved pipeline. The LLM node uses `OLLAMA_URL`, and the Zetaris containers make the call. Example mode uses that same LLM pipeline, then asks Zetaris to `EXPLAIN` any `SELECT` or `WITH`. Deno calls Ollama only to list models, from the Status page and `help:doctor`.
+
+### Corpus and ingest
+
 1. **Walk.** Every `*.md` and `*.sql` in the repo, skipping dot directories,
    `node_modules`, and the top-level `dist`, `site`, `tmp` and `reports`
    folders, plus this example's own `corpus/` and `docs/`.
