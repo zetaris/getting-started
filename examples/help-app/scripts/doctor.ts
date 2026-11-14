@@ -127,7 +127,7 @@ add(
   "Postgres",
   pgUp
     ? `port ${pgPort} accepts connections`
-    : `nothing on port ${pgPort}: start compose/docker-compose.postgres.yml (needed for help:usl, Pinned and Candidates).`,
+    : `nothing on port ${pgPort}: start compose/docker-compose.yml (needed for help:usl, Pinned and Candidates).`,
 );
 
 // 6. LLM (optional)

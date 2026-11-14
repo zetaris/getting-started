@@ -21,8 +21,8 @@ The rules and gotchas it relies on are written up in the
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Zetaris Lightning | A running instance (local or AWS, per the [install guides](../../docs/install)), reachable over REST. The example was tested on Zetaris Lightning 2.4.3.1 in a local Docker deployment.                                                                    |
 | Deno              | 2.9 or later (`deno --version`).                                                                                                                                                                                                                           |
-| A vector store    | Milvus. [compose/docker-compose.yml](compose/docker-compose.yml) is provided but **has not been run** yet; the example was tested against a Milvus already running locally. About 1 GB of RAM is a reasonable floor for a corpus this size (not measured). |
-| Postgres          | 16. [compose/docker-compose.postgres.yml](compose/docker-compose.postgres.yml) starts one on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs, the pin log, the search and example logs, and the candidates. |
+| A vector store    | Milvus, started by [compose/docker-compose.yml](compose/docker-compose.yml) on port 19531. Set `MILVUS_IMAGE_TAG` to a release you have tested. About 1 GB of RAM is a reasonable floor for a corpus this size (not measured). |
+| Postgres          | 16, the same compose file, on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs, the pin log, the search and example logs, and the candidates. |
 | An LLM endpoint   | Only for Answer and Example modes: Ollama, or any server the Zetaris LLM node can reach. Search only needs none.                                                                                                                                           |
 
 The Zetaris containers must be able to reach Milvus (and Ollama). On a single
@@ -35,44 +35,136 @@ takes about 6 minutes. Models seen on the LLM host used for the tests:
 [docs/evidence.md](docs/evidence.md) for what each did). A pilot run (a smaller
 corpus) left the Zetaris driver at about 2.2 GiB and Milvus at about 320 MiB;
 that is indicative only, and this example's own memory use was not measured.
-Search only needs no LLM and answers in about half a second.
+Search only needs no LLM and answers in about half a second. Nobody has run a
+load test. The session counts below are a theory from that half-second search
+and from one Zetaris job at a time. The Ollama hosts are already set for
+several generations at once.
+
+On this install, expect on the order of ten concurrent readers using Search.
+Answer and Example can run several at once on the model host, and then wait
+on the single Zetaris driver. That is not a measured maximum.
+
+Search does not take the in-flight lock. One question is one Zetaris
+`VectorStoreSearch`, about half a second, and the result is still at most 100
+passages. The running driver is one Spark process in `local[2]`: 2 GB of heap
+and 2 cores (`ZSPARK_DRIVER_MEM`, `ZSPARK_DRIVER_CORES`, `ZSPARK_MASTER_URL`).
+Spark's scheduler gives that job both cores, so a second search waits. A
+person who searches and then reads holds the driver only for that half second,
+so one job at a time still covers on the order of ten to twenty active
+readers. Two people who click at the same moment queue for about half a
+second each. An answer holds the same driver for the whole generation, so
+searches wait behind it.
+
+Answer and Example take the in-flight lock in `core/limit.ts`: one model call
+per browser session, and one per agent id on `POST /api/mcp`. Different
+sessions can be in flight together. The call sits inside Zetaris for tens of
+seconds (about 45 s on this hardware). Example may do that up to three times.
+The two Ollama machines are already tuned for that, from the RAM tier applied
+when the daemon was installed. A 64 GB machine gets 4 parallel requests, 3
+models loaded, and a 32,768 context. A 128 GB machine gets 8 parallel
+requests, 4 models loaded, and the model's own context instead of a cap.
+Those are server settings. A direct call to `/api/chat` or `/api/generate`
+can pass `options.num_ctx` and use a shorter window than that cap, which is
+what changes the KV cache for that request. The parallel count stays the
+server's. The help app does not send `num_ctx`. The Zetaris LLM node is only
+given `OLLAMA_URL` and the model name, so an answer uses the server's slots
+and the server's context.
+
+Parallel slots do not copy the weights. They reserve more context. The
+weights measured here are `gpt-oss:20b` at 14 GB and `gpt-oss:120b` at 65 GB.
+On the 128 GB M4 Max Mac Studio the 20b model fits inside the 8-wide setting,
+and the 120b model fits once, with the leftover RAM as context for those
+slots rather than a second copy of the 65 GB. On the 64 GB M4 Pro Mac mini
+the 20b model fits inside the 4-wide, 32,768 setting. The 120b model does not
+fit in 64 GB. `ollama ps` is the check that a loaded model stayed fully on
+the GPU. If it spills, every request gets slower. KV cache grows with the
+context actually sent, so one request that fills a native context on the
+128 GB machine can push another resident model out.
+
+The help app process is not the ceiling. It keeps no session store except
+that in-memory lock, which belongs to one process and resets on restart.
+More app containers add no search capacity. They matter once Zetaris and the
+model can do more than one thing at once.
+
+Three ways the stack grows:
+
+1. **A larger Zetaris, or more nodes.** This install is already the slim
+   laptop profile: the API heap is capped at 1 GB (`ZETARIS_API_MAX_HEAP`),
+   and the driver is 2 GB and 2 cores. The shipped server profile is 4 GB and
+   4 cores (`local[4]`), which makes one search faster. It does not by itself
+   run two searches at once, because `local[n]` is one process and the
+   scheduler still hands the running job all of its cores. Heap and cores are
+   set in the driver environment. `spark.driver.memory` in
+   `spark-defaults.conf` is ignored, because the launch command wins. The
+   file that does apply is the shuffle partition count, which should sit near
+   the core count, and `spark.scheduler.mode` set to `FAIR` if a short search
+   should run beside a long answer. Neither change has been tried here.
+   Several searches at once, on the order of ten slots and about a hundred
+   active Search readers, means more than one driver, or a cluster master
+   instead of `local[n]`. Each answer still occupies a slot for the whole
+   generation. Ingest stays a separate, heavy job (`LIMIT 100000`, a full
+   rebuild) and should stay off the driver that is serving questions.
+2. **The Ollama hosts are already the parallel tier.** Four generations at a
+   time on the 64 GB machine, eight on the 128 GB machine. That removes
+   Ollama as the limit until more sessions than that are waiting, or until a
+   long context fills the KV cache and evicts a model. Past that, point
+   `OLLAMA_URL` at an OpenAI-compatible endpoint that scales on its own. The
+   app never calls the model for a search. The in-flight lock still allows
+   one generation per session. Search capacity stays the same. The status
+   page checks the model with `GET /api/tags`. A new endpoint needs that same
+   shape, or the status line stays a warning.
+3. **Iceberg on S3 instead of Postgres, queried through Zetaris.** Postgres
+   here is small: the doc and chunk catalog (about 300 files and under 3,000
+   segments), pins, and the append-only search and example logs. Those rows
+   are already flattened for a date-prefixed Parquet export
+   (`help:export-pins`). Iceberg fits that export and a periodic copy of the
+   catalog. It fits poorly as the live store behind a click. A pin, a like,
+   and a search log are single-row inserts, and a Docs page reads the catalog
+   while someone is waiting. A Spark planning step is a large cost for that.
+   Milvus remains the search index either way. Iceberg does not answer a
+   question. Keep Iceberg as the review and archive path that already exists,
+   and keep Postgres for the interactive writes. A live Iceberg catalog is
+   worth another look only when catalog reads may take seconds and writes are
+   batched.
 
 ## Quick start
 
 The shortest path to a working Search page (Search only), from a fresh clone.
-Steps 4 and 5 are only for the Docs, Pinned and Candidates pages.
+Zetaris and Ollama stay separate installs. Step 4 is the catalog.
 
 1. **Settings.** Copy the lines you need from [.env.example](.env.example) into
    the repo root's `.env.local`, and add your Zetaris REST key
-   (`ZETARIS_API_KEY`, created in the Zetaris GUI). For a Milvus on this machine
-   the defaults work.
-2. **Check the prerequisites.** From this folder:
+   (`ZETARIS_API_KEY`, created in the Zetaris GUI). Set `MILVUS_IMAGE_TAG` and
+   `HELP_PG_PASSWORD`. `ZETARIS_REST_URL` must use `host.docker.internal` and
+   the port Zetaris publishes, not `localhost`: the help container is a
+   different machine from Zetaris.
+2. **Build, then start Postgres, Milvus, and the app.** From this folder:
    ```bash
-   deno task help:doctor
-   ```
-   It is read-only. Fix every FAIL line before going on; WARN lines are for
-   features you may not use yet.
-3. **Install, index, build, start.**
-   ```bash
-   deno install                   # the app's packages (not needed for the ingest)
-   deno task help:ingest          # about 6 minutes: creates the collection and indexes the corpus
+   deno install
    deno task build
-   deno task start                # http://127.0.0.1:8000
+   docker compose --env-file ../../.env.local -f compose/docker-compose.yml up -d
    ```
-   Open it, leave **Search only** selected and ask "How do I onboard a REST API
-   source?". Ranked sources should come back in under a second.
-4. **Optional: the catalog (Docs, Pinned, Candidates).** Set `HELP_PG_PASSWORD`,
-   then start Postgres and build the USL (details in
+   The site is http://127.0.0.1:8000. The container serves the `_fresh` build
+   from the repo mount, so build on the host again after app changes and
+   recreate the help container. Ingest does not run at startup.
+3. **Index.** On the host, about 6 minutes:
+   ```bash
+   deno task help:ingest
+   ```
+   Open the site, leave **Search only** selected and ask "How do I onboard a
+   REST API source?". Ranked sources should come back in under a second.
+   `deno task help:doctor` is read-only and reports what is still missing.
+4. **Optional: the catalog (Docs, Pinned, Candidates).** Postgres is already
+   up. Build the USL (details in
    [The USL and the data mart](#the-usl-and-the-data-mart)):
    ```bash
-   docker compose --env-file ../../.env.local -f compose/docker-compose.postgres.yml up -d
    deno task help:usl
    ```
 5. **Optional: Answer and Example modes.** Set `OLLAMA_URL` and `OLLAMA_MODEL`
-   (and, if you like, `HELP_EXAMPLE_MODEL`) in `.env.local` and restart the app.
-   The URL must be one the Zetaris containers can resolve. The saved
-   `help_answer` relation is only registered when `OLLAMA_URL` is set at ingest
-   time; the app does not need it.
+   (and, if you like, `HELP_EXAMPLE_MODEL`) in `.env.local` and recreate the
+   help container. The URL must be one the Zetaris containers can resolve.
+   The saved `help_answer` relation is only registered when `OLLAMA_URL` is
+   set at ingest time; the app does not need it.
 
 If something fails, see [Troubleshooting](#troubleshooting).
 
@@ -141,6 +233,10 @@ deno task build     # once, and after code changes
 deno task start     # http://127.0.0.1:8000 (HELP_HOST and HELP_PORT change this)
 deno task dev       # development server with hot reload instead
 ```
+
+Compose starts this server for you, on port 8000, together with Postgres and
+Milvus. `deno task start` is the same server on the host, without those
+containers.
 
 - **Ask** (`/`): type a question, choose **Search only** (no LLM needed) or
   **Answer**, and read the ranked sources, then the answer. Answer mode needs
@@ -324,7 +420,7 @@ segment, written through Zetaris `INSERT`), then builds `help_usl` and
 `help_mart` from the numbered scripts in [sql/](sql/). Start Postgres first:
 
 ```bash
-docker compose --env-file ../../.env.local -f compose/docker-compose.postgres.yml up -d
+docker compose --env-file ../../.env.local -f compose/docker-compose.yml up -d
 deno task help:usl --dry-run   # the steps; sends nothing
 deno task help:usl             # add --rebuild to drop and recompile help_usl
 ```
