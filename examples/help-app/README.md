@@ -90,6 +90,7 @@ If something fails, see [Troubleshooting](#troubleshooting).
 | Doc and chunk catalog, pins, candidates | Postgres rows, read and written through Zetaris (`help_pg`, `help_usl`)                 |
 | Pin scoring (likes, uses)               | Zetaris USL `pin_scores`, from the append-only event log                                |
 | Activity log                            | Postgres `searches` and `examples`; the USL review tables flatten pins, events, searches, and examples. `help:export-pins` copies each day to Parquet |
+| Coding agent                            | `POST /api/mcp` on the running app. No authentication                                                                                                  |
 | Rendering, safety checks, pages         | App (Fresh): safe Markdown, same-origin checks, one answer at a time per session        |
 
 ## Troubleshooting
@@ -207,6 +208,43 @@ deno task dev       # development server with hot reload instead
   `0.03 * ln(1 + uses)` to the similarity. The threshold is loose:
   questions on the same topic also reach it, so each offer shows the question
   it was pinned for.
+- **Coding agents** (`POST /api/mcp`): the same running app. Details below.
+
+## Coding agents
+
+`POST /api/mcp` is on the help app, next to `POST /api/ask` and
+`POST /api/example`. Start the app, then point the editor at that URL. There
+is no separate process to launch. With the defaults that URL is
+`http://127.0.0.1:8000/api/mcp`. `HELP_HOST` and `HELP_PORT` change it, and a
+hosted app serves the same path.
+
+```json
+{
+  "mcpServers": {
+    "zetaris-help": {
+      "url": "http://127.0.0.1:8000/api/mcp"
+    }
+  }
+}
+```
+
+There is no authentication. Each POST is one JSON-RPC message and the response
+is JSON. `GET /api/mcp` returns 405. The server does not push messages and
+does not issue an MCP session id.
+
+The tools are `search_help`, `answer_help`, and `example_sql`. Search does
+not call the model. Answer may return a close pinned answer, or call the
+model when `fresh` is true. Example returns generated SQL. `EXPLAIN` checks
+`SELECT` and `WITH` only, and nothing is executed. Pins, likes, and Candidates
+are not tools.
+
+Calls are stored with the `X-Help-Actor` header when it is `agent:` plus 16
+hex digits, and as `anonymous` otherwise. `caller()` in
+[core/caller.ts](core/caller.ts) is that lookup. A future credential check
+belongs there, on this route, and is not implemented. The options are one
+shared bearer, one token per agent, or OAuth if the app is a shared remote
+service. `ZETARIS_API_KEY` is not that credential. It stays on the server. A
+future help-app secret would only allow search, answer, and example.
 
 ## Activity log
 
@@ -225,7 +263,8 @@ Rows are written after the work returns. A failed insert does not fail the
 search or the example.
 
 - **Search.** Search mode, Answer mode (including a pin offer and **Write a
-  new answer**, because both run retrieval), and page 1 of the docs search.
+  new answer**, because both run retrieval), `search_help` and `answer_help`,
+  and page 1 of the docs search.
   Later docs pages repeat the same search and are not logged. The title filter
   in the docs browser never calls Zetaris, so it is not logged either. The
   retrieval inside Example mode is not a search row.
