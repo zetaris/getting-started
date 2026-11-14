@@ -4,6 +4,8 @@ import { DocsShell } from "../../components/DocsShell.tsx";
 import { Html } from "../../components/Html.tsx";
 import { ResultHead } from "../../components/SourceCard.tsx";
 import { docHref, type DocRow, listDocs } from "../../core/docs.ts";
+import { logsDocsSearch, logSearch } from "../../core/activity.ts";
+import { resolveActor } from "../../core/actor.ts";
 import { toAskError } from "../../core/ask.ts";
 import { pageWindow } from "../../core/page.ts";
 import { cleanQuestion } from "../../core/query.ts";
@@ -43,6 +45,9 @@ export const handler = define.handlers({
       }
       const titles = new Map(rows.map((d) => [d.path, d.title]));
       const ranked = rerank(q, await askDeps().search(q, 100));
+      if (logsDocsSearch(requested)) {
+        await logSearch(z, q, resolveActor(ctx.req.headers), "docs");
+      }
       const all: Hit[] = topFiles(ranked, 50).map((h) => ({
         file: h.file,
         corpus: h.corpus,

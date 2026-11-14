@@ -5,7 +5,7 @@
 import { createServer } from "node:http";
 
 const KEY = "e2e-key";
-const state = { answerDelayMs: 0, fail: 0, xss: 0, bumpSha: 0, answerRuns: 0, exampleMode: "pass", explainRuns: 0, llmPrompts: [] };
+const state = { answerDelayMs: 0, fail: 0, xss: 0, bumpSha: 0, answerRuns: 0, exampleMode: "pass", explainRuns: 0, llmPrompts: [], searches: 0, examples: 0 };
 const candidates = new Map();
 const pins = new Map(); // pin_id -> row
 const events = [];
@@ -69,6 +69,8 @@ createServer((req, res) => {
         state.answerRuns = 0;
         state.explainRuns = 0;
         state.llmPrompts.length = 0;
+        state.searches = 0;
+        state.examples = 0;
         candidates.clear();
       }
       return send(res, 200, { ...state, pins: pins.size, events: events.length });
@@ -132,6 +134,14 @@ createServer((req, res) => {
       if (sql.startsWith("SELECT candidate_id FROM help_pg.candidates")) {
         const id = sql.match(/'([0-9a-f]{64})'/)[1];
         return send(res, 200, { data: candidates.has(id) ? [[id]] : [] });
+      }
+      if (sql.startsWith("INSERT INTO help_pg.searches")) {
+        state.searches++;
+        return send(res, 200, { data: [] });
+      }
+      if (sql.startsWith("INSERT INTO help_pg.examples")) {
+        state.examples++;
+        return send(res, 200, { data: [] });
       }
       if (sql.startsWith("INSERT INTO help_pg.candidates")) {
         const id = sql.match(/SELECT '([0-9a-f]{64})'/)[1];

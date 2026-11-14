@@ -26,6 +26,7 @@ export function appEnv(kind: keyof typeof APPS): Record<string, string> {
   if (kind === "full") {
     env.OLLAMA_URL = MOCK;
     env.OLLAMA_MODEL = "mock-model";
+    env.HELP_CANDIDATES = "1";
   }
   // Port 9 (discard) refuses connections: a stable "Zetaris is down".
   if (kind === "down") env.ZETARIS_REST_URL = "http://127.0.0.1:9/api/v1.0";

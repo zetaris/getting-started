@@ -12,6 +12,11 @@ function env(name: string, fallback = ""): string {
   return Deno.env.get(name) ?? fallback;
 }
 
+/** The Candidates shelf. Off unless HELP_CANDIDATES is exactly `1`. */
+export function candidatesEnabled(): boolean {
+  return env("HELP_CANDIDATES") === "1";
+}
+
 export function loadConfig() {
   const model = env("HELP_EMBEDDING_MODEL", "e5-small-v2").toLowerCase();
   const dim = DIMENSIONS[model];
@@ -53,6 +58,7 @@ export function loadConfig() {
     ollamaModel: env("OLLAMA_MODEL"),
     // Example mode can use a different (coding) model; falls back to OLLAMA_MODEL.
     exampleModel: env("HELP_EXAMPLE_MODEL") || env("OLLAMA_MODEL"),
+    candidatesEnabled: candidatesEnabled(),
   };
 }
 

@@ -1,4 +1,5 @@
 import { define } from "../../utils.ts";
+import { resolveActor } from "../../core/actor.ts";
 import { AskError } from "../../core/ask.ts";
 import { errorResponse, json, readPost } from "../../core/http.ts";
 import { addEvent } from "../../core/pins.ts";
@@ -19,7 +20,7 @@ export const handler = define.handlers({
       const r = await addEvent(store, {
         pinId: body.pinId,
         kind: body.kind,
-        who: body.who,
+        who: resolveActor(ctx.req.headers),
       });
       console.log(`pin-event kind=${String(body.kind)}`);
       return json(r);

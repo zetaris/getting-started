@@ -1,20 +1,5 @@
 // Per-browser preferences. Storage can be blocked, so every access is guarded.
-const NAME = "help_name";
 const LIKED = "help_liked";
-
-export function getName(): string {
-  try {
-    return localStorage.getItem(NAME) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function setName(v: string) {
-  try {
-    localStorage.setItem(NAME, v.slice(0, 100));
-  } catch { /* ignore */ }
-}
 
 export function likedSet(): Set<string> {
   try {
@@ -37,7 +22,7 @@ export async function postEvent(
   const res = await fetch("/api/pin-event", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ pinId, kind, who: getName() }),
+    body: JSON.stringify({ pinId, kind }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok || body?.error) {

@@ -94,7 +94,7 @@ test("SQL from the model is shown as text, never run", async ({ page, request })
 
 test("save as candidate: saved once, listed, with its status and sources", async ({ page, request }) => {
   await generate(page, "pass", request);
-  await page.getByTestId("name").fill("Ann");
+  await page.getByTestId("actor-continue").click();
   await page.getByTestId("save-candidate").click();
   await expect(page.getByTestId("saved")).toContainText("Saved.");
   expect((await (await request.get(`${MOCK}/__state`)).json()).candidates).toBe(1);
@@ -109,7 +109,7 @@ test("save as candidate: saved once, listed, with its status and sources", async
   await expect(card).toContainText(REQ);
   await expect(page.getByTestId("candidate-status")).toHaveText("Generated, dry-run passed");
   await expect(card.getByRole("link", { name: SQL_FILE })).toHaveAttribute("href", `/docs/${SQL_FILE}`);
-  await expect(card).toContainText("saved by Ann");
+  await expect(card).toContainText(/saved by person [0-9a-f]{8}/);
   // Filter by cited file.
   await page.goto(`${APPS.full.url}/candidates?file=${encodeURIComponent(SQL_FILE)}`);
   await expect(page.getByTestId("candidate")).toHaveCount(1);

@@ -44,6 +44,27 @@ CREATE TABLE IF NOT EXISTS pin_events (
 );
 
 -- Generated examples saved for human review (Phase 6b). Nothing here is published anywhere.
+-- Append-only log of searches and generated examples. Dates are derived in the USL.
+CREATE TABLE IF NOT EXISTS searches (
+  search_id text PRIMARY KEY,
+  question text,
+  asked_at timestamp,
+  who text,
+  surface text
+);
+
+CREATE TABLE IF NOT EXISTS examples (
+  example_id text PRIMARY KEY,
+  request text,
+  sql_text text,
+  status text,
+  attempts integer,
+  model text,
+  sources text,
+  created_at timestamp,
+  who text
+);
+
 CREATE TABLE IF NOT EXISTS candidates (
   candidate_id text PRIMARY KEY,
   request text,

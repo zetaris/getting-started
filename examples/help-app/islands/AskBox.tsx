@@ -7,7 +7,8 @@ import { Html } from "../components/Html.tsx";
 import LikeButton from "./LikeButton.tsx";
 import { ExampleView } from "../components/ExampleView.tsx";
 import type { ExampleResult } from "../core/example.ts";
-import { getName, postEvent } from "./prefs.ts";
+import { actorLabel } from "../core/actor.ts";
+import { postEvent } from "./prefs.ts";
 import { pageWindow } from "../core/page.ts";
 
 const MODE_KEY = "help_mode";
@@ -19,6 +20,7 @@ type UiMode = Mode | "example";
 interface Props {
   llmConfigured: boolean;
   model: string;
+  candidatesEnabled: boolean;
 }
 
 type Reply = { error?: { code?: string; message?: string } };
@@ -37,7 +39,9 @@ type PinState =
   | { kind: "pinned"; existing: boolean }
   | { kind: "error"; message: string };
 
-export default function AskBox({ llmConfigured, model }: Props) {
+export default function AskBox(
+  { llmConfigured, model, candidatesEnabled }: Props,
+) {
   const question = useSignal("");
   const mode = useSignal<UiMode>("search");
   const state = useSignal<State>({ kind: "idle" });
@@ -223,7 +227,6 @@ export default function AskBox({ llmConfigured, model }: Props) {
           answer: s.result.answer,
           model,
           sources: s.result.sources.map((x) => ({ file: x.file })),
-          who: getName(),
         }),
       });
       const body = await res.json().catch(() => null);
@@ -456,6 +459,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
           <ExampleView
             result={s.result}
             request={s.request}
+            candidatesEnabled={candidatesEnabled}
             onRegenerate={() => {
               pick("example");
               submit(s.request);
@@ -499,7 +503,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
                           >
                             similarity {p.similarity.toFixed(2)}
                           </span>
-                          <span>pinned by {p.pinnedBy}</span>
+                          <span>pinned by {actorLabel(p.pinnedBy)}</span>
                           <span>used {p.uses}×</span>
                           {p.model && <span>{p.model}</span>}
                           <StaleBadge stale={p.stale} />
@@ -572,7 +576,7 @@ export default function AskBox({ llmConfigured, model }: Props) {
                         >
                           similarity {p.similarity.toFixed(2)}
                         </span>
-                        <span>pinned by {p.pinnedBy}</span>
+                        <span>pinned by {actorLabel(p.pinnedBy)}</span>
                         {p.model && <span>{p.model}</span>}
                         <StaleBadge stale={p.stale} />
                       </div>

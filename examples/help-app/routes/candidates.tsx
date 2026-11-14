@@ -1,5 +1,7 @@
 import { page } from "fresh";
 import { define } from "../utils.ts";
+import { actorLabel } from "../core/actor.ts";
+import { candidatesEnabled } from "../core/config.ts";
 import { TopBar } from "../components/TopBar.tsx";
 import { toAskError } from "../core/ask.ts";
 import { type CandidateView, listCandidates } from "../core/candidates.ts";
@@ -8,6 +10,9 @@ import { getZetaris } from "../core/server.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!candidatesEnabled()) {
+      return new Response("Not found", { status: 404 });
+    }
     const raw = ctx.url.searchParams.get("file") ?? "";
     const file = raw && (validRepoPath(raw) || /^https?:\/\//.test(raw))
       ? raw
@@ -75,7 +80,7 @@ export default define.page<typeof handler>(function Candidates({ data }) {
                     {c.attempts} {c.attempts === 1 ? "attempt" : "attempts"}
                   </span>
                   <span>{c.model}</span>
-                  <span>saved by {c.createdBy}</span>
+                  <span>saved by {actorLabel(c.createdBy)}</span>
                   <span>{c.createdAt}</span>
                 </div>
                 <details>

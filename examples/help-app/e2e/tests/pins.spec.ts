@@ -18,7 +18,6 @@ async function askAnswer(page: import("@playwright/test").Page, q = Q) {
 
 test("an answer can be pinned once; pinning it again says so", async ({ page, request }) => {
   await askAnswer(page);
-  await page.getByTestId("name").fill("Ann");
   await page.getByTestId("pin").click();
   await expect(page.getByTestId("pinned")).toContainText("Pinned.");
   expect((await (await request.get(`${MOCK}/__state`)).json()).pins).toBe(1);

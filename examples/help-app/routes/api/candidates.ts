@@ -1,5 +1,7 @@
 import { define } from "../../utils.ts";
+import { resolveActor } from "../../core/actor.ts";
 import { AskError } from "../../core/ask.ts";
+import { candidatesEnabled } from "../../core/config.ts";
 import { catalogFiles, saveCandidate } from "../../core/candidates.ts";
 import { errorResponse, json, readPost } from "../../core/http.ts";
 import { getZetaris } from "../../core/server.ts";
@@ -7,6 +9,9 @@ import { getZetaris } from "../../core/server.ts";
 export const handler = define.handlers({
   async POST(ctx) {
     try {
+      if (!candidatesEnabled()) {
+        throw new AskError("not_found", "Candidates are off.", 404);
+      }
       const body = await readPost(ctx.req, 32_768);
       const z = getZetaris();
       if (!z) {
@@ -25,7 +30,7 @@ export const handler = define.handlers({
           model: body.model,
           sources: body.sources,
           notes: body.notes,
-          who: body.who,
+          who: resolveActor(ctx.req.headers),
         },
         () => catalogFiles(z),
         async (sql) =>

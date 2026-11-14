@@ -66,8 +66,50 @@ CREATE TABLE pin_scores (
     uses int,
     last_event timestamp
 );
+CREATE TABLE pin_reception (
+    pin_id varchar(64) NOT NULL PRIMARY KEY,
+    question varchar(4000),
+    answer varchar(65535),
+    model varchar(100),
+    status varchar(20),
+    pinned_at timestamp,
+    pinned_date varchar(10),
+    pinned_by varchar(100),
+    sources varchar(65535),
+    likes int,
+    uses int,
+    bonus double
+);
+CREATE TABLE pin_event_log (
+    event_id varchar(64) NOT NULL PRIMARY KEY,
+    pin_id varchar(64),
+    kind varchar(20),
+    at timestamp,
+    event_date varchar(10),
+    who varchar(100)
+);
+CREATE TABLE search_log (
+    search_id varchar(64) NOT NULL PRIMARY KEY,
+    question varchar(500),
+    asked_at timestamp,
+    asked_date varchar(10),
+    who varchar(100),
+    surface varchar(20)
+);
+CREATE TABLE example_log (
+    example_id varchar(64) NOT NULL PRIMARY KEY,
+    request varchar(500),
+    sql_text varchar(8000),
+    status varchar(20),
+    attempts int,
+    model varchar(100),
+    sources varchar(65535),
+    created_at timestamp,
+    created_date varchar(10),
+    who varchar(100)
+);
 
-UPDATE USL lightning.metastore.help_app_usl.help_usl SET DESCRIPTION 'Help app: doc catalog, chunk catalog, standing search and answer relations, pinned answers and their events';
+UPDATE USL lightning.metastore.help_app_usl.help_usl SET DESCRIPTION 'Help app: doc catalog, chunk catalog, standing search and answer relations, pinned answers, their events, and the search and example logs';
 
 ACTIVATE USL TABLE lightning.metastore.help_app_usl.help_usl.docs AS
   SELECT coalesce(path, '') AS path, corpus, title, kind, bytes, git_sha, chunk_count FROM help_pg.docs;
@@ -93,3 +135,28 @@ ACTIVATE USL TABLE lightning.metastore.help_app_usl.help_usl.pin_scores AS
          CAST(coalesce(sum(CASE WHEN e.kind = 'use' THEN 1 ELSE 0 END), 0) AS int) AS uses,
          max(e.at) AS last_event
   FROM help_pg.pins p LEFT JOIN help_pg.pin_events e ON e.pin_id = p.pin_id GROUP BY p.pin_id;
+
+ACTIVATE USL TABLE lightning.metastore.help_app_usl.help_usl.pin_reception AS
+  SELECT coalesce(p.pin_id, '') AS pin_id, p.question, p.answer, p.model, p.status, p.pinned_at,
+         date_format(p.pinned_at, 'yyyy-MM-dd') AS pinned_date, p.pinned_by, p.sources,
+         CAST(coalesce(sum(CASE WHEN e.kind = 'like' THEN 1 WHEN e.kind = 'unlike' THEN -1 ELSE 0 END), 0) AS int) AS likes,
+         CAST(coalesce(sum(CASE WHEN e.kind = 'use' THEN 1 ELSE 0 END), 0) AS int) AS uses,
+         CAST(0.03 * ln(1 + greatest(coalesce(sum(CASE WHEN e.kind = 'like' THEN 1 WHEN e.kind = 'unlike' THEN -1 ELSE 0 END), 0), 0))
+            + 0.03 * ln(1 + coalesce(sum(CASE WHEN e.kind = 'use' THEN 1 ELSE 0 END), 0)) AS double) AS bonus
+  FROM help_pg.pins p LEFT JOIN help_pg.pin_events e ON e.pin_id = p.pin_id
+  GROUP BY p.pin_id, p.question, p.answer, p.model, p.status, p.pinned_at, p.pinned_by, p.sources;
+
+ACTIVATE USL TABLE lightning.metastore.help_app_usl.help_usl.pin_event_log AS
+  SELECT coalesce(event_id, '') AS event_id, pin_id, kind, at,
+         date_format(at, 'yyyy-MM-dd') AS event_date, who
+  FROM help_pg.pin_events;
+
+ACTIVATE USL TABLE lightning.metastore.help_app_usl.help_usl.search_log AS
+  SELECT coalesce(search_id, '') AS search_id, question, asked_at,
+         date_format(asked_at, 'yyyy-MM-dd') AS asked_date, who, surface
+  FROM help_pg.searches;
+
+ACTIVATE USL TABLE lightning.metastore.help_app_usl.help_usl.example_log AS
+  SELECT coalesce(example_id, '') AS example_id, request, sql_text, status, attempts, model, sources,
+         created_at, date_format(created_at, 'yyyy-MM-dd') AS created_date, who
+  FROM help_pg.examples;

@@ -12,6 +12,7 @@
     "help:answer": "deno run --allow-read --allow-net --allow-env scripts/answer_smoke.ts",
     "help:bakeoff": "deno run --allow-read --allow-net --allow-env scripts/example_bakeoff.ts",
     "help:usl": "deno run --allow-read --allow-net --allow-env --allow-run=python3,docker scripts/build_usl.ts",
+    "help:export-pins": "deno run --allow-read --allow-net --allow-env scripts/export_pins.ts",
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "start": "deno run --allow-read --allow-env --allow-net scripts/start.ts"

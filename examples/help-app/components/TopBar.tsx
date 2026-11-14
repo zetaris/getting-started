@@ -1,5 +1,6 @@
+import { candidatesEnabled } from "../core/config.ts";
+import ActorNotice from "../islands/ActorNotice.tsx";
 import ThemeToggle from "../islands/ThemeToggle.tsx";
-import NameField from "../islands/NameField.tsx";
 
 export function TopBar({ path }: { path: string }) {
   const item = (href: string, label: string) => (
@@ -13,21 +14,23 @@ export function TopBar({ path }: { path: string }) {
     </a>
   );
   return (
-    <header class="topbar">
-      <a class="brand" href="/">
-        Zetaris <span>help</span>
-      </a>
-      <nav class="nav" aria-label="Main">
-        {item("/", "Search")}
-        {item("/docs", "Docs")}
-        {item("/pins", "Pinned")}
-        {item("/candidates", "Candidates")}
-        {item("/admin", "Status")}
-      </nav>
-      <div class="topbar-end">
-        <NameField />
-        <ThemeToggle />
-      </div>
-    </header>
+    <>
+      <ActorNotice />
+      <header class="topbar">
+        <a class="brand" href="/">
+          Zetaris <span>help</span>
+        </a>
+        <nav class="nav" aria-label="Main">
+          {item("/", "Search")}
+          {item("/docs", "Docs")}
+          {item("/pins", "Pinned")}
+          {candidatesEnabled() && item("/candidates", "Candidates")}
+          {item("/admin", "Status")}
+        </nav>
+        <div class="topbar-end">
+          <ThemeToggle />
+        </div>
+      </header>
+    </>
   );
 }

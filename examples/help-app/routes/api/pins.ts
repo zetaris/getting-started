@@ -1,4 +1,5 @@
 import { define } from "../../utils.ts";
+import { resolveActor } from "../../core/actor.ts";
 import { AskError } from "../../core/ask.ts";
 import { errorResponse, json, readPost } from "../../core/http.ts";
 import { createPin } from "../../core/pins.ts";
@@ -21,7 +22,7 @@ export const handler = define.handlers({
         answer: body.answer,
         model: body.model,
         sources: body.sources,
-        who: body.who,
+        who: resolveActor(ctx.req.headers),
       });
       console.log(`pin ${r.existing ? "existing" : "created"}`);
       return json(r, r.existing ? 200 : 201);

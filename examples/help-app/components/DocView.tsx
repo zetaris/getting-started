@@ -1,3 +1,4 @@
+import { candidatesEnabled } from "../core/config.ts";
 import type { ChunkRow, DocFile } from "../core/docs.ts";
 import { categoryHref, corpusLabel, kindLabel } from "../core/docs.ts";
 import { Html } from "./Html.tsx";
@@ -33,14 +34,16 @@ export function DocView({ doc, chunks }: { doc: DocFile; chunks: ChunkRow[] }) {
         <summary>
           {chunks.length} chunks in the index ({row.chunkCount} in the catalog)
         </summary>
-        <p>
-          <a
-            href={`/candidates?file=${encodeURIComponent(row.path)}`}
-            data-testid="candidates-link"
-          >
-            Examples generated from this file
-          </a>
-        </p>
+        {candidatesEnabled() && (
+          <p>
+            <a
+              href={`/candidates?file=${encodeURIComponent(row.path)}`}
+              data-testid="candidates-link"
+            >
+              Examples generated from this file
+            </a>
+          </p>
+        )}
         {chunks.length === 0
           ? <p class="fine">No chunk rows found.</p>
           : (

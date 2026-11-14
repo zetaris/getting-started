@@ -153,6 +153,18 @@ for (
 }
 
 // 4. counts
-for (const t of ["docs", "chunks", "pins", "pin_events", "pin_scores"]) {
+for (
+  const t of [
+    "docs",
+    "chunks",
+    "pins",
+    "pin_events",
+    "pin_scores",
+    "pin_reception",
+    "pin_event_log",
+    "search_log",
+    "example_log",
+  ]
+) {
   console.log(`${NS}.help_usl.${t}: ${await count(`${NS}.help_usl.${t}`)}`);
 }

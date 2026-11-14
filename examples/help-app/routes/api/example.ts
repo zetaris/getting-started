@@ -1,4 +1,6 @@
 import { define } from "../../utils.ts";
+import { logExample } from "../../core/activity.ts";
+import { resolveActor } from "../../core/actor.ts";
 import { AskError, toAskError } from "../../core/ask.ts";
 import { generateExample } from "../../core/example.ts";
 import { errorResponse, json, readPost } from "../../core/http.ts";
@@ -38,8 +40,11 @@ export const handler = define.handlers({
           429,
         );
       }
+      const who = resolveActor(ctx.req.headers);
       const run = async (onStage: (s: string) => void) => {
         const r = await generateExample(exampleDeps(), body.request, onStage);
+        const z = getZetaris();
+        if (z) await logExample(z, r, String(body.request ?? ""), who);
         // Lengths, counts and timings only: never the request or the SQL.
         console.log(
           `example status=${r.status} attempts=${r.attempts.length} sources=${r.sources.length} ms=${r.ms}`,

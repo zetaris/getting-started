@@ -1,8 +1,10 @@
 import { define } from "../../utils.ts";
+import { logSearch } from "../../core/activity.ts";
+import { resolveActor } from "../../core/actor.ts";
 import { ask } from "../../core/ask.ts";
 import { errorResponse, json, readPost } from "../../core/http.ts";
 import { AskError } from "../../core/ask.ts";
-import { askDeps, inFlight } from "../../core/server.ts";
+import { askDeps, getZetaris, inFlight } from "../../core/server.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -36,6 +38,10 @@ export const handler = define.handlers({
         mode,
         fresh: body.fresh === true,
       });
+      const z = getZetaris();
+      if (z) {
+        await logSearch(z, body.question, resolveActor(ctx.req.headers), mode);
+      }
       // Log lengths and timings only, never the question text.
       console.log(
         `ask mode=${mode} qlen=${body.question.length} search=${result.timings.searchMs}ms` +

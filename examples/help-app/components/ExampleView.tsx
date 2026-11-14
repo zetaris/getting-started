@@ -1,12 +1,13 @@
 import { useSignal } from "@preact/signals";
 import type { ExampleResult } from "../core/example.ts";
-import { getName } from "../islands/prefs.ts";
 import { SourceCard } from "./SourceCard.tsx";
 
 interface Props {
   result: ExampleResult;
   request: string;
   onRegenerate: () => void;
+  /** Save-for-review shelf. The page passes this from HELP_CANDIDATES. */
+  candidatesEnabled?: boolean;
 }
 
 type Save =
@@ -17,7 +18,9 @@ type Save =
 
 /** A generated example. One badge only: "Generated, dry-run passed" or "Generated, unverified".
  * Never "Verified". A query Zetaris rejected stays collapsed until opened. */
-export function ExampleView({ result, request, onRegenerate }: Props) {
+export function ExampleView(
+  { result, request, onRegenerate, candidatesEnabled = false }: Props,
+) {
   const save = useSignal<Save>({ kind: "none" });
   const copied = useSignal(false);
   const face = useSignal<"example" | "sources">("example");
@@ -52,7 +55,6 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
           model: result.model,
           sources: result.sources.map((s) => s.file),
           notes: result.notes,
-          who: getName(),
         }),
       });
       const body = await res.json().catch(() => null);
@@ -137,15 +139,18 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
           </details>
         )}
       <div class="actions">
-        <button
-          type="button"
-          class="btn"
-          data-testid="save-candidate"
-          disabled={save.value.kind === "saving" || save.value.kind === "saved"}
-          onClick={saveCandidate}
-        >
-          {save.value.kind === "saved" ? "Saved" : "Save as candidate"}
-        </button>
+        {candidatesEnabled && (
+          <button
+            type="button"
+            class="btn"
+            data-testid="save-candidate"
+            disabled={save.value.kind === "saving" ||
+              save.value.kind === "saved"}
+            onClick={saveCandidate}
+          >
+            {save.value.kind === "saved" ? "Saved" : "Save as candidate"}
+          </button>
+        )}
         <button
           type="button"
           class="btn ghost"

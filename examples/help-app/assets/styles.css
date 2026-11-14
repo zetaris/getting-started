@@ -94,19 +94,20 @@ a {
   align-items: center;
   gap: 10px;
 }
-.namefield input {
-  width: 128px;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
+.actor-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
   background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
+  border-bottom: 1px solid var(--line);
 }
-.namefield input::placeholder {
+.actor-notice p {
+  margin: 0;
   color: var(--muted);
+  font-size: 13px;
+  max-width: 70ch;
 }
 .theme-toggle {
   width: 30px;

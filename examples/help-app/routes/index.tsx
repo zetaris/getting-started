@@ -11,7 +11,11 @@ export default define.page(function Home() {
       <TopBar path="/" />
       <main id="main">
         <h1 class="sr-only">Search the Zetaris docs</h1>
-        <AskBox llmConfigured={llm} model={cfg.ollamaModel} />
+        <AskBox
+          llmConfigured={llm}
+          model={cfg.ollamaModel}
+          candidatesEnabled={cfg.candidatesEnabled}
+        />
       </main>
     </>
   );

@@ -1,5 +1,6 @@
 import { page } from "fresh";
 import { define } from "../utils.ts";
+import { actorLabel } from "../core/actor.ts";
 import { TopBar } from "../components/TopBar.tsx";
 import { Html } from "../components/Html.tsx";
 import { StaleBadge } from "../components/StaleBadge.tsx";
@@ -55,7 +56,7 @@ export default define.page<typeof handler>(function Pins({ data }) {
                     {p.likes} {p.likes === 1 ? "like" : "likes"}
                   </span>
                   <span>used {p.uses}×</span>
-                  <span>pinned by {p.pinnedBy}</span>
+                  <span>pinned by {actorLabel(p.pinnedBy)}</span>
                   {p.model && <span>{p.model}</span>}
                   <StaleBadge stale={p.stale} />
                 </div>

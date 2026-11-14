@@ -22,7 +22,7 @@ The rules and gotchas it relies on are written up in the
 | Zetaris Lightning | A running instance (local or AWS, per the [install guides](../../docs/install)), reachable over REST. The example was tested on Zetaris Lightning 2.4.3.1 in a local Docker deployment.                                                                    |
 | Deno              | 2.9 or later (`deno --version`).                                                                                                                                                                                                                           |
 | A vector store    | Milvus. [compose/docker-compose.yml](compose/docker-compose.yml) is provided but **has not been run** yet; the example was tested against a Milvus already running locally. About 1 GB of RAM is a reasonable floor for a corpus this size (not measured). |
-| Postgres          | 16. [compose/docker-compose.postgres.yml](compose/docker-compose.postgres.yml) starts one on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs, the pin log and the candidates.                                          |
+| Postgres          | 16. [compose/docker-compose.postgres.yml](compose/docker-compose.postgres.yml) starts one on port 5434 (tested: 16.15, arm64, local Docker). It holds the doc and chunk catalogs, the pin log, the search and example logs, and the candidates. |
 | An LLM endpoint   | Only for Answer and Example modes: Ollama, or any server the Zetaris LLM node can reach. Search only needs none.                                                                                                                                           |
 
 The Zetaris containers must be able to reach Milvus (and Ollama). On a single
@@ -89,6 +89,7 @@ If something fails, see [Troubleshooting](#troubleshooting).
 | Check a generated query                 | Zetaris `EXPLAIN`; the app decides the label                                            |
 | Doc and chunk catalog, pins, candidates | Postgres rows, read and written through Zetaris (`help_pg`, `help_usl`)                 |
 | Pin scoring (likes, uses)               | Zetaris USL `pin_scores`, from the append-only event log                                |
+| Activity log                            | Postgres `searches` and `examples`; the USL review tables flatten pins, events, searches, and examples. `help:export-pins` copies each day to Parquet |
 | Rendering, safety checks, pages         | App (Fresh): safe Markdown, same-origin checks, one answer at a time per session        |
 
 ## Troubleshooting
@@ -124,6 +125,7 @@ deno task help:verify --corpus      # walk the repo's Markdown: files, segments,
 deno task help:ingest --dry-run     # show exactly what would be sent; changes nothing
 deno task help:ingest               # create the collection, ingest, verify, register relations
 deno task help:smoke                # 15 curated questions, search only, several keyword weights
+deno task help:export-pins          # print the Parquet export; writes nothing
 ```
 
 `help:ingest` drops and recreates only the collection named by
@@ -148,14 +150,13 @@ deno task dev       # development server with hot reload instead
   `help_usl`, the vector index, the LLM), the last ingest, and the commands to
   re-ingest. `/api/status` returns the same as JSON.
 - All Zetaris access is on the server. The browser never sees the API key, the
-  SQL or Zetaris's error text. The server logs the mode, the question's length
-  and timings, never its text.
+  SQL or Zetaris's error text. The server console records the mode, the
+  question's length and timings. The question text itself is stored in the
+  activity log, described below, and is not printed.
 - The app has **no login** and binds to `127.0.0.1`. Anyone who can reach it can
   use your Zetaris and LLM, so do not expose it. One Answer request at a time is
-  allowed per browser session. Pins and likes carry only the free-text name
-  typed into the name field in the top bar (kept in the browser's local
-  storage). It is not verified, so it is a label, not an identity, and a browser
-  can like a pin once only because it remembers it did.
+  allowed per browser session. A browser can like a pin once only because it
+  remembers it did.
 - Answers are rendered as Markdown on the server with `marked`. Raw HTML in the
   model's output is shown as text, and links other than http, https, mailto and
   relative ones are dropped, so model output cannot run script.
@@ -185,8 +186,9 @@ deno task dev       # development server with hot reload instead
   queries (`SELECT` / `WITH`) can be checked; a script with `CREATE` or other
   commands is always unverified. Nothing is run against your data. The model is
   `HELP_EXAMPLE_MODEL`, or `OLLAMA_MODEL` when unset.
-- **Candidates** (`/candidates`): generated examples someone chose to save, for
-  review. Nothing is added to the repo or published from here. The server works
+- **Candidates** (`/candidates`): off unless `HELP_CANDIDATES=1`. When it is
+  on, generated examples someone chose to save, for review. Nothing is added
+  to the repo or published from here. The server works
   out the status again when saving (it never trusts the browser's label) and
   refuses an example with no catalogued source file. Rows live in
   `help_pg.candidates` (see `compose/postgres-init.sql`). On an existing
@@ -205,6 +207,70 @@ deno task dev       # development server with hot reload instead
   `0.03 * ln(1 + uses)` to the similarity. The threshold is loose:
   questions on the same topic also reach it, so each offer shows the question
   it was pinned for.
+
+## Activity log
+
+Pins, searches, and generated examples are kept so you can see which answers
+were used and what was asked. Nobody types a name. The first visit shows a
+notice once. **Continue** stores a random id in the `help_actor` cookie
+(`person:` plus 16 hex digits, kept for a year and refreshed on later visits).
+A copy in the browser's local storage restores that id if the cookie is
+missing. Clearing cookies, a new browser, or a private window starts a new id.
+An agent does not use the cookie. It sends its own id on the `X-Help-Actor`
+header (`agent:` plus 16 hex digits). An agent driving this browser without
+that header is recorded as the person. Until **Continue**, new rows are stored
+as `anonymous`.
+
+Rows are written after the work returns. A failed insert does not fail the
+search or the example.
+
+- **Search.** Search mode, Answer mode (including a pin offer and **Write a
+  new answer**, because both run retrieval), and page 1 of the docs search.
+  Later docs pages repeat the same search and are not logged. The title filter
+  in the docs browser never calls Zetaris, so it is not logged either. The
+  retrieval inside Example mode is not a search row.
+- **Example.** One row when generation returns SQL: the request, the SQL,
+  `dry-run passed` or `unverified`, how many attempts it took, the model, and
+  the cited files. A run that stops before any SQL is not logged. Each
+  generation is its own row. Saving a candidate is still the separate review
+  shelf in `help_pg.candidates`.
+- **Pins.** Unchanged: `help_pg.pins` and the append-only `help_pg.pin_events`.
+
+Postgres holds `help_pg.searches` and `help_pg.examples`. The USL review
+tables are flat, one row each, because a USL column cannot be an array.
+`sources` stays text. `pin_reception` adds likes, uses, and the same bonus the
+app uses when it ranks pins (`0.03 * ln(1 + likes) + 0.03 * ln(1 + uses)`).
+`pinned_date`, `event_date`, `asked_date`, and `created_date` are `yyyy-mm-dd`.
+
+```bash
+deno task help:export-pins                 # print the statements; write nothing
+deno task help:export-pins -- --yes        # write Parquet for each date
+```
+
+`--yes` runs only when `HELP_EXPORT_PATH` and `HELP_EXPORT_STORAGE_ID` are set
+in the environment. They are not written into the repo. Each day is its own
+prefix, because the export command has no partition option:
+`<path>/pin_reception/dt=<date>/`, and the same for `pin_event_log`,
+`search_log`, and `example_log`. Running a date again overwrites that prefix
+and leaves the others. The task prints the `CREATE TABLE` and
+`REGISTER DATASOURCE TABLE` statements and does not run them.
+
+On a Postgres volume created before these tables existed, run the two
+`CREATE TABLE` statements from
+[compose/postgres-init.sql](compose/postgres-init.sql), then in Zetaris:
+
+```sql
+REGISTER DATASOURCE TABLE "searches" FROM help_pg
+REGISTER DATASOURCE TABLE "examples" FROM help_pg
+```
+
+A table added after the datasource was created is not visible until it is
+registered. `REFRESH` does not add it. Then recompile the USL so
+`search_log` and `example_log` exist. `deno task help:usl -- --rebuild` does
+that after it removes the old model. It stops first if the doc catalog counts
+do not match the files on disk. Empty `docs` and `chunks`, refill them, and
+run it again. Do not rely on a second `COMPILE USL IF NOT EXISTS` to add a
+table: on this build that replaces the model.
 
 ![Search page, desktop](docs/screenshots/ask-desktop.png)
 
@@ -235,6 +301,10 @@ travels in the datasource statement and is never printed.
 | `search`                           | relation `help_app.help_search`         | a fixed question, 100 rows; a `SELECT` runs the search pipeline                       |
 | `answers`                          | relation `help_app.help_answer`         | a fixed question; **a `SELECT` calls the LLM every time**. Do not join it to anything |
 | `pins`, `pin_events`, `pin_scores` | `help_pg.pins` and `help_pg.pin_events` | written by the Pinned feature; empty until something is pinned                        |
+| `pin_reception`                    | `pins` joined to `pin_events`           | one row per pin: likes, uses, bonus, `pinned_date`                                    |
+| `pin_event_log`                    | `help_pg.pin_events`                    | one row per like, unlike, or use, with `event_date`                                   |
+| `search_log`                       | `help_pg.searches`                      | one row per logged search; does not run a pipeline                                    |
+| `example_log`                      | `help_pg.examples`                      | one row per generated example; the SQL column is `sql_text`                           |
 
 Three queries to try in the Zetaris UI (the namespace is
 `lightning.metastore.help_app_usl.help_usl`):
