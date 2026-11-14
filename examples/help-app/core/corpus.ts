@@ -33,7 +33,18 @@ const TOP_LEVEL_SKIP = new Set(["dist", "site", "tmp", "reports"]);
 export interface WalkOptions {
   /** Repo-relative path prefixes to leave out (for example the example's own kbase snapshot). */
   skipPrefixes?: string[];
+  /** Segmenter. The default is the heading-aware split. Other modes are for the chunking bake-off. */
+  split?: Splitter;
 }
+
+/** How one file becomes segments. `current` is what ingest uses. */
+export type SplitMode = "current" | "windows" | "overlap";
+
+export type Splitter = (
+  corpus: Corpus,
+  file: string,
+  text: string,
+) => Segment[];
 
 /** Every `*.md` and `*.sql` under `root`, as repo-relative paths, sorted. Skips node_modules, dot
  * directories, and the top-level dist, site, tmp and reports folders. */
@@ -274,6 +285,90 @@ function splitSql(corpus: Corpus, file: string, text: string): Segment[] {
   }).filter((s) => s.text);
 }
 
+/** Headings (or, for SQL, `--` comments) with their character offset, skipping fenced blocks. */
+function headingMarks(
+  text: string,
+  sql: boolean,
+): { at: number; title: string }[] {
+  if (sql) {
+    const marks: { at: number; title: string }[] = [];
+    const re = /^--\s*(?!-*\s*$)(.+)$/gm;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      marks.push({ at: m.index, title: m[1].trim().slice(0, 120) });
+    }
+    return marks;
+  }
+  const marks: { at: number; title: string }[] = [];
+  let fence = false;
+  let offset = 0;
+  for (const line of text.split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
+    else if (!fence) {
+      const h = line.match(/^(#{1,3})\s+(.+?)\s*#*\s*$/);
+      if (h) {
+        marks.push({
+          at: offset,
+          title: h[2].replace(/[`*]/g, "").slice(0, 120),
+        });
+      }
+    }
+    offset += line.length + 1;
+  }
+  return marks;
+}
+
+/** Plain 1,000-character windows stepped every 900, so neighboring windows share 100 characters.
+ * The section is the nearest preceding heading. Nothing is re-packed by headings. */
+export function splitWindows(
+  corpus: Corpus,
+  file: string,
+  text: string,
+): Segment[] {
+  const step = TARGET - OVERLAP;
+  const marks = headingMarks(text, file.endsWith(".sql"));
+  const out: Segment[] = [];
+  if (!text.trim()) return out;
+  for (let i = 0; i < text.length; i += step) {
+    let slice = text.slice(i, i + TARGET).trim();
+    if (slice.length > MAX_TEXT) slice = slice.slice(0, MAX_TEXT);
+    if (slice) {
+      let section = "";
+      for (const mark of marks) if (mark.at <= i) section = mark.title;
+      out.push({ corpus, file, part: out.length, section, text: slice });
+    }
+    if (i + TARGET >= text.length) break;
+  }
+  return out;
+}
+
+/** Current segments, with the last 100 characters of the previous segment in the same file
+ * repeated at the front of the next. The total stays within MAX_TEXT so the Chunking guard
+ * does not cut the segment again. */
+export function withNeighborOverlap(segs: Segment[]): Segment[] {
+  let prev = "";
+  return segs.map((s) => {
+    const tail = prev.slice(-OVERLAP);
+    prev = s.text;
+    const room = MAX_TEXT - s.text.length;
+    if (room <= 0 || !tail) return s;
+    const prefix = tail.slice(-Math.min(OVERLAP, room));
+    if (!prefix || s.text.startsWith(prefix)) return s;
+    return { ...s, text: prefix + s.text };
+  });
+}
+
+export function splitByMode(
+  corpus: Corpus,
+  file: string,
+  text: string,
+  mode: SplitMode,
+): Segment[] {
+  if (mode === "windows") return splitWindows(corpus, file, text);
+  const segs = splitDocument(corpus, file, text);
+  return mode === "overlap" ? withNeighborOverlap(segs) : segs;
+}
+
 export interface Corpusload {
   docs: DocInfo[];
   segments: Segment[];
@@ -289,7 +384,7 @@ export async function loadRepoCorpus(
   for (const path of files) {
     const bytes = await Deno.readFile(`${root}/${path}`);
     const text = new TextDecoder().decode(bytes);
-    const segs = splitDocument("repo", path, text);
+    const segs = (opts.split ?? splitDocument)("repo", path, text);
     segments.push(...segs);
     docs.push({
       corpus: "repo",
@@ -306,7 +401,10 @@ export async function loadRepoCorpus(
 
 /** The kbase snapshot under corpus/kbase: one Markdown file per page with a `---` header. The
  * header is stripped before segmenting; the page URL is the segment's `file`. */
-export async function loadKbaseCorpus(dir: string): Promise<Corpusload> {
+export async function loadKbaseCorpus(
+  dir: string,
+  split: Splitter = splitDocument,
+): Promise<Corpusload> {
   const docs: DocInfo[] = [];
   const segments: Segment[] = [];
   const names: string[] = [];
@@ -323,7 +421,7 @@ export async function loadKbaseCorpus(dir: string): Promise<Corpusload> {
       m[1].match(new RegExp(`^${k}: (.*)$`, "m"))?.[1]?.trim() ?? "";
     const url = head("url");
     const body = raw.slice(m[0].length);
-    const segs = splitDocument("kbase", url, body);
+    const segs = split("kbase", url, body);
     segments.push(...segs);
     docs.push({
       corpus: "kbase",

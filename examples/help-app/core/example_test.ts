@@ -90,7 +90,10 @@ Deno.test("a passing example is labelled dry-run passed and cites its sources", 
   assertEquals(r.status, "dry-run passed");
   assertEquals(r.attempts.length, 1);
   assertEquals(r.reason, null);
-  assert(r.sources.some((s) => s.file === "open_data/a/x_select.sql"));
+  const src = r.sources.find((s) => s.file === "open_data/a/x_select.sql");
+  assert(src);
+  assertEquals(src.section, "S");
+  assert(src.snippetHtml.includes("t"));
 });
 
 Deno.test("a rejected example is repaired with the error, then passes", async () => {
@@ -134,7 +137,8 @@ Deno.test("DDL is never called dry-run passed", async () => {
     "x",
   );
   assertEquals(r.status, "unverified");
-  assert(r.reason?.includes("cannot run"));
+  assert(r.reason?.includes("CREATE NAMESPACE"));
+  assert(r.reason?.includes("not asked to check"));
   assertEquals(r.attempts.length, 1);
 });
 

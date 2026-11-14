@@ -3,12 +3,11 @@
 // without running it). A failed check goes back to the model with the error, at most 3 attempts.
 // Only queries (SELECT / WITH) can be checked this way; anything else stays "unverified".
 // The label is "dry-run passed" or "unverified", never "verified" (that word is CONTRIBUTING.md's).
-import { AskError } from "./ask.ts";
+import { AskError, type Source, toSource } from "./ask.ts";
 import { type Ranked, rerank, topFiles } from "./rank.ts";
 import { wholeFileContext } from "./prompt.ts";
 import type { Passage } from "./query.ts";
 import { cleanText } from "./security.ts";
-import { docHref } from "./docs.ts";
 
 export const MAX_ATTEMPTS = 3;
 export const MAX_REQUEST = 500;
@@ -38,17 +37,13 @@ export interface Attempt {
   unchecked?: boolean;
 }
 
-export interface ExampleSource {
-  file: string;
-  docHref: string | null;
-}
-
 export interface ExampleResult {
   status: ExampleStatus;
   sql: string;
   notes: string;
   attempts: Attempt[];
-  sources: ExampleSource[];
+  /** The files the model was given, with the same passage fields as a search result. */
+  sources: Source[];
   /** Why it is unverified, when it is. */
   reason: string | null;
   model: string;
@@ -265,6 +260,47 @@ export async function exampleContext(
   return { ctx, files };
 }
 
+/** One search-style card per file the model was given. Passage text comes from the retrieval
+ * that built the context; a hinted section that never appeared in the search is used whole. */
+export function exampleSources(
+  request: string,
+  files: string[],
+  ranked: Ranked[],
+  hinted: Ctx[],
+): Source[] {
+  return files.map((file) => {
+    const passages = ranked.filter((p) => p.file === file)
+      .sort((a, b) => b.score - a.score);
+    if (passages.length > 0) {
+      return toSource({
+        file,
+        corpus: passages[0].corpus,
+        score: passages[0].score,
+        passages,
+      }, request);
+    }
+    const hint = hinted.find((h) => h.header.includes(`FILE: ${file}`));
+    const section = hint?.header.match(/^SECTION: (.*)$/m)?.[1] ?? "";
+    const corpus = /^https?:\/\//.test(file) ? "kbase" : "repo";
+    const score = hint ? 1 : 0;
+    return toSource({
+      file,
+      corpus,
+      score,
+      passages: [{
+        corpus,
+        file,
+        part: 0,
+        section,
+        text: hint?.text ?? "",
+        similarity: score,
+        score,
+        keyword: 0,
+      }],
+    }, request);
+  });
+}
+
 // Plain-English requests rarely match the commands reference by embedding alone ("connect to a
 // database" never finds CREATE DATASOURCE). These hints name the reference section to pull in
 // whole when the request mentions the topic. Small on purpose: add a line when a topic misses.
@@ -350,11 +386,8 @@ export async function generateExample(
     const k = `${p.file}#${p.part}`;
     return seen.has(k) ? false : (seen.add(k), true);
   });
-  const found = await exampleContext(
-    rerank(request, passages),
-    deps.readFile,
-    setup,
-  );
+  const ranked = rerank(request, passages);
+  const found = await exampleContext(ranked, deps.readFile, setup);
   const hinted = setup ? await hintedSections(request, deps.readFile) : [];
   const ctx = [...hinted, ...found.ctx];
   onStage(
@@ -419,9 +452,10 @@ export async function generateExample(
         error: `${[...new Set(check.unchecked)].join(", ")} cannot be dry-run.`,
         unchecked: true,
       });
-      reason = `This contains statements the checker cannot run (${
-        [...new Set(check.unchecked)].join(", ")
-      }). Only queries can be dry-run.`;
+      reason =
+        `EXPLAIN only checks a SELECT or WITH, so Zetaris was not asked to check ${
+          [...new Set(check.unchecked)].join(", ")
+        }.`;
       break;
     }
     attempts.push({ n, sql: got.sql, error: null });
@@ -441,7 +475,7 @@ export async function generateExample(
     sql: final.sql,
     notes: final.notes,
     attempts,
-    sources: files.map((f) => ({ file: f, docHref: docHref(f) })),
+    sources: exampleSources(request, files, ranked, hinted),
     reason: passed ? null : reason,
     model: deps.model,
     ms: Math.round(performance.now() - t0),

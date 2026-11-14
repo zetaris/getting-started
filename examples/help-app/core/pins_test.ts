@@ -254,7 +254,43 @@ Deno.test("past answers: the threshold applies to similarity, and likes can reor
   past = await findPast(f.store, "anything", 0.82);
   assertEquals(past.map((p) => p.pinId), [b, a]); // 0.84 + 0.03 ln 6 beats 0.85
   assertEquals(past[0].likes, 5);
-  assert(Math.abs(past[0].score - (0.84 + 0.03 * Math.log(6))) < 1e-9);
+  assertEquals(past[0].uses, 0);
+  assert(
+    Math.abs(
+      past[0].score - (0.84 + 0.03 * Math.log(6) + 0.03 * Math.log(1)),
+    ) < 1e-9,
+  );
+});
+
+Deno.test("uses reorder close pins the same way likes do", async () => {
+  const a = await pinIdOf("question a", "answer a");
+  const b = await pinIdOf("question b", "answer b");
+  const hit = (file: string, similarity: number): Passage => ({
+    corpus: "pin",
+    file,
+    part: 0,
+    section: "",
+    text: "",
+    similarity,
+  });
+  const f = fakeStore(DOCS, [hit(a, 0.85), hit(b, 0.84)]);
+  for (
+    const [q, ans] of [["question a", "answer a"], ["question b", "answer b"]]
+  ) {
+    await createPin(f.store, input({ question: q, answer: ans, sources: [] }));
+  }
+  for (let i = 0; i < 5; i++) {
+    await addEvent(f.store, { pinId: b, kind: "use", who: `u${i}` });
+  }
+  const past = await findPast(f.store, "anything", 0.82);
+  assertEquals(past.map((p) => p.pinId), [b, a]);
+  assertEquals(past[0].uses, 5);
+  assertEquals(past[0].likes, 0);
+  assert(
+    Math.abs(
+      past[0].score - (0.84 + 0.03 * Math.log(1) + 0.03 * Math.log(6)),
+    ) < 1e-9,
+  );
 });
 
 Deno.test("a vector with no row is ignored, and a non-hex id never reaches SQL", async () => {

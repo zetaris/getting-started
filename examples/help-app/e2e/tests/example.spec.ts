@@ -27,6 +27,7 @@ test("a generated example shows its sources, one badge and the SQL", async ({ pa
   await generate(page, "pass", request);
   await expect(page.getByTestId("example-status")).toHaveText("Generated, dry-run passed");
   await expect(page.getByTestId("example-sql")).toContainText("SELECT count(*)");
+  await page.getByTestId("example-sources-tab").click();
   await expect(page.getByTestId("example-source").first().getByRole("link")).toHaveAttribute(
     "href",
     `/docs/${SQL_FILE}`,
@@ -51,6 +52,7 @@ test("a rejected example is repaired once the checker's message is fed back", as
 test("a command is unchecked: said plainly, SQL visible, no 'rejected' alarm", async ({ page, request }) => {
   await generate(page, "ddl", request);
   await expect(page.getByTestId("example-status")).toHaveText("Generated, unverified");
+  await page.getByTestId("example-status").hover();
   await expect(page.getByTestId("example-unchecked")).toContainText("Nothing checked this");
   await expect(page.getByTestId("example-sql")).toBeVisible();
   await expect(page.getByTestId("example-unverified")).toHaveCount(0);
@@ -117,6 +119,7 @@ test("save as candidate: saved once, listed, with its status and sources", async
 
 test("a doc links to the examples generated from it", async ({ page }) => {
   await page.goto(`${APPS.full.url}/docs/AGENTS.md`);
+  await page.getByText(/chunks in the index/).click();
   await page.getByTestId("candidates-link").click();
   await expect(page).toHaveURL(/\/candidates\?file=AGENTS\.md$/);
   await expect(page.getByTestId("file-filter")).toContainText("AGENTS.md");

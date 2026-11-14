@@ -23,10 +23,20 @@ test("an answer can be pinned once; pinning it again says so", async ({ page, re
   await expect(page.getByTestId("pinned")).toContainText("Pinned.");
   expect((await (await request.get(`${MOCK}/__state`)).json()).pins).toBe(1);
   // Ask again, pin again: the same question and answer is one pin.
-  await askAnswer(page);
+  const runs = (await (await request.get(`${MOCK}/__state`)).json()).answerRuns;
+  await page.goto(APPS.full.url);
+  await page.getByLabel("Answer").check({ force: true });
+  await page.getByTestId("question").fill(Q);
+  await page.getByTestId("submit").click();
+  await expect(page.getByTestId("pin-offer")).toBeVisible();
+  await expect(page.getByTestId("answer")).toHaveCount(0);
+  expect((await (await request.get(`${MOCK}/__state`)).json()).answerRuns).toBe(runs);
+  await page.getByTestId("fresh").click();
+  await expect(page.getByTestId("answer")).toBeVisible();
   await page.getByTestId("pin").click();
   await expect(page.getByTestId("pinned")).toContainText("already pinned");
   expect((await (await request.get(`${MOCK}/__state`)).json()).pins).toBe(1);
+  expect((await (await request.get(`${MOCK}/__state`)).json()).answerRuns).toBe(runs + 1);
 });
 
 test("the Pinned page lists the pin; a like is counted and survives a reload", async ({ page }) => {

@@ -6,7 +6,13 @@ import type { PastAnswer } from "./pins.ts";
 import { isCodeQuestion, pickCodeFiles, wholeFileContext } from "./prompt.ts";
 import { cleanQuestion, type Passage } from "./query.ts";
 import { type FileHit, rerank, topFiles } from "./rank.ts";
+import { matchSnippet } from "./snippet.ts";
 import { ZetarisError } from "./zetaris.ts";
+
+/** Files shown on the Search page. Vector search still returns at most 100 passages. */
+const SEARCH_FILES = 50;
+/** Files listed behind an answer. The model still reads its own, smaller context. */
+const ANSWER_FILES = 5;
 
 export type Mode = "search" | "answer";
 
@@ -16,8 +22,12 @@ export interface Source {
   /** Section of the best passage. */
   section: string;
   similarity: number;
+  /** Rerank score of the best passage. The rank bar uses this, not the cosine. */
+  score: number;
   /** Best passage text, trimmed for display. */
   excerpt: string;
+  /** A short window around the first question word, with those words marked. */
+  snippetHtml: string;
   /** The excerpt as safe HTML (Markdown rendered, images left out). */
   excerptHtml: string;
   /** The original web page, only for Kbase files. */
@@ -124,7 +134,7 @@ export function toAskError(e: unknown): AskError {
 
 const EXCERPT = 600;
 
-export function toSource(h: FileHit): Source {
+export function toSource(h: FileHit, question: string): Source {
   const best = h.passages[0];
   const excerpt = best.text.length > EXCERPT
     ? `${best.text.slice(0, EXCERPT)}…`
@@ -134,6 +144,8 @@ export function toSource(h: FileHit): Source {
     corpus: h.corpus,
     section: best.section,
     similarity: Number(best.similarity.toFixed(3)),
+    score: Number(h.score.toFixed(4)),
+    snippetHtml: matchSnippet(question, best.text).html,
     excerpt,
     // Images in a short excerpt are noise (and may be cut off mid-link), so they are dropped.
     excerptHtml: renderMarkdown(
@@ -169,7 +181,7 @@ export async function buildContexts(
 
 export async function ask(
   deps: AskDeps,
-  input: { question: string; mode: Mode },
+  input: { question: string; mode: Mode; fresh?: boolean },
 ): Promise<AskResult> {
   const question = cleanQuestion(input.question ?? "");
   if (!question) {
@@ -204,11 +216,24 @@ export async function ask(
     answerHtml: renderMarkdown(p.answer),
   }));
   const ranked = rerank(question, passages, { weight: deps.weight });
-  const sources = topFiles(ranked, 5).map(toSource);
+  const cap = input.mode === "search" ? SEARCH_FILES : ANSWER_FILES;
+  const sources = topFiles(ranked, cap).map((h) => toSource(h, question));
   const searchMs = Math.round(performance.now() - t0);
   if (input.mode === "search") {
     return {
       mode: "search",
+      sources,
+      answer: null,
+      answerHtml: null,
+      pastAnswers,
+      timings: { searchMs, answerMs: null },
+    };
+  }
+  // A close pin is a decision, not a companion to a new answer. Writing happens
+  // only after the reader asks for a fresh one.
+  if (!input.fresh && pastAnswers.length > 0) {
+    return {
+      mode: "answer",
       sources,
       answer: null,
       answerHtml: null,
@@ -225,7 +250,7 @@ export async function ask(
       sources,
       answer,
       answerHtml: renderMarkdown(answer),
-      pastAnswers,
+      pastAnswers: input.fresh ? [] : pastAnswers,
       timings: { searchMs, answerMs: Math.round(performance.now() - t1) },
     };
   } catch (e) {

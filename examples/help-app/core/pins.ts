@@ -310,14 +310,15 @@ export interface PastAnswer extends PinView {
   score: number;
 }
 
-/** Search the pins collection and rank: similarity plus 0.03 x ln(1 + likes). Only pins whose
- * similarity reaches the threshold are shown. */
+/** Search the pins collection and rank. Score is similarity plus the same small bonus for likes
+ * and for uses: 0.03 x ln(1 + count). Only pins whose similarity reaches the threshold are
+ * returned, at most `limit` (default 5). */
 export async function findPast(
   store: PinStore,
   question: string,
   threshold: number,
   bonus = PIN_BONUS,
-  limit = 3,
+  limit = 5,
 ): Promise<PastAnswer[]> {
   const hits = (await store.searchPins(question)).filter((p) =>
     p.similarity >= threshold && HEX64.test(p.file)
@@ -340,7 +341,8 @@ export async function findPast(
       return {
         ...v,
         similarity: Number(similarity.toFixed(3)),
-        score: similarity + bonus * Math.log(1 + v.likes),
+        score: similarity + bonus * Math.log(1 + v.likes) +
+          bonus * Math.log(1 + v.uses),
       };
     })
     .sort((a, b) => b.score - a.score)

@@ -31,7 +31,11 @@ export const handler = define.handlers({
           );
         }
       }
-      const result = await ask(askDeps(), { question: body.question, mode });
+      const result = await ask(askDeps(), {
+        question: body.question,
+        mode,
+        fresh: body.fresh === true,
+      });
       // Log lengths and timings only, never the question text.
       console.log(
         `ask mode=${mode} qlen=${body.question.length} search=${result.timings.searchMs}ms` +

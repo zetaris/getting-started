@@ -75,6 +75,75 @@ export async function listDocs(
   return rows;
 }
 
+const KIND_LABEL: Record<string, string> = {
+  "how-to": "How-tos",
+  howto: "How-tos",
+  "release-note": "Release notes",
+  "sql-reference": "SQL reference",
+  guide: "Guides",
+  plan: "Plans",
+  sql: "SQL scripts",
+  other: "Other pages",
+  reference: "References",
+  troubleshooting: "Troubleshooting",
+  "agent-rules": "Agent rules",
+  catalog: "Catalog",
+};
+
+const KIND_BLURB: Record<string, string> = {
+  "how-to": "Step-by-step pages from the knowledge base.",
+  howto: "Short how-to pages from this repository.",
+  "release-note": "What changed in each Zetaris release.",
+  "sql-reference": "Statement syntax from the knowledge base.",
+  guide: "Longer guides for installing and using Zetaris.",
+  plan: "Design notes and build plans.",
+  sql: "SQL scripts shipped with this repository.",
+  other: "Pages that do not sit in a tighter category.",
+  reference: "Reference pages for commands and settings.",
+  troubleshooting: "What to check when something fails.",
+  "agent-rules": "Instructions for agents working in this repo.",
+  catalog: "Catalogs of sources and objects.",
+};
+
+export const corpusLabel = (corpus: string) =>
+  corpus === "kbase"
+    ? "Knowledge base"
+    : corpus === "repo"
+    ? "Repo docs"
+    : corpus;
+
+/** Reader-facing name for a catalog kind. The stored value does not change. */
+export function kindLabel(kind: string): string {
+  return KIND_LABEL[kind] ??
+    kind.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** One line under a category card. */
+export function kindBlurb(kind: string): string {
+  return KIND_BLURB[kind] ?? "Pages in this category.";
+}
+
+/** Landing URL for one corpus and kind. Both are required because a kind can exist twice. */
+export function categoryHref(corpus: string, kind: string): string {
+  return `/docs?${new URLSearchParams({ corpus, kind })}`;
+}
+
+/** Open the group that contains the current page, or the category the URL asked for. */
+export function kindStartsOpen(
+  kind: string,
+  opts: {
+    containsCurrent?: boolean;
+    focusKind?: string;
+    focusCorpus?: string;
+    corpus?: string;
+  },
+): boolean {
+  if (opts.containsCurrent) return true;
+  if (!opts.focusKind || opts.focusKind !== kind) return false;
+  if (opts.focusCorpus && opts.corpus) return opts.focusCorpus === opts.corpus;
+  return true;
+}
+
 export interface DocFilter {
   q?: string;
   corpus?: string;
@@ -104,9 +173,11 @@ export function groupDocs(
     [corpus, kinds],
   ) => ({
     corpus,
-    kinds: [...kinds].sort(([a], [b]) => a.localeCompare(b)).map((
-      [kind, docs],
-    ) => ({ kind, docs })),
+    kinds: [...kinds].sort(([a], [b]) => {
+      if (a === "other") return 1;
+      if (b === "other") return -1;
+      return a.localeCompare(b);
+    }).map(([kind, docs]) => ({ kind, docs })),
   }));
 }
 

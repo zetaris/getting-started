@@ -3,9 +3,12 @@ import {
   fromBase64,
   kindOf,
   MAX_TEXT,
+  splitByMode,
   splitDocument,
+  splitWindows,
   titleOf,
   toBase64,
+  withNeighborOverlap,
 } from "./corpus.ts";
 
 const SAMPLE = `# Title here
@@ -84,4 +87,50 @@ Deno.test("SQL scripts are cut at blank lines, take a section from comments, and
   assertEquals(segs[0].section, "Create the table");
   assertEquals(segs[segs.length - 1].section, "Second");
   assertEquals(kindOf("open_data/x/01_create.sql"), "sql");
+});
+
+Deno.test("windows share 100 characters and stay under the guard", () => {
+  const body = "a".repeat(2500);
+  const segs = splitWindows("repo", "x.md", `# Kept\n\n${body}`);
+  assert(segs.length >= 3);
+  assert(segs.every((s) => s.text.length <= MAX_TEXT));
+  assertEquals(segs[0].section, "Kept");
+  const second = segs[1].text;
+  assert(segs[0].text.endsWith(second.slice(0, 80)));
+});
+
+Deno.test("neighbor overlap repeats the previous tail and does not pass the guard", () => {
+  const segs = withNeighborOverlap([
+    {
+      corpus: "repo",
+      file: "a.md",
+      part: 0,
+      section: "A",
+      text: "x".repeat(200),
+    },
+    {
+      corpus: "repo",
+      file: "a.md",
+      part: 1,
+      section: "B",
+      text: "y".repeat(1250),
+    },
+  ]);
+  assertEquals(segs[0].text.length, 200);
+  assert(segs[1].text.startsWith("x".repeat(50)));
+  assert(segs[1].text.endsWith("y".repeat(50)));
+  assertEquals(segs[1].text.length, MAX_TEXT);
+});
+
+Deno.test("overlap mode does not change the first segment of a file", () => {
+  const md = `# One\n\n${"a".repeat(800)}\n\n# Two\n\n${"b".repeat(800)}\n`;
+  const current = splitDocument("repo", "x.md", md);
+  const overlapped = splitByMode("repo", "x.md", md, "overlap");
+  assertEquals(overlapped[0].text, current[0].text);
+  assert(overlapped.length === current.length);
+  if (overlapped.length > 1) {
+    assert(overlapped[1].text.endsWith(current[1].text));
+    assert(overlapped[1].text.length <= MAX_TEXT);
+    assert(overlapped[1].text.length >= current[1].text.length);
+  }
 });

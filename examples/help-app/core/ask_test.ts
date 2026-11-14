@@ -42,6 +42,25 @@ Deno.test("search mode returns ranked sources and no answer", async () => {
   assertEquals(r.sources.map((s) => s.file)[0], "a.md");
   assertEquals(r.sources[2].url, "https://kbase.example/knowledge/x");
   assertEquals(r.sources[0].url, null);
+  assert(r.sources[0].score >= r.sources[0].similarity);
+  assert(r.sources[0].snippetHtml.includes("<mark>register</mark>"));
+});
+
+Deno.test("search lists up to 50 files and answer lists 5", async () => {
+  const many = Array.from(
+    { length: 60 },
+    (_, i) => p(`f${i}.md`, `register rest source ${i}`, 1 - i / 100),
+  );
+  const search = await ask(deps({ search: () => Promise.resolve(many) }), {
+    question: "register a rest source",
+    mode: "search",
+  });
+  assertEquals(search.sources.length, 50);
+  const answer = await ask(deps({ search: () => Promise.resolve(many) }), {
+    question: "register a rest source",
+    mode: "answer",
+  });
+  assertEquals(answer.sources.length, 5);
 });
 
 Deno.test("answer mode calls the model with contexts and returns its text", async () => {
@@ -145,6 +164,29 @@ const pastOf = (answer: string) =>
     similarity: 0.9,
     score: 0.93,
   }) as unknown as import("./pins.ts").PastAnswer;
+
+Deno.test("a close pin is offered before a new answer is written", async () => {
+  let called = false;
+  const held = await ask(
+    deps({
+      pastAnswers: () => Promise.resolve([pastOf("the pinned answer")]),
+      answer: () => (called = true, Promise.resolve("a new answer")),
+    }),
+    { question: "register a rest source", mode: "answer" },
+  );
+  assertEquals(called, false);
+  assertEquals(held.answer, null);
+  assertEquals(held.pastAnswers.length, 1);
+  const fresh = await ask(
+    deps({
+      pastAnswers: () => Promise.resolve([pastOf("the pinned answer")]),
+      answer: () => Promise.resolve("a new answer"),
+    }),
+    { question: "register a rest source", mode: "answer", fresh: true },
+  );
+  assertEquals(fresh.answer, "a new answer");
+  assertEquals(fresh.pastAnswers, []);
+});
 
 Deno.test("past answers are returned with safe HTML", async () => {
   const r = await ask(

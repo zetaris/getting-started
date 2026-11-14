@@ -1,10 +1,13 @@
 import { assert, assertEquals } from "@std/assert";
 import {
+  categoryHref,
   clearDocsCache,
   docChunks,
   docHref,
   filterDocs,
   groupDocs,
+  kindLabel,
+  kindStartsOpen,
   listDocs,
   openDoc,
   stripFrontMatter,
@@ -96,6 +99,42 @@ Deno.test("filtering and grouping", async () => {
   const g = groupDocs(rows);
   assertEquals(g.map((x) => x.corpus), ["kbase", "repo"]);
   assertEquals(g[1].kinds.map((k) => k.kind), ["guide", "sql"]);
+  const withOther = groupDocs([
+    ...rows,
+    {
+      path: "z.md",
+      corpus: "repo",
+      title: "Z",
+      kind: "other",
+      chunkCount: 1,
+    },
+  ]);
+  assertEquals(withOther[1].kinds.map((k) => k.kind), [
+    "guide",
+    "sql",
+    "other",
+  ]);
+  assertEquals(kindLabel("other"), "Other pages");
+  assertEquals(kindLabel("howto"), kindLabel("how-to"));
+  assertEquals(kindLabel("sql"), "SQL scripts");
+  assertEquals(
+    categoryHref("kbase", "how-to"),
+    "/docs?corpus=kbase&kind=how-to",
+  );
+  assert(!kindStartsOpen("guide", {}));
+  assert(kindStartsOpen("other", {
+    focusKind: "other",
+    focusCorpus: "repo",
+    corpus: "repo",
+  }));
+  assert(
+    !kindStartsOpen("other", {
+      focusKind: "other",
+      focusCorpus: "repo",
+      corpus: "kbase",
+    }),
+  );
+  assert(kindStartsOpen("sql", { containsCurrent: true }));
 });
 
 Deno.test("a file outside the catalog is never read, even if the path is valid", async () => {

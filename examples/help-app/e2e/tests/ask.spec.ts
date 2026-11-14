@@ -11,7 +11,7 @@ test("asking a question shows ranked sources, with the corpus labelled", async (
   await page.getByTestId("submit").click();
   const cards = page.getByTestId("source");
   await expect(cards.first()).toBeVisible();
-  await expect(cards).toHaveCount(5);
+  await expect(cards).toHaveCount(7);
   await expect(cards.first()).toContainText("open_data/rest_apis/HOWTO.md");
   await expect(page.getByTestId("status")).toContainText("Done in");
   // A Kbase page is a link, labelled as the Knowledge base.

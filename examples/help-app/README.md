@@ -196,12 +196,15 @@ deno task dev       # development server with hot reload instead
   the datasource was created is not visible until it is registered; `REFRESH`
   does not add it). The Docs page links each file to the candidates that cite
   it.
-- **Past answers.** When a question is close to a pinned question (similarity at
-  least `HELP_PIN_THRESHOLD`, default 0.82 for the E5 model), a panel above the
-  results shows it with its likes. **Use this answer** shows it without calling
-  the model. Ranking adds `0.03 * ln(1 + likes)` to the similarity. The
-  threshold is loose: questions on the same topic also reach it, so the panel
-  shows the question each answer was pinned for.
+- **Past answers.** In Answer mode, pins close to the question (similarity at
+  least `HELP_PIN_THRESHOLD`, default 0.82 for the E5 model) are offered before
+  a new answer is written. The closest five are shown, each with **Use this
+  answer** and a like, or you can ask for a new answer and skip them all.
+  Search mode lists the same five above the results. **Use this answer** shows
+  one without calling the model. Ranking adds `0.03 * ln(1 + likes)` and
+  `0.03 * ln(1 + uses)` to the similarity. The threshold is loose:
+  questions on the same topic also reach it, so each offer shows the question
+  it was pinned for.
 
 ![Search page, desktop](docs/screenshots/ask-desktop.png)
 

@@ -46,6 +46,11 @@ Deno.test("attribute values cannot break out of their quotes", () => {
     /^<p><img src="[^"]*" alt="[^"]*" loading="lazy"><\/p>\s*$/.test(alt),
     alt,
   );
+  const icon = renderMarkdown(
+    "[![](https://learn.microsoft.com/favicon.ico)Docs](https://learn.microsoft.com/a)",
+  );
+  assert(icon.includes('class="icon"'), icon);
+  assert(!icon.includes("<script"));
 });
 
 Deno.test("normal Markdown still renders: headings, tables, code fences", () => {

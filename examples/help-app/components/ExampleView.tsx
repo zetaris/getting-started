@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import type { ExampleResult } from "../core/example.ts";
 import { getName } from "../islands/prefs.ts";
+import { SourceCard } from "./SourceCard.tsx";
 
 interface Props {
   result: ExampleResult;
@@ -15,13 +16,21 @@ type Save =
   | { kind: "error"; message: string };
 
 /** A generated example. One badge only: "Generated, dry-run passed" or "Generated, unverified".
- * Never "Verified". Unverified SQL is collapsed behind a warning. */
+ * Never "Verified". A query Zetaris rejected stays collapsed until opened. */
 export function ExampleView({ result, request, onRegenerate }: Props) {
   const save = useSignal<Save>({ kind: "none" });
   const copied = useSignal(false);
+  const face = useSignal<"example" | "sources">("example");
   const passed = result.status === "dry-run passed";
   // Not checkable (a command, not a query) is different from rejected by the checker.
   const unchecked = !passed && result.attempts.at(-1)?.unchecked === true;
+  const tip = passed
+    ? "Zetaris accepted this query with EXPLAIN. Nothing was run against data."
+    : unchecked
+    ? `Nothing checked this. ${result.reason} Read it before you run it, and replace any placeholders.`
+    : `Zetaris rejected every attempt. ${
+      result.reason ?? ""
+    } Do not run this without reading it.`;
 
   async function copy() {
     try {
@@ -71,40 +80,59 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
     </div>
   );
   const nAttempts = result.attempts.length;
-  return (
-    <div class="example" data-testid="example">
-      <div class="example-head">
-        <h2>Generated example</h2>
-        <span
-          class={`pill ${passed ? "good" : "warn"}`}
-          data-testid="example-status"
-        >
-          {passed ? "Generated, dry-run passed" : "Generated, unverified"}
+  const exampleFace = (
+    <>
+      <div class="example-meta">
+        <span class="tiptip">
+          <span
+            class={`pill ${passed ? "good" : "warn"}${
+              passed ? "" : " with-info"
+            }`}
+            data-testid="example-status"
+            tabIndex={0}
+            aria-describedby="example-status-tip"
+          >
+            {passed ? "Generated, dry-run passed" : "Generated, unverified"}
+            {!passed && (
+              <svg class="info-i" viewBox="0 0 16 16" aria-hidden="true">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="6.25"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                />
+                <circle cx="8" cy="5.1" r="0.85" fill="currentColor" />
+                <path
+                  d="M8 7.3v4"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                />
+              </svg>
+            )}
+          </span>
+          <span
+            class="tiptip-box"
+            id="example-status-tip"
+            role="tooltip"
+            data-testid={unchecked ? "example-unchecked" : undefined}
+          >
+            {tip}
+          </span>
         </span>
+        <span class="fine">{result.model}</span>
       </div>
-      <p class="fine">
-        {nAttempts} {nAttempts === 1 ? "attempt" : "attempts"} · {result.model}
-        {" "}
-        · {(result.ms / 1000).toFixed(0)} s
-      </p>
       {result.notes && <p class="note-text">{result.notes}</p>}
-      {passed ? code : unchecked
-        ? (
-          <>
-            <div class="callout" role="note" data-testid="example-unchecked">
-              <strong>Nothing checked this.</strong> {result.reason}{" "}
-              Read it before you run it, and replace any placeholders.
-            </div>
-            {code}
-          </>
-        )
+      {passed || unchecked
+        ? code
         : (
           <details class="callout bad" data-testid="example-unverified">
             <summary>
-              The checker rejected every attempt: {result.reason}{" "}
+              Zetaris rejected every attempt.{" "}
               <span class="linkish">Show the SQL anyway</span>
             </summary>
-            <p>Do not run this without reading it.</p>
             {code}
           </details>
         )}
@@ -138,14 +166,6 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
           {save.value.message}
         </div>
       )}
-      <h3 class="sub">Inspired by</h3>
-      <ul class="srclist" data-testid="example-sources">
-        {result.sources.map((s) => (
-          <li data-testid="example-source">
-            {s.docHref ? <a href={s.docHref}>{s.file}</a> : s.file}
-          </li>
-        ))}
-      </ul>
       <details data-testid="attempts" class="quiet">
         <summary>Attempts ({nAttempts})</summary>
         <ol>
@@ -161,16 +181,53 @@ export function ExampleView({ result, request, onRegenerate }: Props) {
           ))}
         </ol>
       </details>
-      <details class="quiet">
-        <summary>How to read this label</summary>
-        <p class="fine">
-          Written by a language model from the files above. "Dry-run passed"
-          means Zetaris's analyzer accepted the query (EXPLAIN); nothing was run
-          against data, and it is not "verified" in the sense of
-          CONTRIBUTING.md. Only queries can be checked; other statements stay
-          unverified.
-        </p>
-      </details>
+    </>
+  );
+  return (
+    <div class="example flipcard" data-testid="example">
+      <div class="flipbar" role="tablist" aria-label="Example or sources">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={face.value === "example"}
+          class={face.value === "example" ? "on" : ""}
+          onClick={() => face.value = "example"}
+        >
+          Example
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-testid="example-sources-tab"
+          aria-selected={face.value === "sources"}
+          class={face.value === "sources" ? "on" : ""}
+          onClick={() => face.value = "sources"}
+        >
+          Inspired by ({result.sources.length})
+        </button>
+      </div>
+      <div class="example-stage">
+        <div
+          class={`flipbody example-face${
+            face.value === "sources" ? " away" : ""
+          }`}
+          aria-hidden={face.value === "sources"}
+        >
+          {exampleFace}
+        </div>
+        <div class="flipbody sources-face" hidden={face.value !== "sources"}>
+          <ul class="list" data-testid="example-sources">
+            {result.sources.map((s, i) => (
+              <SourceCard
+                s={s}
+                rank={i + 1}
+                top={Math.max(...result.sources.map((x) => x.score), 0)}
+                testid="example-source"
+              />
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

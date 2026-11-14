@@ -45,9 +45,11 @@ md.use({
       const url = safeUrl(href);
       if (!url) return escapeHtml(text);
       const t = title ? ` title="${escapeHtml(title)}"` : "";
+      // Site favicons are used as link marks. Left alone they paint at the file's full size.
+      const icon = /favicon/i.test(url) ? ` class="icon"` : "";
       return `<img src="${escapeHtml(url)}" alt="${
         escapeHtml(text)
-      }"${t} loading="lazy">`;
+      }"${icon}${t} loading="lazy">`;
     },
   },
 });

@@ -1,5 +1,5 @@
-/** Raw HTML. Only ever pass the output of core/markdown.ts renderMarkdown(), which escapes raw
- * HTML and drops unsafe link schemes. This is the one place the app sets innerHTML. */
+/** Raw HTML. Only ever pass renderMarkdown() or matchSnippet(), both of which escape the
+ * source text. This is the one place the app sets innerHTML. */
 export function Html(
   { html, class: cls = "md", testid }: {
     html: string;
