@@ -10,7 +10,9 @@
 -- `search` and `answers` sit over the saved pipeline relations. Their question is fixed inside the
 -- relation and a SELECT runs the whole pipeline (answers calls the LLM every time), so treat them
 -- as standing-question tables: do not join them to anything.
--- The namespace must exist before COMPILE USL (otherwise: "namespace not found").
+-- The parent must exist before the child (otherwise: "parent namespace : metastore
+-- is not existing"). The child must exist before COMPILE USL.
+CREATE NAMESPACE IF NOT EXISTS lightning.metastore;
 CREATE NAMESPACE IF NOT EXISTS lightning.metastore.help_app_usl;
 
 COMPILE USL IF NOT EXISTS help_usl DEPLOY NAMESPACE lightning.metastore.help_app_usl DDL
