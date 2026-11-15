@@ -28,6 +28,25 @@ The rules and gotchas it relies on are written up in the
 The Zetaris containers must be able to reach Milvus (and Ollama). On a single
 machine that means `host.docker.internal`, not `localhost`.
 
+The container runtime can be Colima in Docker compatibility mode. `docker compose`
+is the same command. Memory and CPUs are whatever the virtual machine was given,
+not the Mac's RAM. Colima's default (2 GB, 2 CPUs) only fits the help Postgres.
+Before starting Zetaris and this Compose file, give the VM 16 GB and 6 CPUs
+(`colima start --cpu 6 --memory 16`). Use 24 GB if the Zetaris bundle is on its
+server profile (4 GB driver, 4 cores, API heap 2 GB). The install guide's 8 GB
+is for Zetaris alone. Its preflight still fails below 6 GB.
+
+Milvus (`MILVUS_URI`, port 19531), the help Postgres (`HELP_PG_HOST`, port 5434),
+and `ZETARIS_REST_URL` stay `host.docker.internal`, because those processes are
+on this Mac. `OLLAMA_URL` is the other machine's address, the one that already
+answers from this Mac. It is not `host.docker.internal`. The Zetaris containers
+call it for answers, and the help container calls `GET /api/tags` for the Status
+page. A `.lan` name that works in a shell often does not resolve inside the VM;
+use the IP if a container cannot resolve it. Confirm from a Zetaris container
+that `host.docker.internal` resolves and that ports 19531 and 5434 open. Colima
+does not always inject that name, and this Compose file publishes those ports
+on `127.0.0.1` only.
+
 **Sizing.** What was measured here: the corpus is 309 files and 2,788 segments
 (the repo's Markdown and SQL plus a 171-page Kbase snapshot), and a full ingest
 takes about 6 minutes. Models seen on the LLM host used for the tests:
@@ -130,7 +149,12 @@ Three ways the stack grows:
 ## Quick start
 
 The shortest path to a working Search page (Search only), from a fresh clone.
-Zetaris and Ollama stay separate installs. Step 4 is the catalog.
+Zetaris and Ollama stay separate installs. Install and start Zetaris, using the
+[install guides](../../docs/install), before step 3, with the container VM sized
+as above. On a machine with room, set the Zetaris bundle's server profile
+(4 GB driver, 4 cores, API heap 2 GB) before the first start. `local[4]` still
+runs one job at a time; that limit is in the sizing notes above. Step 4 is the
+catalog.
 
 1. **Settings.** Copy the lines you need from [.env.example](.env.example) into
    the repo root's `.env.local`, and add your Zetaris REST key
@@ -147,7 +171,9 @@ Zetaris and Ollama stay separate installs. Step 4 is the catalog.
    The site is http://127.0.0.1:8000. The container serves the `_fresh` build
    from the repo mount, so build on the host again after app changes and
    recreate the help container. Ingest does not run at startup.
-3. **Index.** On the host, about 6 minutes:
+3. **Index.** On the host, about 6 minutes. A new machine has an empty Milvus
+   and an empty Postgres volume. `help:ingest` builds the index. Nothing copies
+   the old catalog. Docs and pins need step 4 after that.
    ```bash
    deno task help:ingest
    ```
@@ -160,11 +186,13 @@ Zetaris and Ollama stay separate installs. Step 4 is the catalog.
    ```bash
    deno task help:usl
    ```
-5. **Optional: Answer and Example modes.** Set `OLLAMA_URL` and `OLLAMA_MODEL`
-   (and, if you like, `HELP_EXAMPLE_MODEL`) in `.env.local` and recreate the
-   help container. The URL must be one the Zetaris containers can resolve.
-   The saved `help_answer` relation is only registered when `OLLAMA_URL` is
-   set at ingest time; the app does not need it.
+5. **Optional: Answer and Example modes.** Set `OLLAMA_URL` to the other
+   machine's address, and set `OLLAMA_MODEL` (and, if you like,
+   `HELP_EXAMPLE_MODEL`) in `.env.local`. Set the URL before ingest when you
+   want the saved `help_answer` relation; that relation is registered only
+   when `OLLAMA_URL` is set at ingest time, and the app does not need it.
+   Recreate the help container after the URL is set. The URL must be one the
+   Zetaris containers and the help container can resolve.
 
 If something fails, see [Troubleshooting](#troubleshooting).
 
@@ -195,7 +223,12 @@ If something fails, see [Troubleshooting](#troubleshooting).
   [docs/STATUS.md](docs/STATUS.md) and the companion guide, section 9; the sink
   uses the chunk text as its key.
 - **Answer or Example fails, Search works**: the LLM host must be reachable from
-  the Zetaris containers, not only from your shell.
+  the Zetaris containers, not only from your shell. The same URL has to answer
+  from inside the help container, which calls `GET /api/tags` for the Status page.
+- **Zetaris cannot reach Milvus or the help Postgres on Colima**: confirm from a
+  Zetaris container that `host.docker.internal` resolves and that ports 19531
+  and 5434 open. Colima does not always inject that name, and this Compose file
+  publishes those ports on `127.0.0.1` only.
 - **The app shows old code after a change**: `deno task build` again.
 - **Candidates fail with "table or view not found"**: run the `CREATE TABLE` and
   `REGISTER DATASOURCE TABLE` step described under Candidates.
