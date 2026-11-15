@@ -6,9 +6,9 @@
 #
 # Set MILVUS_IMAGE_TAG in .env.local to a Milvus release you have tested. None is
 # recorded here, so `up` refuses to start until it is set.
-# ZETARIS_REST_URL must be a name this help container can resolve. localhost
-# inside the container is the container; use host.docker.internal and the port
-# Zetaris publishes, for example http://host.docker.internal:8888/api/v1.0.
+# .env.local keeps ZETARIS_REST_URL on 127.0.0.1 so host ingest can reach the
+# API. The help service below overrides that to host.docker.internal, because
+# localhost inside the container is the container.
 name: help-app
 services:
   postgres:
@@ -70,6 +70,9 @@ services:
       # on 127.0.0.1. HELP_PORT is fixed so it matches that publish.
       HELP_HOST: 0.0.0.0
       HELP_PORT: "8000"
+      # Host scripts use 127.0.0.1:8888 from .env.local. Inside this container
+      # that address is the container, and Zetaris is published on the host.
+      ZETARIS_REST_URL: http://host.docker.internal:8888/api/v1.0
       # The app's own collection checks. Host scripts keep 127.0.0.1:19531.
       MILVUS_HOST_URI: http://milvus:19530
     ports:

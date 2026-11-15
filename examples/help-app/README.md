@@ -36,16 +36,18 @@ Before starting Zetaris and this Compose file, give the VM 16 GB and 6 CPUs
 server profile (4 GB driver, 4 cores, API heap 2 GB). The install guide's 8 GB
 is for Zetaris alone. Its preflight still fails below 6 GB.
 
-Milvus (`MILVUS_URI`, port 19531), the help Postgres (`HELP_PG_HOST`, port 5434),
-and `ZETARIS_REST_URL` stay `host.docker.internal`, because those processes are
-on this Mac. `OLLAMA_URL` is the other machine's address, the one that already
-answers from this Mac. It is not `host.docker.internal`. The Zetaris containers
-call it for answers, and the help container calls `GET /api/tags` for the Status
-page. A `.lan` name that works in a shell often does not resolve inside the VM;
-use the IP if a container cannot resolve it. Confirm from a Zetaris container
-that `host.docker.internal` resolves and that ports 19531 and 5434 open. Colima
-does not always inject that name, and this Compose file publishes those ports
-on `127.0.0.1` only.
+Milvus (`MILVUS_URI`, port 19531) and the help Postgres (`HELP_PG_HOST`, port
+5434) stay `host.docker.internal`, because the Zetaris containers open those
+ports. `ZETARIS_REST_URL` in `.env.local` is `http://127.0.0.1:8888/api/v1.0`,
+because ingest runs on this machine. The compose file overrides it to
+`host.docker.internal` for the help container. `OLLAMA_URL` is the other
+machine's address, the one that already answers from this Mac. The Zetaris
+containers call it for answers, and the help container calls `GET /api/tags`
+for the Status page. A `.lan` name that works in a shell often does not
+resolve inside the VM; use the IP if a container cannot resolve it. Confirm
+from a Zetaris container that `host.docker.internal` resolves and that ports
+19531 and 5434 open. Colima does not always inject that name, and this Compose
+file publishes those ports on `127.0.0.1` only.
 
 **Sizing.** What was measured here: the corpus is 309 files and 2,788 segments
 (the repo's Markdown and SQL plus a 171-page Kbase snapshot), and a full ingest
@@ -159,9 +161,10 @@ catalog.
 1. **Settings.** Copy the lines you need from [.env.example](.env.example) into
    the repo root's `.env.local`, and add your Zetaris REST key
    (`ZETARIS_API_KEY`, created in the Zetaris GUI). Set `MILVUS_IMAGE_TAG` and
-   `HELP_PG_PASSWORD`. `ZETARIS_REST_URL` must use `host.docker.internal` and
-   the port Zetaris publishes, not `localhost`: the help container is a
-   different machine from Zetaris.
+   `HELP_PG_PASSWORD`. `ZETARIS_REST_URL` in `.env.local` is
+   `http://127.0.0.1:8888/api/v1.0`, because ingest runs on this machine and
+   the API is published on loopback. The compose file overrides that to
+   `host.docker.internal` for the help container.
 2. **Build, then start Postgres, Milvus, and the app.** From this folder:
    ```bash
    deno install
