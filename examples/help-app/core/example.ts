@@ -182,6 +182,9 @@ export function generatePrompt(
   covered = false,
 ): string {
   const follow = setup && covered;
+  const opening = follow
+    ? `Reproduce the registration statements from the supplied script. Keep its statement kinds, such as CREATE LIGHTNING REST TABLE and CREATE LIGHTNING FILESTORE TABLE. `
+    : `Write ONE new example in Zetaris Lightning SQL, inspired by the supplied example files. `;
   const instruction = follow
     ? `Follow the named script in the supplied files. Keep its database name, option keys, and public URLs. ` +
       `Replace only credential-like values with placeholders such as <password>. ` +
@@ -198,7 +201,7 @@ export function generatePrompt(
         : "");
   return `Request: ${request}
 
-Write ONE new example in Zetaris Lightning SQL, inspired by the supplied example files. ` +
+${opening}` +
     instruction +
     `Reply with a short note (two sentences at most), then the SQL in a ` +
     `single \`\`\`sql block, then one line "Drew from:" listing the FILE names you used.\n\n${
@@ -228,14 +231,10 @@ Fix it. Change only what the message requires, keep to syntax shown in the suppl
 
 const GUIDE = /(docs\/guides\/|HOWTO\.md$|companion)/i;
 
-/** A request word that appears in a retrieved script path, so `company_dns` beats a higher generic rank. */
-function preferNamedSql(files: string[], request: string): string[] {
+/** Scripts whose path contains a request word, best rank first. Empty when none match. */
+function namedSql(files: string[], request: string): string[] {
   const words = questionWords(request);
-  const named = files.filter((f) =>
-    words.some((w) => f.toLowerCase().includes(w))
-  );
-  if (named.length === 0) return files;
-  return [...named, ...files.filter((f) => !named.includes(f))];
+  return files.filter((f) => words.some((w) => f.toLowerCase().includes(w)));
 }
 
 /** Context for generation: whole example scripts with their headers, plus the best guide passages. */
@@ -246,16 +245,21 @@ export async function exampleContext(
   request = "",
 ): Promise<{ ctx: Ctx[]; files: string[]; restScript: boolean }> {
   const repo = topFiles(ranked, 40).filter((f) => f.corpus === "repo");
-  const sqlFiles = preferNamedSql(
-    repo.filter((f) => f.file.endsWith(".sql")).map((f) => f.file),
-    request,
-  ).slice(0, SQL_FILES);
+  const sqlCandidates = repo.filter((f) => f.file.endsWith(".sql")).map((f) =>
+    f.file
+  );
+  // A named source is one script: the best match, with no siblings or filler.
+  const named = namedSql(sqlCandidates, request);
+  const sqlFiles = named.length > 0
+    ? named.slice(0, 1)
+    : sqlCandidates.slice(0, SQL_FILES);
   const sim = ranked[0]?.similarity ?? 0;
-  const whole = await wholeFileContext(sqlFiles, readFile, SQL_FILES, true);
+  const whole = await wholeFileContext(sqlFiles, readFile, SQL_FILES, false);
   const ctx: Ctx[] = whole.map((w) => ({ ...w, similarity: sim }));
   // The commands reference holds the real syntax, so its passages come first.
+  // A named script is that syntax, so the guide sample is not added beside it.
   const isRef = (f: string) => /sql-commands/.test(f);
-  const gotchas = ranked.filter((p) =>
+  const gotchas = named.length > 0 ? [] : ranked.filter((p) =>
     p.corpus === "repo" && GUIDE.test(p.file)
   )
     .sort((a, b) => Number(isRef(b.file)) - Number(isRef(a.file)))
@@ -268,19 +272,8 @@ export async function exampleContext(
     });
   }
   // Kbase pages show connection and setup steps; they are labelled as Kbase in the header.
-  // A named script already answers the request, so a page that never mentions it is left out.
-  const namedWords = questionWords(request).filter((w) =>
-    sqlFiles.some((f) => f.toLowerCase().includes(w))
-  );
-  const kb = setup
-    ? ranked.filter((p) => p.corpus === "kbase")
-      .filter((p) =>
-        namedWords.length === 0 ||
-        namedWords.some((w) =>
-          `${p.file} ${p.section} ${p.text}`.toLowerCase().includes(w)
-        )
-      )
-      .slice(0, KBASE_PASSAGES)
+  const kb = setup && named.length === 0
+    ? ranked.filter((p) => p.corpus === "kbase").slice(0, KBASE_PASSAGES)
     : [];
   for (const p of kb) {
     ctx.push({

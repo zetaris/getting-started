@@ -200,41 +200,46 @@ Deno.test("a connect request for company_dns follows that REST script", async ()
     score,
     keyword: 0,
   });
+  const japan = "open_data/rest_apis/sql/rate_limited/14_company_dns_japan_create.sql";
   const ranked = [
     hit("open_data/other_create.sql", 0.99, "CREATE LIGHTNING DATABASE OTHER"),
-    hit(dns, 0.4, "CREATE LIGHTNING REST TABLE company_dns"),
+    hit(dns, 0.5, "CREATE LIGHTNING REST TABLE company_dns"),
+    hit(japan, 0.4, "CREATE LIGHTNING REST TABLE japan_raw"),
+    hit(
+      "docs/guides/zetaris-lightning-sql-commands.md",
+      0.7,
+      "CREATE LIGHTNING REST TABLE daily_weather AUTH BY weather_oauth",
+    ),
     hit(
       "https://kbase.zetaris.com/knowledge/how-to-access-microsoft-purview",
       0.8,
       "Purview",
       "kbase",
     ),
-    hit(
-      "https://kbase.zetaris.com/knowledge/company_dns-notes",
-      0.3,
-      "company_dns setup",
-      "kbase",
-    ),
   ];
   const readSql = (f: string) =>
     Promise.resolve(
       f === dns
-        ? "CREATE LIGHTNING REST TABLE company_dns REQUEST (url 'https://example.invalid')"
+        ? "-- rate limit and host notes\n\nCREATE LIGHTNING REST TABLE company_dns REQUEST (url 'https://example.invalid')"
         : "CREATE LIGHTNING DATABASE OTHER",
     );
   const found = await exampleContext(ranked, readSql, true, request);
-  assertEquals(found.files[0], dns);
+  assertEquals(found.files, [dns]);
   assert(found.restScript);
-  assert(found.files.some((f) => f.includes("company_dns-notes")));
-  assert(!found.files.some((f) => f.includes("purview")));
+  assert(found.ctx[0].text.startsWith("CREATE LIGHTNING REST TABLE"));
+  assert(!found.ctx[0].text.includes("rate limit"));
   const covered = found.ctx.some((c) =>
     /create\s+/i.test(c.text) &&
     `${c.header}\n${c.text}`.toLowerCase().includes("company_dns")
   );
   assert(covered);
   const prompt = generatePrompt(request, true, covered);
+  assert(prompt.includes("Reproduce the registration statements"));
+  assert(prompt.includes("CREATE LIGHTNING REST TABLE"));
+  assert(prompt.includes("CREATE LIGHTNING FILESTORE TABLE"));
   assert(prompt.includes("Follow the named script"));
   assert(prompt.includes("Do not add AUTH BY"));
+  assert(!prompt.includes("inspired by the supplied example files"));
   assert(!prompt.includes("Do not copy a file"));
   assert(!prompt.includes("one statement per query"));
   assert(!prompt.includes("Not covered in the supplied files"));
