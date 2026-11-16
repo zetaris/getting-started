@@ -66,8 +66,9 @@ services:
     env_file:
       - ../../../.env.local
     environment:
-      # Listen on every interface inside the container. The publish below stays
-      # on 127.0.0.1. HELP_PORT is fixed so it matches that publish.
+      # Listen on every interface inside the container, and publish that port
+      # on every interface of the host so another machine can call /api/mcp.
+      # HELP_PORT is fixed so it matches that publish. There is no login.
       HELP_HOST: 0.0.0.0
       HELP_PORT: "8000"
       # Host scripts use 127.0.0.1:8888 from .env.local. Inside this container
@@ -76,7 +77,7 @@ services:
       # The app's own collection checks. Host scripts keep 127.0.0.1:19531.
       MILVUS_HOST_URI: http://milvus:19530
     ports:
-      - "127.0.0.1:8000:8000"
+      - "0.0.0.0:8000:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
