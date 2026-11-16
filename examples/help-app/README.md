@@ -364,9 +364,10 @@ There is no authentication. Each POST is one JSON-RPC message and the response
 is JSON. `GET /api/mcp` returns 405. The server does not push messages and
 does not issue an MCP session id.
 
-The tools are `search_help`, `answer_help`, and `example_sql`. Search does
-not call the model. Answer may return a close pinned answer, or call the
-model when `fresh` is true. Example returns generated SQL. `EXPLAIN` checks
+The tools are `search_help`, `answer_help`, `example_sql`, and `read_help`.
+Search does not call the model. Answer may return a close pinned answer, or
+call the model when `fresh` is true. `read_help` returns the text of up to
+three files from a search. Example returns generated SQL. `EXPLAIN` checks
 `SELECT` and `WITH` only, and nothing is executed. Pins, likes, and Candidates
 are not tools.
 
@@ -376,7 +377,7 @@ hex digits, and as `anonymous` otherwise. `caller()` in
 belongs there, on this route, and is not implemented. The options are one
 shared bearer, one token per agent, or OAuth if the app is a shared remote
 service. `ZETARIS_API_KEY` is not that credential. It stays on the server. A
-future help-app secret would only allow search, answer, and example.
+future help-app secret would only allow search, answer, example, and read.
 
 ## Activity log
 

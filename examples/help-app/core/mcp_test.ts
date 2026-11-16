@@ -8,6 +8,8 @@ import {
   mcpResponse,
   type McpRuntime,
   protocolVersion,
+  READ_CHARS,
+  READ_FILES,
   TOOLS,
 } from "./mcp.ts";
 
@@ -65,6 +67,12 @@ function runtime(over: Partial<McpRuntime> = {}): McpRuntime & {
       return Promise.resolve(askResult("answer"));
     },
     example: () => Promise.resolve(exampleResult()),
+    read: (files) =>
+      Promise.resolve(files.map((file) => ({
+        file,
+        title: "Title",
+        body: "body",
+      }))),
     logSearch: (q, who, surface) => {
       logged.push(`${surface}:${who}:${q}`);
       return Promise.resolve();
@@ -82,7 +90,7 @@ function rpc(method: string, params: unknown, id: number | undefined = 1) {
   return JSON.stringify({ jsonrpc: "2.0", id, method, params });
 }
 
-Deno.test("initialize echoes a dated protocol version and lists three tools", async () => {
+Deno.test("initialize echoes a dated protocol version and lists the tools", async () => {
   assertEquals(protocolVersion("nope"), "2025-03-26");
   const rt = runtime();
   const init = JSON.parse(
@@ -98,6 +106,7 @@ Deno.test("initialize echoes a dated protocol version and lists three tools", as
     "search_help",
     "answer_help",
     "example_sql",
+    "read_help",
   ]);
   const answer = TOOLS[1];
   assert(answer.description.includes("search-log"));
@@ -229,12 +238,42 @@ Deno.test("POST /api/mcp returns tools/list as JSON and GET is refused", async (
     "search_help",
     "answer_help",
     "example_sql",
+    "read_help",
   ]);
   const get = await mcpResponse(
     new Request("http://127.0.0.1/api/mcp", { method: "GET" }),
     rt,
   );
   assertEquals(get.status, 405);
+});
+
+Deno.test("read_help returns a catalogued file, a miss, and stops at three", async () => {
+  const seen: string[][] = [];
+  const rt = runtime({
+    read: (files) => {
+      seen.push(files);
+      return Promise.resolve(files.map((file, i) =>
+        i === 1
+          ? { file, title: null, body: null }
+          : { file, title: `T ${file}`, body: "x".repeat(READ_CHARS + 5) }
+      ));
+    },
+  });
+  const files = ["a.md", "missing.md", "b.sql", "c.md"];
+  const res = JSON.parse(
+    (await dispatch(
+      rpc("tools/call", { name: "read_help", arguments: { files } }),
+      rt,
+    ))!,
+  );
+  const body = JSON.parse(res.result.content[0].text);
+  assertEquals(seen, [files.slice(0, READ_FILES)]);
+  assertEquals(body.files[0].title, "T a.md");
+  assertEquals(body.files[0].body, `${"x".repeat(READ_CHARS)}\n…`);
+  assertEquals(body.files[1], { file: "missing.md", title: null, body: null });
+  assertEquals(body.files.length, READ_FILES);
+  assertEquals(res.result.isError, false);
+  assertEquals(rt.logged, []);
 });
 
 Deno.test("a failed search is not logged", async () => {

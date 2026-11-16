@@ -17,6 +17,8 @@ export interface McpRuntime {
   search(question: string): Promise<AskResult>;
   answer(question: string, fresh: boolean): Promise<AskResult>;
   example(request: string): Promise<ExampleResult>;
+  /** Catalogued file text. A miss is title and body null. No disk read for an unknown path. */
+  read(files: string[]): Promise<HelpFile[]>;
   logSearch(
     question: string,
     who: string,
@@ -74,7 +76,35 @@ export const TOOLS = [
       required: ["request"],
     },
   },
+  {
+    name: "read_help",
+    description:
+      "Read up to 3 catalogued help files. Pass file values from search_help. Returns each file's title and text, or a miss when it is not in the catalog. No model call.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Repo paths or knowledge-base URLs from search_help, at most 3.",
+        },
+      },
+      required: ["files"],
+    },
+  },
 ] as const;
+
+/** How many files one read_help call opens. */
+export const READ_FILES = 3;
+/** Characters of each file returned. A longer file is cut and marked. */
+export const READ_CHARS = 20_000;
+
+export interface HelpFile {
+  file: string;
+  title: string | null;
+  body: string | null;
+}
 
 /** One JSON-RPC message in, one line out, or null when the client sent a notification. */
 export async function dispatch(
@@ -153,7 +183,7 @@ async function call(
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: "zetaris-help", version: "0.1.0" },
       instructions:
-        "Search with search_help before calling the model. answer_help may return a pinned answer. example_sql returns generated SQL that is not executed.",
+        "Search with search_help before calling the model. read_help returns the text of files from that list. answer_help may return a pinned answer. example_sql returns generated SQL that is not executed.",
     };
   }
   if (method === "ping" || method === "notifications/initialized") return {};
@@ -186,6 +216,8 @@ async function toolCall(params: unknown, rt: McpRuntime): Promise<unknown> {
     );
   } else if (name === "example_sql") {
     text = await runExample(rt, needString(bag.request, "request"));
+  } else if (name === "read_help") {
+    text = await runRead(rt, needFiles(bag.files));
   } else {
     throw new AskError("not_found", `Unknown tool ${name}.`, 404);
   }
@@ -230,6 +262,36 @@ export async function runExample(
   } finally {
     release();
   }
+}
+
+export async function runRead(
+  rt: McpRuntime,
+  files: string[],
+): Promise<string> {
+  const wanted = files.slice(0, READ_FILES);
+  const docs = await rt.read(wanted);
+  return JSON.stringify({
+    files: docs.map((d) => ({
+      file: d.file,
+      title: d.title,
+      body: d.body === null ? null : clip(d.body),
+    })),
+  });
+}
+
+function clip(body: string): string {
+  if (body.length <= READ_CHARS) return body;
+  return `${body.slice(0, READ_CHARS)}\n…`;
+}
+
+function needFiles(value: unknown): string[] {
+  if (
+    !Array.isArray(value) || value.length === 0 ||
+    value.some((v) => typeof v !== "string" || !v.trim())
+  ) {
+    throw new AskError("bad_request", "Send {files: string[]}.", 400);
+  }
+  return value.map((v) => (v as string).trim());
 }
 
 function needString(value: unknown, name: string): string {
