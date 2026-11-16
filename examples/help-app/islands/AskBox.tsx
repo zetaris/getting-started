@@ -10,6 +10,7 @@ import type { ExampleResult } from "../core/example.ts";
 import { actorLabel } from "../core/actor.ts";
 import { postEvent } from "./prefs.ts";
 import { pageWindow } from "../core/page.ts";
+import WorkStatus from "./WorkStatus.tsx";
 
 const MODE_KEY = "help_mode";
 const CLIENT_TIMEOUT_MS = 130_000;
@@ -49,7 +50,6 @@ export default function AskBox(
   const pin = useSignal<PinState>({ kind: "none" });
   const used = useSignal<PastAnswerOut | null>(null);
   const abort = useRef<AbortController | null>(null);
-  const showSteps = useSignal(false);
   // The answer card has two tabs: the answer and its sources.
   const side = useSignal<"answer" | "sources">("answer");
   const shown = side; // the tab that looks selected
@@ -109,23 +109,14 @@ export default function AskBox(
     state.value = {
       kind: "loading",
       mode: mode.value,
-      steps: [{
-        label: isExample
-          ? "Sending your request"
-          : opts?.fresh
-          ? "Writing a new answer"
-          : mode.value === "answer"
-          ? "Searching the docs, then writing an answer"
-          : "Searching the docs",
-        at: started,
-      }],
+      steps: [{ label: "Sending your request", at: started }],
     };
     try {
       const res = await fetch(isExample ? "/api/example" : "/api/ask", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          ...(isExample ? { accept: "application/x-ndjson" } : {}),
+          accept: "application/x-ndjson",
         },
         body: JSON.stringify(
           isExample
@@ -135,7 +126,7 @@ export default function AskBox(
         signal: ctl.signal,
       });
       let body: Reply | null = null;
-      if (isExample && res.ok && res.body) {
+      if (res.ok && res.body) {
         // Progress lines arrive as they happen; the last line is the result or an error.
         const reader = res.body.pipeThrough(new TextDecoderStream())
           .getReader();
@@ -260,6 +251,7 @@ export default function AskBox(
         }}
         role="search"
       >
+        <div class="ask-top">
         <fieldset class="modes" aria-label="Mode">
           <label title="Ranked passages from the docs. No LLM needed.">
             <input
@@ -302,6 +294,10 @@ export default function AskBox(
             Example
           </label>
         </fieldset>
+        {s.kind === "loading" && (
+          <WorkStatus steps={s.steps} now={now.value} />
+        )}
+        </div>
         <label for="q" class="sr-only">Your question</label>
         <div class="searchbox">
           <textarea
@@ -334,73 +330,14 @@ export default function AskBox(
             {busy ? "Working…" : "Search"}
           </button>
         </div>
+        {s.kind !== "loading" && s.kind !== "idle" && (
         <div class="controls">
           <div
-            class={`status${busy ? " busy" : ""}`}
+            class="status"
             role="status"
             aria-live="polite"
             data-testid="status"
           >
-            {s.kind === "loading" && (
-              <div class="steps" data-testid="steps">
-                {(() => {
-                  const cur = s.steps[s.steps.length - 1];
-                  const before = s.steps.slice(0, -1);
-                  const secs = (t0: number, t1: number) => {
-                    const v = Math.max(0, (t1 - t0) / 1000);
-                    return `${v.toFixed(v < 10 ? 1 : 0)} s`;
-                  };
-                  return (
-                    <>
-                      <div class="step active">
-                        <span class="spinner" aria-hidden="true" />
-                        <span class="step-label">{cur.label}</span>
-                        <span class="step-time">
-                          {secs(s.steps[0].at, now.value)}
-                        </span>
-                        {before.length > 0 && (
-                          <button
-                            type="button"
-                            class="chev"
-                            aria-expanded={showSteps.value}
-                            aria-controls="step-log"
-                            onClick={() => showSteps.value = !showSteps.value}
-                            data-testid="steps-toggle"
-                          >
-                            <span aria-hidden="true">
-                              {showSteps.value ? "▾" : "▸"}
-                            </span>{" "}
-                            {before.length} done
-                          </button>
-                        )}
-                      </div>
-                      <ol
-                        class="step-log"
-                        id="step-log"
-                        hidden={!showSteps.value}
-                      >
-                        {before.map((st, i) => (
-                          <li
-                            key={i}
-                            class={/rejected|did not/i.test(st.label)
-                              ? "failed"
-                              : ""}
-                          >
-                            <span class="tick" aria-hidden="true">
-                              {/rejected|did not/i.test(st.label) ? "✗" : "✓"}
-                            </span>
-                            <span class="step-label">{st.label}</span>
-                            <span class="step-time">
-                              {secs(st.at, s.steps[i + 1].at)}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
             {s.kind === "error" && (
               <div
                 class="status-err"
@@ -447,6 +384,7 @@ export default function AskBox(
                 }.`)}
           </div>
         </div>
+        )}
         {!llmConfigured && (
           <p class="hint">
             Answer and Example modes are off: no LLM is configured.

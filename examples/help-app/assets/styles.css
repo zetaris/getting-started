@@ -619,6 +619,11 @@ pre {
   visibility: visible;
   opacity: 1;
 }
+.tiptip.align-end .tiptip-box {
+  left: auto;
+  right: 0;
+  text-align: left;
+}
 .note-text {
   margin: 8px 0 12px;
 }
@@ -1077,6 +1082,34 @@ th {
   }
 }
 
+.ask-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.ask-top .modes {
+  margin: 0;
+}
+.work-status {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  outline: none;
+}
+.work-status .step {
+  min-height: 0;
+  grid-template-columns: 18px auto auto;
+}
+.work-status .step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+}
 .steps {
   display: grid;
   gap: 8px;

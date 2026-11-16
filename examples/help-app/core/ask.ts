@@ -182,6 +182,7 @@ export async function buildContexts(
 export async function ask(
   deps: AskDeps,
   input: { question: string; mode: Mode; fresh?: boolean },
+  onStage: (s: string) => void = () => {},
 ): Promise<AskResult> {
   const question = cleanQuestion(input.question ?? "");
   if (!question) {
@@ -198,6 +199,7 @@ export async function ask(
     );
   }
   const t0 = performance.now();
+  onStage("Searching the docs");
   let passages: Passage[];
   let past: PastAnswer[] = [];
   try {
@@ -242,6 +244,7 @@ export async function ask(
     };
   }
   const t1 = performance.now();
+  onStage("Writing the answer");
   try {
     const contexts = await buildContexts(question, ranked, deps.readFile);
     const answer = await deps.answer(question, contexts);

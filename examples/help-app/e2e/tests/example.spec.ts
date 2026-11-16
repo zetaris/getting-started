@@ -188,7 +188,7 @@ test("while it works, the page lists each step with a spinner on the current one
   await expect(steps).toContainText("Writing the SQL with");
   await expect(steps).toContainText("Checking the SQL against Zetaris");
   await expect(steps).toContainText("Zetaris rejected attempt 1");
-  await steps.getByTestId("steps-toggle").click();
+  await steps.hover();
   await expect(steps.locator("#step-log")).toBeVisible();
   await expect(steps.locator("#step-log .failed")).toHaveCount(1);
   await expect(steps).toContainText("Fixing the SQL with");

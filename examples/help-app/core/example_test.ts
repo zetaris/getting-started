@@ -1,14 +1,17 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import {
   checkSql,
+  exampleContext,
   type ExampleDeps,
   extractSql,
   generateExample,
+  generatePrompt,
   hintedSections,
   isQuery,
   isSetupRequest,
   splitStatements,
 } from "./example.ts";
+import type { Ranked } from "./rank.ts";
 import type { Passage } from "./query.ts";
 
 Deno.test("splitStatements ignores semicolons in strings and comments", () => {
@@ -177,6 +180,54 @@ Deno.test("hintedSections pulls the whole reference section a topic points to", 
     await hintedSections("connect", () => Promise.resolve(null)),
     [],
   );
+});
+
+Deno.test("a connect request for company_dns uses that REST script and does not demand a refusal", async () => {
+  const request = "Show me how can I connect Zetaris to company_dns in SQL";
+  const dns = "open_data/rest_apis/sql/rate_limited/12_company_dns_create.sql";
+  const hit = (file: string, score: number, text: string): Ranked => ({
+    corpus: "repo",
+    file,
+    part: 0,
+    section: "",
+    text,
+    similarity: score,
+    score,
+    keyword: 0,
+  });
+  const ranked = [
+    hit("open_data/other_create.sql", 0.99, "CREATE LIGHTNING DATABASE OTHER"),
+    hit(dns, 0.4, "CREATE LIGHTNING REST TABLE company_dns"),
+  ];
+  const readSql = (f: string) =>
+    Promise.resolve(
+      f === dns
+        ? "CREATE LIGHTNING REST TABLE company_dns REQUEST (url 'https://example.invalid')"
+        : "CREATE LIGHTNING DATABASE OTHER",
+    );
+  const found = await exampleContext(ranked, readSql, true, request);
+  assertEquals(found.files[0], dns);
+  assert(found.restScript);
+  const doc =
+    "### 4.1 CREATE DATASOURCE\n\njdbc options\n\n### 7.2 CREATE LIGHTNING REST TABLE\n\nrest syntax\n";
+  const hints = await hintedSections(
+    request,
+    (f) => Promise.resolve(f.endsWith("commands.md") ? doc : null),
+    found.restScript ? ["CREATE LIGHTNING REST TABLE"] : [],
+  );
+  assertEquals(hints.length, 1);
+  assert(hints[0].header.includes("CREATE LIGHTNING REST TABLE"));
+  assert(!hints[0].header.includes("CREATE DATASOURCE"));
+  const covered = found.ctx.some((c) =>
+    /create\s+/i.test(c.text) &&
+    `${c.header}\n${c.text}`.toLowerCase().includes("company_dns")
+  );
+  assert(covered);
+  const prompt = generatePrompt(request, true, covered);
+  assert(!prompt.includes("Not covered in the supplied files"));
+  assert(generatePrompt(request, true, false).includes(
+    "Not covered in the supplied files",
+  ));
 });
 
 Deno.test("isSetupRequest separates setup asks from queries", () => {

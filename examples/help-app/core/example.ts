@@ -4,7 +4,7 @@
 // Only queries (SELECT / WITH) can be checked this way; anything else stays "unverified".
 // The label is "dry-run passed" or "unverified", never "verified" (that word is CONTRIBUTING.md's).
 import { AskError, type Source, toSource } from "./ask.ts";
-import { type Ranked, rerank, topFiles } from "./rank.ts";
+import { questionWords, type Ranked, rerank, topFiles } from "./rank.ts";
 import { wholeFileContext } from "./prompt.ts";
 import type { Passage } from "./query.ts";
 import { cleanText } from "./security.ts";
@@ -173,6 +173,7 @@ const CHECKLIST = `Checklist (known mistakes):
 export function generatePrompt(
   request: string,
   setup = isSetupRequest(request),
+  covered = false,
 ): string {
   return `Request: ${request}
 
@@ -182,7 +183,7 @@ Write ONE new example in Zetaris Lightning SQL, inspired by the supplied example
     `something up, write the statement that does that (for example a CREATE statement from the files) ` +
     `with marked placeholders such as <host> and <password>, never real credentials, and do not ` +
     `substitute a different command (such as SHOW or a query) for it. ` +
-    (setup
+    (setup && !covered
       ? `If the supplied files do not show the syntax needed, reply exactly "Not covered in the supplied files." and write no SQL; never guess keywords. `
       : "") +
     `Reply with a short note (two sentences at most), then the SQL in a ` +
@@ -211,17 +212,28 @@ Fix it. Change only what the message requires, keep to syntax shown in the suppl
 
 const GUIDE = /(docs\/guides\/|HOWTO\.md$|companion)/i;
 
+/** A request word that appears in a retrieved script path, so `company_dns` beats a higher generic rank. */
+function preferNamedSql(files: string[], request: string): string[] {
+  const words = questionWords(request);
+  const named = files.filter((f) =>
+    words.some((w) => f.toLowerCase().includes(w))
+  );
+  if (named.length === 0) return files;
+  return [...named, ...files.filter((f) => !named.includes(f))];
+}
+
 /** Context for generation: whole example scripts with their headers, plus the best guide passages. */
 export async function exampleContext(
   ranked: Ranked[],
   readFile: (f: string) => Promise<string | null>,
   setup = false,
-): Promise<{ ctx: Ctx[]; files: string[] }> {
+  request = "",
+): Promise<{ ctx: Ctx[]; files: string[]; restScript: boolean }> {
   const repo = topFiles(ranked, 40).filter((f) => f.corpus === "repo");
-  const sqlFiles = repo.filter((f) => f.file.endsWith(".sql")).map((f) =>
-    f.file
-  )
-    .slice(0, SQL_FILES);
+  const sqlFiles = preferNamedSql(
+    repo.filter((f) => f.file.endsWith(".sql")).map((f) => f.file),
+    request,
+  ).slice(0, SQL_FILES);
   const sim = ranked[0]?.similarity ?? 0;
   const whole = await wholeFileContext(sqlFiles, readFile, SQL_FILES, true);
   const ctx: Ctx[] = whole.map((w) => ({ ...w, similarity: sim }));
@@ -257,7 +269,10 @@ export async function exampleContext(
       ...kb.map((p) => p.file),
     ]),
   ];
-  return { ctx, files };
+  const restScript = whole.some((w) =>
+    /CREATE\s+LIGHTNING\s+REST\s+TABLE/i.test(w.text)
+  );
+  return { ctx, files, restScript };
 }
 
 /** One search-style card per file the model was given. Passage text comes from the retrieval
@@ -317,16 +332,21 @@ export const COMMAND_HINTS: [RegExp, string][] = [
 const COMMANDS_DOC = "docs/guides/zetaris-lightning-sql-commands.md";
 const SECTION_CHARS = 2500;
 
-/** The reference sections the request's topics point to, whole (heading to next heading). */
+const JDBC_SOURCE =
+  /\b(jdbc|postgres(ql)?|mysql|oracle|sql server|datasource|data source)\b/i;
+
+/** The reference sections the request's topics point to, whole (heading to next heading).
+ * `extra` names sections a retrieved script needs, such as CREATE LIGHTNING REST TABLE. */
 export async function hintedSections(
   request: string,
   readFile: (f: string) => Promise<string | null>,
+  extra: string[] = [],
 ): Promise<Ctx[]> {
-  const wanted = [
-    ...new Set(
-      COMMAND_HINTS.filter(([re]) => re.test(request)).map(([, t]) => t),
-    ),
-  ].slice(0, 2);
+  const jdbc = JDBC_SOURCE.test(request);
+  const fromRequest = COMMAND_HINTS.filter(([re]) => re.test(request))
+    .map(([, t]) => t)
+    .filter((t) => t !== "CREATE DATASOURCE" || jdbc || extra.length === 0);
+  const wanted = [...new Set([...extra, ...fromRequest])].slice(0, 2);
   if (wanted.length === 0) return [];
   const doc = await readFile(COMMANDS_DOC);
   if (!doc) return [];
@@ -387,9 +407,22 @@ export async function generateExample(
     return seen.has(k) ? false : (seen.add(k), true);
   });
   const ranked = rerank(request, passages);
-  const found = await exampleContext(ranked, deps.readFile, setup);
-  const hinted = setup ? await hintedSections(request, deps.readFile) : [];
+  const found = await exampleContext(ranked, deps.readFile, setup, request);
+  const hinted = setup
+    ? await hintedSections(
+      request,
+      deps.readFile,
+      found.restScript ? ["CREATE LIGHTNING REST TABLE"] : [],
+    )
+    : [];
   const ctx = [...hinted, ...found.ctx];
+  const named = questionWords(request).filter((w) =>
+    found.files.some((f) => f.toLowerCase().includes(w))
+  );
+  const covered = named.length > 0 && ctx.some((c) =>
+    /create\s+/i.test(c.text) &&
+    named.some((w) => `${c.header}\n${c.text}`.toLowerCase().includes(w))
+  );
   onStage(
     `Found ${found.files.length} example ${
       found.files.length === 1 ? "file" : "files"
@@ -406,7 +439,7 @@ export async function generateExample(
     );
   }
   const attempts: Attempt[] = [];
-  let prompt = generatePrompt(request, setup);
+  let prompt = generatePrompt(request, setup, covered);
   let reason: string | null = null;
   let final: { sql: string; notes: string } | null = null;
   let passed = false;
@@ -431,7 +464,7 @@ export async function generateExample(
         sql: "",
         error: "The model did not return a SQL block.",
       });
-      prompt = generatePrompt(request, setup);
+      prompt = generatePrompt(request, setup, covered);
       reason = "The model did not return a SQL block.";
       continue;
     }
