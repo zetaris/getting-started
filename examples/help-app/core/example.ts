@@ -170,24 +170,40 @@ const CHECKLIST = `Checklist (known mistakes):
 - Use only table and column names that appear in the files or the request.
 - No trailing semicolon after the last statement is needed; one statement per query.`;
 
+// A covered setup request may need several registration statements in one block.
+const FOLLOW_CHECKLIST = CHECKLIST.replace(
+  "\n- No trailing semicolon after the last statement is needed; one statement per query.",
+  "",
+);
+
 export function generatePrompt(
   request: string,
   setup = isSetupRequest(request),
   covered = false,
 ): string {
+  const follow = setup && covered;
+  const instruction = follow
+    ? `Follow the named script in the supplied files. Keep its database name, option keys, and public URLs. ` +
+      `Replace only credential-like values with placeholders such as <password>. ` +
+      `Do not add AUTH BY, insecure_ssl, or any other clause the script does not use. ` +
+      `One SQL block may contain the registration statements the script uses, such as CREATE LIGHTNING DATABASE, the REST table, and CACHE TABLE when the script has it. ` +
+      `Do not substitute a different command (such as SHOW or a query) for it. `
+    : `Do not copy a file; change the table, filter or columns to fit the request, and use only syntax ` +
+      `shown in the supplied files. Do exactly what the request asks: if it asks how to connect or set ` +
+      `something up, write the statement that does that (for example a CREATE statement from the files) ` +
+      `with marked placeholders such as <host> and <password>, never real credentials, and do not ` +
+      `substitute a different command (such as SHOW or a query) for it. ` +
+      (setup
+        ? `If the supplied files do not show the syntax needed, reply exactly "Not covered in the supplied files." and write no SQL; never guess keywords. `
+        : "");
   return `Request: ${request}
 
 Write ONE new example in Zetaris Lightning SQL, inspired by the supplied example files. ` +
-    `Do not copy a file; change the table, filter or columns to fit the request, and use only syntax ` +
-    `shown in the supplied files. Do exactly what the request asks: if it asks how to connect or set ` +
-    `something up, write the statement that does that (for example a CREATE statement from the files) ` +
-    `with marked placeholders such as <host> and <password>, never real credentials, and do not ` +
-    `substitute a different command (such as SHOW or a query) for it. ` +
-    (setup && !covered
-      ? `If the supplied files do not show the syntax needed, reply exactly "Not covered in the supplied files." and write no SQL; never guess keywords. `
-      : "") +
+    instruction +
     `Reply with a short note (two sentences at most), then the SQL in a ` +
-    `single \`\`\`sql block, then one line "Drew from:" listing the FILE names you used.\n\n${CHECKLIST}`;
+    `single \`\`\`sql block, then one line "Drew from:" listing the FILE names you used.\n\n${
+      follow ? FOLLOW_CHECKLIST : CHECKLIST
+    }`;
 }
 
 export function repairPrompt(
@@ -252,8 +268,19 @@ export async function exampleContext(
     });
   }
   // Kbase pages show connection and setup steps; they are labelled as Kbase in the header.
+  // A named script already answers the request, so a page that never mentions it is left out.
+  const namedWords = questionWords(request).filter((w) =>
+    sqlFiles.some((f) => f.toLowerCase().includes(w))
+  );
   const kb = setup
-    ? ranked.filter((p) => p.corpus === "kbase").slice(0, KBASE_PASSAGES)
+    ? ranked.filter((p) => p.corpus === "kbase")
+      .filter((p) =>
+        namedWords.length === 0 ||
+        namedWords.some((w) =>
+          `${p.file} ${p.section} ${p.text}`.toLowerCase().includes(w)
+        )
+      )
+      .slice(0, KBASE_PASSAGES)
     : [];
   for (const p of kb) {
     ctx.push({
@@ -408,12 +435,10 @@ export async function generateExample(
   });
   const ranked = rerank(request, passages);
   const found = await exampleContext(ranked, deps.readFile, setup, request);
-  const hinted = setup
-    ? await hintedSections(
-      request,
-      deps.readFile,
-      found.restScript ? ["CREATE LIGHTNING REST TABLE"] : [],
-    )
+  // A script that already contains the REST statement is the syntax. The commands
+  // guide sample (AUTH BY, insecure_ssl) would be written in front of it.
+  const hinted = setup && !found.restScript
+    ? await hintedSections(request, deps.readFile)
     : [];
   const ctx = [...hinted, ...found.ctx];
   const named = questionWords(request).filter((w) =>

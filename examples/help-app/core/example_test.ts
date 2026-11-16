@@ -182,11 +182,16 @@ Deno.test("hintedSections pulls the whole reference section a topic points to", 
   );
 });
 
-Deno.test("a connect request for company_dns uses that REST script and does not demand a refusal", async () => {
+Deno.test("a connect request for company_dns follows that REST script", async () => {
   const request = "Show me how can I connect Zetaris to company_dns in SQL";
   const dns = "open_data/rest_apis/sql/rate_limited/12_company_dns_create.sql";
-  const hit = (file: string, score: number, text: string): Ranked => ({
-    corpus: "repo",
+  const hit = (
+    file: string,
+    score: number,
+    text: string,
+    corpus = "repo",
+  ): Ranked => ({
+    corpus,
     file,
     part: 0,
     section: "",
@@ -198,6 +203,18 @@ Deno.test("a connect request for company_dns uses that REST script and does not 
   const ranked = [
     hit("open_data/other_create.sql", 0.99, "CREATE LIGHTNING DATABASE OTHER"),
     hit(dns, 0.4, "CREATE LIGHTNING REST TABLE company_dns"),
+    hit(
+      "https://kbase.zetaris.com/knowledge/how-to-access-microsoft-purview",
+      0.8,
+      "Purview",
+      "kbase",
+    ),
+    hit(
+      "https://kbase.zetaris.com/knowledge/company_dns-notes",
+      0.3,
+      "company_dns setup",
+      "kbase",
+    ),
   ];
   const readSql = (f: string) =>
     Promise.resolve(
@@ -208,26 +225,37 @@ Deno.test("a connect request for company_dns uses that REST script and does not 
   const found = await exampleContext(ranked, readSql, true, request);
   assertEquals(found.files[0], dns);
   assert(found.restScript);
-  const doc =
-    "### 4.1 CREATE DATASOURCE\n\njdbc options\n\n### 7.2 CREATE LIGHTNING REST TABLE\n\nrest syntax\n";
-  const hints = await hintedSections(
-    request,
-    (f) => Promise.resolve(f.endsWith("commands.md") ? doc : null),
-    found.restScript ? ["CREATE LIGHTNING REST TABLE"] : [],
-  );
-  assertEquals(hints.length, 1);
-  assert(hints[0].header.includes("CREATE LIGHTNING REST TABLE"));
-  assert(!hints[0].header.includes("CREATE DATASOURCE"));
+  assert(found.files.some((f) => f.includes("company_dns-notes")));
+  assert(!found.files.some((f) => f.includes("purview")));
   const covered = found.ctx.some((c) =>
     /create\s+/i.test(c.text) &&
     `${c.header}\n${c.text}`.toLowerCase().includes("company_dns")
   );
   assert(covered);
   const prompt = generatePrompt(request, true, covered);
+  assert(prompt.includes("Follow the named script"));
+  assert(prompt.includes("Do not add AUTH BY"));
+  assert(!prompt.includes("Do not copy a file"));
+  assert(!prompt.includes("one statement per query"));
   assert(!prompt.includes("Not covered in the supplied files"));
   assert(generatePrompt(request, true, false).includes(
     "Not covered in the supplied files",
   ));
+  const query = generatePrompt("Count the rows in the docs table");
+  assert(query.includes("Do not copy a file"));
+  assert(query.includes("one statement per query"));
+});
+
+Deno.test("a REST request with no script still asks for the REST command section", async () => {
+  const doc =
+    "### 6.2 CREATE LIGHTNING REST TABLE\n\nrest syntax\n\n### 6.3 NEXT\n\nother";
+  const h = await hintedSections(
+    "How do I register a REST API?",
+    (f) => Promise.resolve(f.endsWith("commands.md") ? doc : null),
+  );
+  assertEquals(h.length, 1);
+  assert(h[0].header.includes("CREATE LIGHTNING REST TABLE"));
+  assert(!h[0].text.includes("other"));
 });
 
 Deno.test("isSetupRequest separates setup asks from queries", () => {
